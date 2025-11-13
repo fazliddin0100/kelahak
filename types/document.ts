@@ -1,73 +1,91 @@
 // ===================== types/document.ts =====================
 import { IUserPopulated } from "./user";
 
-export interface Approver {
-  user: IUserPopulated;   // <-- userga bog‘landi
-  role?: string;
-  hasSigned: boolean;
-  signedAt?: string | { $date: string };
-  _id?: string | { $oid: string };
+// MongoDB extended JSON helper typelar
+export type ObjectIdLike = string | { $oid: string };
+export type DateLike = string | Date | { $date: string };
+
+// Umumiy signer type
+export interface BaseSigner {
+    fullName: string;
+    militaryRank: string;
+    position: string;
+    user: IUserPopulated;
 }
 
-export interface Sender {
-  user: IUserPopulated;   // <-- userga bog‘landi
-  hasSigned?: boolean;
-  signedAt?: string | { $date: string };
+export interface Approver extends BaseSigner {
+    role?: string;
+    hasSigned: boolean;
+    signedAt?: DateLike;
+    _id?: ObjectIdLike;
 }
 
-export interface Receiver {
-  user: IUserPopulated;   // <-- userga bog‘landi
-  _id?: string | { $oid: string };
+export interface Sender extends BaseSigner {
+    hasSigned?: boolean;
+    signedAt?: DateLike;
 }
 
-export interface Author {
-  user: IUserPopulated;   // <-- userga bog‘landi
-  hasSigned: boolean;
-  [key: string]: unknown;
+export interface Receiver extends BaseSigner {
+    _id?: ObjectIdLike;
+}
+
+export interface Author extends BaseSigner {
+    hasSigned: boolean;
+    // Agar qo‘shimcha fieldlar bo‘lsa, Partial sifatida kengaytirish mumkin
+    [key: string]: unknown;
 }
 
 export interface DocumentType {
-  _id: string | { $oid: string };
-  title?: string;
-  content?: string | Record<string, unknown>;
-  grif?: string;
-  copyNumber?: string[];
-  status?: string;
-  sharedWithAdmin?: boolean;
-  registrationIndex?: string | number;
-  registrationIndexCopy?: string | number;
-  receivedCopy?: string | number;
-  createdAt?: string | Date | { $date: string };
-  updatedAt?: string | Date | { $date: string };
-  owner?: IUserPopulated | string | { $oid: string }; // <-- owner ham user bo‘lishi mumkin
-  ownerRegion?: string;
-  sourceRegion: string[] | string;
-  entryIndex: string;
-  province: string;
-  hasSigned?: boolean;
-  onSign: (updatedDocument: DocumentType) => void;
-  sender?: Sender;
-  receiver?: Receiver[];
-  author?: Author;
-  approvers?: Approver[];
-  allowedUsers?: Array<IUserPopulated | string | { $oid: string }>;
-  pdfBuffer?: string;
-  pdfPath?: string;
-  canSign?: boolean;
-  description?: string;
-  fileUrl?: string;
-  isAuthorUnsigned?: boolean;
-  bosSigned?: Sender;
-  archiveInfo?: {
-    bandNumber?: string | number;
+    _id: ObjectIdLike;
+    title?: string;
+    content?: string | object;
+    grif?: string;
+    copyNumber?: string[];
+    status?: string;
+    sharedWithAdmin?: boolean;
+    registrationIndex?: string | number;
+    registrationIndexCopy?: string | number;
+    receivedCopy?: string | number;
+    createdAt?: DateLike;
+    updatedAt?: DateLike;
+    owner?: IUserPopulated | ObjectIdLike;
+    ownerRegion?: string;
+    sourceRegion: string[] | string;
+    entryIndex: string;
+    province: string;
+    position: string;
+    militaryRank: string;
+    fullName: string; // <-- string[] o‘rniga string
+    hasSigned?: boolean;
+    onSign: (updatedDocument: DocumentType) => void;
+
+    sender?: Sender;
+    receiver?: Receiver[];
+    author?: Author;
+    approvers?: Approver[];
+    bosSigned?: Sender;
+
+    allowedUsers?: Array<IUserPopulated | ObjectIdLike>;
+    forwardedTo?: Array<IUserPopulated | ObjectIdLike>;
+
+    pdfBuffer?: string;
+    pdfPath?: string;
+    fileUrl?: string;
+    description?: string;
+
+    canSign?: boolean;
+    isAuthorUnsigned?: boolean;
+    isCopy?: boolean;
+    sharedWithUser?: boolean;
+
+    archiveInfo?: {
+        bandNumber?: string | number;
+        year?: string | number;
+        [key: string]: unknown;
+    };
+
     year?: string | number;
-    [key: string]: unknown;
-  };
-  year?: string | number;
-  parentId?: string | { $oid: string };
-  forwardedTo?: Array<IUserPopulated | string | { $oid: string }>;
-  isCopy?: boolean;
-  sharedWithUser?: boolean;
-  __v?: number;
-  data?: unknown;
+    parentId?: ObjectIdLike;
+    __v?: number;
+    data?: unknown;
 }

@@ -17,7 +17,7 @@ const KotibiyatLayout = ({children}: DocumentLayoutProps) => {
             <div className="w-full">
                 <NavbarKotibiyat setPage={setPage} organ={""}/>
             </div>
-            <KotibiyatPage page={page}/>
+                 <KotibiyatPage page={page}/>
             {children}
         </div>
     );

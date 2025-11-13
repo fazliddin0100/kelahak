@@ -1,4 +1,5 @@
 import {TemplateGallery} from "@/components/template-galerey";
+import DocumentTable from "@/app/kotibiyat/(navbar)/document-table";
 
 const File = () => {
     return (
@@ -7,7 +8,7 @@ const File = () => {
                 <TemplateGallery/>
             </div>
             <div>
-                documents galirey
+                <DocumentTable />
             </div>
         </>
     )

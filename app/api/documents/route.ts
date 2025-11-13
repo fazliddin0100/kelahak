@@ -73,3 +73,60 @@ export async function POST(request: NextRequest) {
         );
     }
 }
+
+// db dan hujjatlarni olish
+export async function GET(request: NextRequest) {
+    try {
+        await connectToDatabase();
+
+        const { searchParams } = new URL(request.url);
+
+        const userId = searchParams.get("userId");
+        const documentId = searchParams.get("documentId");
+
+        // Pagination params
+        const page = parseInt(searchParams.get("page") || "1", 10);
+        const limit = parseInt(searchParams.get("limit") || "10", 10);
+        const skip = (page - 1) * limit;
+
+        // Sorting params
+        const sortField = searchParams.get("sortField") || "createdAt";
+        const sortOrder = searchParams.get("sortOrder") === "desc" ? -1 : 1;
+
+        const query: any = {};
+        if (userId) query.owner = userId;
+        if (documentId) query._id = documentId;
+
+        const documents = await DocumentModel.find(query)
+            .sort({ [sortField]: sortOrder })
+            .skip(skip)
+            .limit(limit)
+            .populate("owner", "fullName militaryRank position")
+            .populate("author.userId", "fullName militaryRank position")
+            .lean();
+
+        if (!documents || documents.length === 0) {
+            return NextResponse.json({ message: "Hujjatlar topilmadi" }, { status: 404 });
+        }
+
+        // Hujjatlar umumiy soni (pagination uchun)
+        const totalDocuments = await DocumentModel.countDocuments(query);
+        const totalPages = Math.ceil(totalDocuments / limit);
+
+        return NextResponse.json({
+            page,
+            totalPages,
+            limit,
+            totalDocuments,
+            documents
+        }, { status: 200 });
+
+    } catch (error: any) {
+        console.error("Hujjatlarni olishda xato:", error);
+        return NextResponse.json(
+            { message: "Hujjatlarni olishda xatolik", error: error.message },
+            { status: 500 }
+        );
+    }
+}
+

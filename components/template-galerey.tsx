@@ -1,13 +1,13 @@
 "use client";
 
-import {cn} from "@/lib/utils";
-import {Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious,} from "@/components/ui/carousel";
-import {templates} from "@/helpers/templates";
-import {useRouter} from "next/navigation";
-import {useState} from "react";
+import { cn } from "@/lib/utils";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { templates } from "@/helpers/templates";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import axios from "axios";
 
-// create funksiyasi
+// Hujjat yaratish funksiyasi
 const create = async ({
                           title,
                           content,
@@ -18,23 +18,23 @@ const create = async ({
     if (typeof window === "undefined") throw new Error("Client-side only");
 
     const token = localStorage.getItem("token");
-    if (!token) {
-        throw new Error("Token not found");
-    }
+    if (!token) throw new Error("Token topilmadi");
 
     try {
-        const response = await axios.post("/api/documents", {title, content}, {
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-        });
+        const response = await axios.post(
+            "/api/documents",
+            { title, content },
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
         return response.data._id;
     } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
-            throw new Error(
-                error.response?.data?.message || "Hujjat yaratishda xatolik yuz berdi"
-            );
+            throw new Error(error.response?.data?.message || "Hujjat yaratishda xatolik yuz berdi");
         }
         throw new Error("Hujjat yaratishda xatolik yuz berdi");
     }
@@ -44,15 +44,13 @@ export const TemplateGallery = () => {
     const router = useRouter();
     const [isCreating, setIsCreating] = useState(false);
 
-    const onTemplateClick = async (title: string, content: string) => {
+    const onTemplateClick = async (templateLabel: string) => {
         setIsCreating(true);
         try {
-            const documentId = await create({title, content});
-            const token = localStorage.getItem("token");
-            if (!token) {
-                router.push("/");
-                return;
-            }
+            // title = template.label, content = ""
+            const documentId = await create({ title: templateLabel, content: "" });
+
+            // Hujjat yaratilib bo‘lgach yangi sahifaga yo‘naltirish
             router.push(`/document/${documentId}`);
         } catch (err) {
             console.error(err);
@@ -80,9 +78,9 @@ export const TemplateGallery = () => {
                                 >
                                     <button
                                         disabled={isCreating}
-                                        onClick={() => onTemplateClick(template.label, "")}
+                                        onClick={() => onTemplateClick(template.label)}
                                         style={{
-                                            backgroundImage: `url(${template.imageUrl.src})`, // ✅
+                                            backgroundImage: `url(${template.imageUrl.src})`,
                                             backgroundSize: "cover",
                                             backgroundPosition: "center",
                                             backgroundRepeat: "no-repeat",
@@ -103,8 +101,8 @@ export const TemplateGallery = () => {
                             </CarouselItem>
                         ))}
                     </CarouselContent>
-                    <CarouselPrevious/>
-                    <CarouselNext/>
+                    <CarouselPrevious />
+                    <CarouselNext />
                 </Carousel>
             </div>
         </div>
