@@ -16,7 +16,7 @@ const DocumentTable = ({ userId }: { userId?: string }) => {
     )
 
     if (loading) return <div className={'flex justify-center items-center h-screen'}>
-        <Loader className={'animate-spin outline'} />
+        <Loader className={'animate-pulse'} />
     </div>
     if (error) return <div className="text-red-500 flex justify-center items-center h-[300px]"><NotData /></div>
 
@@ -55,7 +55,7 @@ const DocumentTable = ({ userId }: { userId?: string }) => {
                                         <FileText className="h-5 w-5 text-blue-500 mx-auto" />
                                     </TableCell>
                                     <TableCell className="font-medium">{doc.title}</TableCell>
-                                    <TableCell>{doc.registrationIndex?.join(", ")}</TableCell>
+                                    <TableCell>{doc.registrationIndex}</TableCell>
                                     <TableCell>{new Date(doc.createdAt).toLocaleDateString()}</TableCell>
                                     <TableCell className="text-left p-1">
                                         {/* amallar */}

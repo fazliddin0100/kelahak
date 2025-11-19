@@ -1,0 +1,53 @@
+// /data/mockDocuments.ts
+import type { DocumentType } from "@/types/document";
+
+export const mockDocuments: DocumentType[] = [
+  {
+    _id: "1",
+    title: "Buyruq – Shartnoma bo‘yicha hisobot",
+    grif: "Maxfiy",
+    registrationIndex: "001",
+    createdAt: new Date().toISOString(),
+    length: 12,
+    author: {
+      fullName: "Ali Vali",
+      militaryRank: "Captain",
+      position: "Manager",
+      user: { id: "u1", name: "Ali Vali" },
+      hasSigned: true,
+    },
+    entryIndex: "001-A",
+    province: "Toshkent",
+    position: "Manager",
+    militaryRank: "Captain",
+    fullName: "Ali Vali",
+    hasSigned: true,
+    onSign: () => {},
+    saqlashMuddati: 5,
+    qonunTuri: "256-band",
+  },
+  {
+    _id: "2",
+    title: "Ish jild – Yillik umumiy yig‘ilish bayoni",
+    grif: "Oddiy",
+    registrationIndex: "002",
+    createdAt: new Date().toISOString(),
+    length: 5,
+    author: {
+      fullName: "Karim O‘lim",
+      militaryRank: "Lieutenant",
+      position: "Inspector",
+      user: { id: "u2", name: "Karim O‘lim" },
+      hasSigned: false,
+    },
+    entryIndex: "002-B",
+    province: "Samarqand",
+    position: "Inspector",
+    militaryRank: "Lieutenant",
+    fullName: "Karim O‘lim",
+    hasSigned: false,
+    onSign: () => {},
+    saqlashMuddati: 3,
+    qonunTuri: "123-band",
+  },
+];

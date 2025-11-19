@@ -59,8 +59,10 @@ export const config = {
     matcher: [
         "/api/:path*",
         "/kotibiyat/:path*",
+        "/admin/:path*",
         "/user/:path*",
         "/documents/:path*",
+        "/document-open/:path*",
         "/document/:path*",
         "/admin/:path*",
         // "/(.*)",

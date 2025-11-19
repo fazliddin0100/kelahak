@@ -51,8 +51,6 @@ export async function POST(request: NextRequest) {
             militaryRank,
             login,
             password,
-
-            // ✅ Device ma’lumotlari (ixtiyoriy)
             mac,
             ip,
             hostname,

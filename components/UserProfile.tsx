@@ -3,7 +3,8 @@
 import {useEffect, useState} from "react";
 import axios from "axios";
 import {useRouter} from "next/navigation";
-import {CircleUser, Loader2, LogOut} from "lucide-react";
+import {CircleUser, Loader2, LogOut, ShieldUser} from "lucide-react";
+import { motion } from "framer-motion";
 
 import {Popover, PopoverContent, PopoverTrigger,} from "@/components/ui/popover";
 import {Avatar, AvatarFallback} from "@/components/ui/avatar";
@@ -38,8 +39,16 @@ export default function UserProfile() {
     }, [router]);
 
     const handleLogout = async () => {
-        await axios.post("/api/auth/logout", {}, {withCredentials: true});
-        router.push("/sign-in");
+        try {
+            await axios.post("/api/logout", {}, { withCredentials: true });
+            localStorage.removeItem("token");
+            localStorage.removeItem("csrf-token");
+            sessionStorage.removeItem("token");
+            sessionStorage.removeItem("csrf-token");
+            router.push("/sign-in");
+        } catch (err) {
+            console.error("Logout error:", err);
+        }
     };
 
     if (!data) {
@@ -78,6 +87,16 @@ export default function UserProfile() {
                         <span className="text-gray-500 text-xs">{data.province}</span>
                     </p>
 
+                    <Separator className="my-3"/>
+                    <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95, rotate: 1 }}
+                        onClick={() => router.push("/admin")}
+                        className="flex flex-row items-center gap-2 text-sm text-gray-700 font-medium cursor-pointer select-none p-2 rounded-2xl shadow-sm hover:shadow-md transition"
+                    >
+                        <ShieldUser className="size-6" />
+                        Admin panel
+                    </motion.div>
                     <Separator className="my-3"/>
 
                     <button

@@ -7,14 +7,12 @@ import React from "react";
 
 interface MalumotnomaProps {
     document: DocumentType;
-    logoBase64: string;
     province?: string;
     data?: unknown;
 }
 
 export const Bildirgi: React.FC<MalumotnomaProps> = ({
                                                          document,
-                                                         logoBase64,
                                                          province,
                                                      }) => {
     const getFormattedName = (fullName?: string): string => {
@@ -105,7 +103,7 @@ export const Bildirgi: React.FC<MalumotnomaProps> = ({
               <span>{document.sender?.militaryRank || "Unvon noma'lum"}</span>
                 {isSigned && document.sender?.fullName && (
                     <span>
-                  <QrCode fullNames={[document.sender.fullName]} logoBase64={logoBase64} />
+                  <QrCode fullNames={document.sender.fullName} />
                 </span>
                 )}
                 <span>{getFormattedName(document.sender?.fullName)}</span>
@@ -129,7 +127,7 @@ export const Bildirgi: React.FC<MalumotnomaProps> = ({
                     <span>{approver.militaryRank || "Unvon noma'lum"}</span>
                       {approver.hasSigned && (
                           <span>
-                        <QrCode fullNames={[approver.fullName ?? "Noma'lum"]} logoBase64={logoBase64} />
+                        <QrCode fullNames={approver.fullName ?? "Noma'lum"} />
                       </span>
                       )}
                       <span>{getFormattedName(approver.fullName)}</span>

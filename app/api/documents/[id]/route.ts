@@ -129,3 +129,61 @@ export async function PUT(
         return NextResponse.json({ message: "Xatolik", error: error.message }, { status: 500 });
     }
 }
+
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        await connectToDatabase();
+        const { id } = await params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ message: "Noto‘g‘ri ID" }, { status: 400 });
+        }
+
+        const userId = getUserId(request);
+
+        if (!userId) {
+            return NextResponse.json({ message: "Foydalanuvchi yo‘q" }, { status: 401 });
+        }
+
+        // Hujjatni topish va owner ni populate qilish (ruxsat tekshiruvi uchun)
+        const document = await DocumentModel.findById(id)
+            .populate("owner")
+            .exec();
+
+        if (!document) {
+            return NextResponse.json({ message: "Hujjat topilmadi" }, { status: 404 });
+        }
+
+        // Ruxsat tekshiruvi
+        const ownerId = document.owner?._id?.toString();
+        const isOwner = ownerId === userId;
+        const isAllowed = document.allowedUsers?.some((u: any) => u.toString() === userId);
+
+        if (!isOwner && !isAllowed) {
+            return NextResponse.json({ message: "Ruxsat yo'q" }, { status: 403 });
+        }
+
+        // To'liq populate qilingan hujjatni qaytarish
+        const populatedDoc = await DocumentModel.findById(id)
+            .populate("owner", "fullName militaryRank position")
+            .populate("author.userId", "fullName militaryRank position")
+            .populate("sender.userId", "fullName militaryRank position")
+            .populate("receiver.userId", "fullName militaryRank position")
+            .populate("bosSigned.userId", "fullName militaryRank position")
+            .populate({
+                path: "approvers.userId",
+                select: "fullName militaryRank position"
+            })
+            .lean();
+
+        return NextResponse.json(populatedDoc, { status: 200 });
+    } catch (error: any) {
+        console.error("Hujjatni olishda xato:", error);
+        return NextResponse.json(
+            { message: "Hujjatni olishda xatolik", error: error.message },
+            { status: 500 }
+        );
+    }
+}

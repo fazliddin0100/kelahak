@@ -9,6 +9,7 @@ import {sanitizeHTML} from "@/lib/purify";
 import {DocumentModel} from "@/models/DocumentModal";
 import {DocumentStatus} from "@/types/document-status.enum";
 
+// hujjat yaratish
 export async function POST(request: NextRequest) {
     try {
         await connectToDatabase();
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
             ownerRegion: personal.province,
             author: {
                 userId: userId,
-                fullName: personal.name + personal.fName + personal.sName || "",
+                fullName: `${personal.fName} ${personal.name} ${personal.sName}` || "",
                 militaryRank: job.militaryRank || "",
                 position: job.position || "",
                 hasSigned: false,
@@ -121,10 +122,9 @@ export async function GET(request: NextRequest) {
             documents
         }, { status: 200 });
 
-    } catch (error: any) {
-        console.error("Hujjatlarni olishda xato:", error);
+    } catch {
         return NextResponse.json(
-            { message: "Hujjatlarni olishda xatolik", error: error.message },
+            { message: "Hujjatlarni olishda xatolik" },
             { status: 500 }
         );
     }

@@ -55,7 +55,7 @@ const useCheckUser = (login: string) => {
             return res.json();
         },
         enabled: !!login && login.length >= 1,
-        staleTime: 5000,
+        staleTime: 2000,
     });
 };
 
@@ -219,7 +219,7 @@ export default function RegistrationPage() {
                                                            ) : loginCheck?.exists ? (
                                                                <p className="text-xs text-red-600">Bu login band</p>
                                                            ) : loginValue.length > 0 ? (
-                                                               <p className="text-xs text-green-600">Mavjud</p>
+                                                               <p className="text-xs text-green-600">Foydalanish mumkin</p>
                                                            ) : null}
                                                        </div>
                                                    )}

@@ -1,18 +1,15 @@
-import React, { useRef } from "react";
+import React from "react";
 import { DocumentType, Approver, Sender } from "@/types/document";
 import { format } from "date-fns";
 import QrCode from "@/helpers/qr-code";
 import Image from "next/image";
+import gerb from '@/public/gerb.png'
 
 interface BuyruqProps {
     document: DocumentType;
-    gerb: string;
-    logoBase64: string;
-    fullNames?: string[];
 }
 
-export const Buyruq: React.FC<BuyruqProps> = ({ document, gerb, logoBase64 }) => {
-    const contentRef = useRef<HTMLDivElement>(null);
+export const Buyruq: React.FC<BuyruqProps> = ({ document }) => {
 
     const isMainSigned = (document.bosSigned as Sender)?.hasSigned ?? false;
 
@@ -103,7 +100,7 @@ export const Buyruq: React.FC<BuyruqProps> = ({ document, gerb, logoBase64 }) =>
                 </div>
 
                 {/* Kontent */}
-                <div className="mt-[3rem]" style={{ wordBreak: "break-word", overflowWrap: "break-word" }} ref={contentRef}>
+                <div className="mt-[3rem]" style={{ wordBreak: "break-word", overflowWrap: "break-word" }}>
                     <div dangerouslySetInnerHTML={{ __html: typeof document.content === "string" ? document.content : "" }} />
                 </div>
 
@@ -116,8 +113,7 @@ export const Buyruq: React.FC<BuyruqProps> = ({ document, gerb, logoBase64 }) =>
               <span className="text-center">
                 {isMainSigned && (
                     <QrCode
-                        fullNames={[document.bosSigned?.fullName ?? "Imzolanmagan"]}
-                        logoBase64={logoBase64}
+                        fullNames={document.bosSigned?.fullName ?? "Imzolanmagan"}
                     />
                 )}
               </span>
@@ -142,7 +138,7 @@ export const Buyruq: React.FC<BuyruqProps> = ({ document, gerb, logoBase64 }) =>
                   <span>{approver.militaryRank ?? "Unvon yo‘q"}</span>
                   <span className="text-center">
                     {approver.hasSigned && (
-                        <QrCode fullNames={[approver.fullName ?? "Imzolanmagan"]} logoBase64={logoBase64} />
+                        <QrCode fullNames={approver.fullName ?? "Imzolanmagan"} />
                     )}
                   </span>
                   <span className="ml-2">{approver.fullName ?? "Noma'lum"}</span>

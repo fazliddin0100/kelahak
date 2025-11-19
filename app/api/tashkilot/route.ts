@@ -3,11 +3,13 @@ import {NextRequest, NextResponse} from "next/server";
 import User from "@/models/User";
 import Job from '@/models/Job'
 import {getUserId} from "@/lib/userid";
+import connectToDatabase from "@/lib/mongodb";
 
 export async function GET(request: NextRequest) {
+     await connectToDatabase();
     try {
         const userId = getUserId(request);
-        // ✅ Userni bazadan olish
+        // Userni bazadan olish
         const user = await User.findById(userId);
         if (!user) {
             return NextResponse.json(

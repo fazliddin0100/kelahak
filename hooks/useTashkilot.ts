@@ -28,6 +28,5 @@ export const useTashkilot = () => {
 
         fetchData();
     }, []);
-
     return {data, loading};
 };

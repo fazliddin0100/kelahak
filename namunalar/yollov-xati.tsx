@@ -1,17 +1,16 @@
-import { useEffect, useRef } from "react";
 import { DocumentType } from "@/types/document";
 import { format } from "date-fns";
 import QrCode from "@/helpers/qr-code";
+import logo from '@/public/dxxLogo.png'
+import Image from "next/image";
 
 interface YollovXatiProps {
     document: DocumentType;
-    fullNames: string[];
-    logoBase64: string;
     data?: DocumentType | null;
+
 }
 
-export const YollovXati = ({ document, fullNames, logoBase64, data }: YollovXatiProps) => {
-    const contentRef = useRef<HTMLDivElement>(null);
+export const YollovXati = ({ document, data }: YollovXatiProps) => {
 
     // O‘zbekcha oy nomlari
     const getMonthUz = (monthIndex: number): string => {
@@ -32,17 +31,6 @@ export const YollovXati = ({ document, fullNames, logoBase64, data }: YollovXati
         return months[monthIndex];
     };
 
-    // Foydalanuvchi ismini formatlash (agar kerak bo‘lsa)
-    const getFormattedName = (names: string[]): string => {
-        if (!names || names.length === 0) {
-            return "Noma'lum";
-        }
-        const [sName = "", name = "", fName = ""] = names[0].trim().split(/\s+/);
-        const nameInitial = name.charAt(0).toUpperCase();
-        const sNameInitial = sName.charAt(0).toUpperCase();
-        return `${sNameInitial}.${nameInitial}. ${fName}`;
-    };
-
     const formatGrif = (grif: string | undefined): string => {
         if (!grif) {
             return "";
@@ -50,11 +38,6 @@ export const YollovXati = ({ document, fullNames, logoBase64, data }: YollovXati
         return grif.charAt(0).toUpperCase() + grif.slice(1).toLowerCase();
     };
 
-    useEffect(() => {
-        if (contentRef.current && document.content) {
-            contentRef.current.innerHTML = typeof document.content === "string" ? document.content : "";
-        }
-    }, [document]);
 
     // Hujjatning imzolanganligini tekshirish
     const isSigned = !document.canSign;
@@ -65,6 +48,9 @@ export const YollovXati = ({ document, fullNames, logoBase64, data }: YollovXati
         militaryRank: document.militaryRank || "",
         position: document.position || "",
     };
+
+    // full name
+    const fullNames = document.fullName
 
     // Receiver ma'lumotlarini formatlash
     const renderReceiverInfo = () => {
@@ -116,8 +102,7 @@ export const YollovXati = ({ document, fullNames, logoBase64, data }: YollovXati
 
                 {/* Sarlavha va logo */}
                 <div className="flex flex-col justify-center items-center text-center">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={logoBase64} alt="logo" width={100} height={100} />
+                    <Image src={logo} alt="logo" width={100} height={100} />
                     <p className="font-bold mt-1">BUXORO VILOYATI HOKIMIYATI</p>
                     <div className="min-w-[700px] min-h-[1px] bg-black mb-0.5" />
                     <div className="min-w-[700px] min-h-[6px] bg-black" />
@@ -165,7 +150,6 @@ export const YollovXati = ({ document, fullNames, logoBase64, data }: YollovXati
                             wordBreak: "break-word",
                             overflowWrap: "break-word",
                         }}
-                        ref={contentRef}
                     >
                         <div
                             dangerouslySetInnerHTML={{
@@ -203,9 +187,9 @@ export const YollovXati = ({ document, fullNames, logoBase64, data }: YollovXati
                         <span className="flex items-center justify-self-start gap-4">
                             <span className="self-center">{document.sender?.militaryRank || "Unvon yo‘q"}</span>
                             <span className="self-center">
-                                {isSigned && <QrCode fullNames={fullNames} logoBase64={logoBase64} />}
+                                {isSigned && <QrCode fullNames={document?.fullName} />}
                             </span>
-                            <span className="self-center">{document.sender?.fullName || getFormattedName(fullNames)}</span>
+                            <span className="self-center">{document.sender?.fullName || ''}</span>
                         </span>
                     </span> 
                 </div>

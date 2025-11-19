@@ -25,7 +25,7 @@ export const openDocument = async (document: DocumentType) => {
 
         switch (document.title?.toLowerCase().trim()) {
             case 'xat':
-                component = <YollovXati document={document} logoBase64={logoBase64} fullNames={[]} />;
+                component = <YollovXati document={document} logoBase64={logoBase64}  />;
                 break;
             case 'dalolatnoma':
                 component = <Dalolatnoma document={document} logoBase64={logoBase64} />;
@@ -68,6 +68,7 @@ export const openDocument = async (document: DocumentType) => {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="../app/globals.css" />
   <title>${document.title || 'Hujjat'}</title>
   <style>
     /* To'liq globals.css ichidagi CSS */

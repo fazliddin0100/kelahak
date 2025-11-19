@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@tailwind utilities;
+
 
 @custom-variant dark (&:is(.dark *));
 
@@ -137,7 +139,7 @@
 }
 
 .image_navbar360 {
-    width: 50px;
+    width: 40px;
     height: auto;
     animation: rotateXLogo 8s linear infinite;
     transform-origin: center;
@@ -181,3 +183,15 @@
 [data-sonner-toast][data-type="normal"] {
     @apply bg-neutral-800;
 }
+
+@media print {
+    body {
+        display: none !important;
+    }
+}
+
+.document-container {
+    font-family: "Times New Roman", serif !important;
+    line-height: 1.6;
+}
+

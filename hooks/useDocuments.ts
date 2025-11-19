@@ -17,7 +17,7 @@ export const useDocuments = (userId?: string) => {
                 if (!res.ok) throw new Error("Hujjatlarni olishda xato");
 
                 const data = await res.json();
-                setDocuments(data.documents || data); // agar pagination bilan bo‘lsa data.documents
+                setDocuments(data.documents || data);
             } catch (err: any) {
                 setError(err.message);
             } finally {

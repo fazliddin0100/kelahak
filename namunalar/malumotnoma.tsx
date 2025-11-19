@@ -1,16 +1,14 @@
-import { useRef } from "react";
 import { DocumentType, Approver } from "@/types/document";
 import { format } from "date-fns";
 import QrCode from "@/helpers/qr-code";
+import React from "react";
 
 interface MalumotnomaProps {
     document: DocumentType;
-    logoBase64: string;
     data?: DocumentType | null;
 }
 
-export const Malumotnoma: React.FC<MalumotnomaProps> = ({ document, logoBase64, data }) => {
-    const contentRef = useRef<HTMLDivElement>(null);
+export const Malumotnoma: React.FC<MalumotnomaProps> = ({ document, data }) => {
 
     const getFormattedName = (fullName?: string): string => {
         if (!fullName) return "Noma'lum";
@@ -61,14 +59,13 @@ export const Malumotnoma: React.FC<MalumotnomaProps> = ({ document, logoBase64, 
                 {/* Hujjat grifi */}
                 <div className="flex flex-col justify-end items-end mb-1">
                     <p>{formatGrif(document.grif)}</p>
-                    <p>{document.copyNumber?.length ?? 1} -Nusxada</p>
+                    <p>{Math.max(document.copyNumber?.length ?? 0, 1)} -Nusxa</p>
                 </div>
 
                 {/* Kontent */}
                 <div
                     className="mt-4"
                     style={{ width: "100%", wordBreak: "break-word", overflowWrap: "break-word" }}
-                    ref={contentRef}
                     dangerouslySetInnerHTML={{ __html: typeof document.content === "string" ? document.content : "" }}
                 />
 
@@ -83,7 +80,7 @@ export const Malumotnoma: React.FC<MalumotnomaProps> = ({ document, logoBase64, 
               <span>{document.author?.militaryRank ?? "Unvon noma'lum"}</span>
               <span>
                 {isSigned && document.author?.fullName && (
-                    <QrCode fullNames={[document.author.fullName]} logoBase64={logoBase64} />
+                    <QrCode fullNames={document.author.fullName} />
                 )}
               </span>
               <span>{document.author?.fullName ?? ""}</span>
@@ -107,7 +104,7 @@ export const Malumotnoma: React.FC<MalumotnomaProps> = ({ document, logoBase64, 
                   <span>{document.bosSigned.militaryRank ?? "Unvon noma'lum"}</span>
                   <span>
                     {document.bosSigned.hasSigned && (
-                        <QrCode fullNames={[document.bosSigned.fullName]} logoBase64={logoBase64} />
+                        <QrCode fullNames={document.bosSigned.fullName} />
                     )}
                   </span>
                   <span>{getFormattedName(document.bosSigned.fullName)}</span>
@@ -124,7 +121,7 @@ export const Malumotnoma: React.FC<MalumotnomaProps> = ({ document, logoBase64, 
                                 <br />
                                 <span className="flex items-center gap-4 font-bold">
                   <span>{approver.militaryRank ?? "Unvon noma'lum"}</span>
-                  <span>{approver.hasSigned && <QrCode fullNames={[approver.fullName]} logoBase64={logoBase64} />}</span>
+                  <span>{approver.hasSigned && <QrCode fullNames={approver.fullName} />}</span>
                   <span>{getFormattedName(approver.fullName)}</span>
                 </span>
                                 <i>{formatDate(document.createdAt)}</i>

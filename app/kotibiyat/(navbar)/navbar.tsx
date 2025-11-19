@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import logo from "../../../public/gerb.png";
+import logo from "../../../public/dxxLogo.png";
 import {BookMarked, CalendarClock, FileDown, FileText, Library, MessageCircleMore, NotebookPen,} from "lucide-react";
 import {useState} from "react";
 import UserProfile from "@/components/UserProfile";
@@ -17,7 +17,7 @@ import Chat from "./chat"
 import {useTashkilot} from "@/hooks/useTashkilot";
 
 interface NavbarKotibiyatProps {
-    setPage?: (value: (((prevState: string) => string) | string)) => void
+    setPage?: (value: string) => void
     organ: string
 }
 
