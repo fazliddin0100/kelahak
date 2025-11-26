@@ -38,13 +38,25 @@ export interface Author extends BaseSigner {
   [key: string]: unknown; // qo‘shimcha optional fieldlar uchun
 }
 
+export interface PersonalDocument {
+  _id: string;
+  name: string;
+  fName: string;
+  sName: string;
+  province: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  __v?: number;
+}
+
 // Hujjat tipi
 export interface DocumentType {
-  _id: ObjectIdLike | string;
+  _id: string;
   title?: string;
   content?: string | object;
   grif?: string; // Maxfiylik darajasi
   copyNumber?: string[];
+  attachmentText?: string[]; // ilova matni
   status?: string;
   sharedWithAdmin?: boolean;
   registrationIndex?: string | number;

@@ -47,7 +47,7 @@ export const api = async (url: string, options: RequestInit = {}) => {
     ...options,
     headers,
     body,
-    credentials: 'include', // cookie lar yuborilsin va qabul qilinsin
+    credentials: 'include',
   });
 
   // Xatolik bo‘lsa aniqroq ko‘rsatish uchun

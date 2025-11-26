@@ -36,12 +36,12 @@ export default function BolimModal() {
         setLoading(true);
         try {
           const res = await axios.get('/api/nameklatura/bolim', {
-            withCredentials: true, 
+            withCredentials: true,
           });
           setData(res.data);
-        } catch (err) {
-          toast.error("Ma'lumotlarni olishda xatolik yuz berdi");
-          console.error(err);
+        } catch {
+          toast.error("Bo'limlar mavjud emas!");
+          // console.error(err);
         } finally {
           setLoading(false);
         }

@@ -10,7 +10,9 @@ import { FaJournalWhills, FaUsers } from 'react-icons/fa';
 import { RiBookShelfLine } from 'react-icons/ri';
 import { LuFileClock } from 'react-icons/lu';
 import { SiTestcafe } from 'react-icons/si';
-import UserProfile from '@/components/UserProfile';
+// React komponenti
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faUserSecret } from '@fortawesome/free-solid-svg-icons';
 
 // Pages
 import Nomeklatura from './nomeklatura';
@@ -21,6 +23,8 @@ import TimeFileControl from './controlni';
 import TestQuestions from './test';
 import Chat from './chat';
 import { MessageSquareText } from 'lucide-react';
+import WafAdminPage from '../waf/page';
+import LogOutProfile from '@/components/LogOut';
 
 const NavbarAdmin = () => {
   const { data } = useTashkilot();
@@ -100,9 +104,16 @@ const NavbarAdmin = () => {
             onClick={() => handleClick('chat')}>
             <MessageSquareText className="mr-2" size={20} /> Chat
           </span>
+
+          <span className={linkStyle('waf')} onClick={() => handleClick('waf')}>
+            <span onClick={() => handleClick('waf')}>
+              <FontAwesomeIcon icon={faUserSecret} /> Ip-blocker
+            </span>
+            Ip-blocker
+          </span>
         </div>
 
-        <UserProfile />
+        <LogOutProfile />
       </nav>
 
       {/* Content */}
@@ -114,6 +125,7 @@ const NavbarAdmin = () => {
         {activePage === 'timeFileControl' && <TimeFileControl />}
         {activePage === 'test' && <TestQuestions />}
         {activePage === 'chat' && <Chat />}
+        {activePage === 'waf' && <WafAdminPage />}
       </div>
     </div>
   );

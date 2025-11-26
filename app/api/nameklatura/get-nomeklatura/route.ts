@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error('Bo‘linmalarni olishda xato:', error);
+    // console.error('Bo‘linmalarni olishda xato:', error);
     return NextResponse.json(
       { message: 'Serverda xatolik', error: error.message },
       { status: 500 }

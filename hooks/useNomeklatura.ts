@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { ObjectIdLike, DateLike, Author, DocumentType } from '@/types/document';
 
 // Har bir nomeklatura elementini DocumentType asosida aniqlaymiz
-export interface NomeklaturaItem extends DocumentType {
+export interface NomeklaturaItem extends Omit<DocumentType, '_id'> {
   _id: ObjectIdLike | string;
   registrationIndex: string | number;
   title: string;
@@ -40,9 +40,9 @@ export const useNomeklatura = () => {
         if (!res.ok) throw new Error(`Failed: ${res.status}`);
         const data = await res.json();
         setNomeklatura(data.results || []);
-      } catch (err) {
-        console.error(err);
-        toast.error('Nomeklatura olishda xatolik');
+      } catch {
+        // console.error(err);
+        toast.error('Sizda hozircha nomeklatura mavjud emas!');
         setNomeklatura([]);
       } finally {
         setLoading(false);

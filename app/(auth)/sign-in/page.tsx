@@ -56,7 +56,13 @@ export default function LoginPage() {
         document.cookie = `token=${data.token}; path=/; SameSite=Lax;`;
         toast.success('Xush kelibsiz!');
         setTimeout(() => {
-          router.push(data.department === 'kotibiyat' ? '/kotibiyat' : '/user');
+          if (data.department === 'kotibiyat') {
+            router.push('/kotibiyat');
+          } else if (data.department === 'komandir') {
+            router.push('/komandir');
+          } else {
+            router.push('/user');
+          }
         }, 200);
       } else {
         const errorMsg = data.message || 'Xatolik yuz berdi';
@@ -70,7 +76,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+    <div className="min-h-screen flex justify-center items-center bg-linear-to-br from-gray-50 to-gray-100 p-4">
       <div className="w-full max-w-md p-8 mx-auto rounded-2xl shadow-xl bg-white/90 backdrop-blur-sm border border-gray-200">
         {/* Logo */}
         <div className="w-20 h-20 mx-auto mb-6 rounded-full overflow-hidden">
@@ -144,7 +150,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg transition-all duration-300">
+              className="w-full h-12 text-lg font-semibold bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg transition-all duration-300">
               Kirish
             </Button>
           </form>

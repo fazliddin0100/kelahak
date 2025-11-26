@@ -39,9 +39,9 @@ export default function BolinmaModal() {
             withCredentials: true,
           });
           setData(res.data);
-        } catch (err) {
-          toast.error("Ma'lumotlarni olishda xatolik yuz berdi");
-          console.error(err);
+        } catch {
+          toast.error('Bo;linma mavjud emas!');
+          // console.error(err);
         } finally {
           setLoading(false);
         }

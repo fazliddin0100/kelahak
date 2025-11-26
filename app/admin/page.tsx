@@ -1,13 +1,13 @@
-import Login from "@/app/admin/login";
+import Login from './login';
 
 const AdminPanel = () => {
-    return (
-        <>
-            <div>
-                <Login />
-            </div>
-        </>
-    )
-}
+  return (
+    <>
+      <div>
+        <Login />
+      </div>
+    </>
+  );
+};
 
 export default AdminPanel;

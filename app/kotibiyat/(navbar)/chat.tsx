@@ -1,12 +1,11 @@
-'use client'
-
+'use client';
 
 const Chat = () => {
-    return (
-        <>
-            chat
-        </>
-    )
-}
+  return (
+    <>
+      <div className="mt-10">chat</div>
+    </>
+  );
+};
 
-export default Chat
+export default Chat;

@@ -15,13 +15,6 @@ import { useState } from 'react';
 import UserProfile from '@/components/UserProfile';
 
 // pages
-import File from './file';
-import KelDocument from './kel-document';
-import Jurnal from './jurnal';
-import Nomeklatura from './nomeklatura';
-import Controlni from './controlni';
-import Buyruq from './buyruq';
-import Chat from './chat';
 import { useTashkilot } from '@/hooks/useTashkilot';
 
 interface NavbarKotibiyatProps {
@@ -106,17 +99,6 @@ const NavbarKotibiyat = ({ setPage }: NavbarKotibiyatProps) => {
           <UserProfile />
         </div>
       </nav>
-
-      {/* Content */}
-      <div className="p-4">
-        {activePage === 'file' && <File />}
-        {activePage === 'kel' && <KelDocument />}
-        {activePage === 'jurnal' && <Jurnal />}
-        {activePage === 'nomeklatura' && <Nomeklatura />}
-        {activePage === 'controlni' && <Controlni />}
-        {activePage === 'buyruq' && <Buyruq />}
-        {activePage === 'chat' && <Chat />}
-      </div>
     </div>
   );
 };

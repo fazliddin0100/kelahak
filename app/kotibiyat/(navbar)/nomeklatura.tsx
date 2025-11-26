@@ -1,7 +1,7 @@
 const Nomeklatura = () => {
     return (
         <>
-            Nomeklatura
+            <div className="mt-10">Nomeklatura</div>
         </>
     )
 }

@@ -1,7 +1,7 @@
 const Controlni = () => {
     return (
         <>
-            Controlni
+            <div className="mt-10">Controlni</div>
         </>
     )
 }

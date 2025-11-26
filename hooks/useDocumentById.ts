@@ -25,7 +25,7 @@
             setError(null);
 
             try {
-                const token = localStorage.getItem("token"); // token localStorage dan
+                const token = localStorage.getItem("token"); 
 
                 const res = await fetch(`/api/documents/${documentId}`, {
                     method: "GET",

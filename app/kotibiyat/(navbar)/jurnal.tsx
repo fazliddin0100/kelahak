@@ -1,7 +1,7 @@
 const Jurnal = () => {
     return (
         <>
-            Jurnal
+           <div className="mt-10"> Jurnal</div>
         </>
     )
 }

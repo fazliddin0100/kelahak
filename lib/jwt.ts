@@ -1,13 +1,13 @@
 // lib/jwt.ts
-import {jwtDecode} from "jwt-decode";
+import { jwtDecode } from 'jwt-decode';
 
 export interface CustomJwtPayload {
-    userId: string;
-    department?: string;
+  userId: string;
+  department?: string;
+  exp?: number;
+  iat?: number;
 }
 
 export function decodeToken(token: string): CustomJwtPayload {
-    return jwtDecode<CustomJwtPayload>(token);
+  return jwtDecode<CustomJwtPayload>(token);
 }
-
-
