@@ -38,7 +38,7 @@ export type IDocument = Document & {
   attachmentText: mongoose.Types.ObjectId[]; // ilova id
   createdAt: Date;
   updatedAt: Date;
-  sharedWithAdmin: boolean; // adminga yuborilganligi xususida
+  sharedWithAdmin: mongoose.Types.ObjectId[]; // adminga yuborilganligi xususida
   sender?: Approver; // yuboruvchi
   receiver?: Array<{
     // qabul qiluvchi
@@ -113,14 +113,17 @@ const DocumentSchema = new Schema<IDocument>(
       default: DocumentStatus.YANGI,
     },
     allowedUsers: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-    sharedWithAdmin: { type: Boolean, default: false },
+    sharedWithAdmin: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     bosSigned: {
-      userId: { type: Schema.Types.ObjectId, ref: 'User' },
-      fullName: String,
-      militaryRank: String,
-      position: String,
-      hasSigned: { type: Boolean, default: false },
-      signedAt: Date,
+      type: {
+        userId: { type: Schema.Types.ObjectId, ref: 'User' },
+        fullName: String,
+        militaryRank: String,
+        position: String,
+        hasSigned: { type: Boolean, default: false },
+        signedAt: Date,
+      },
+      default: { hasSigned: false }, // bu muhim!
     },
     nomenclatureId: {
       type: mongoose.Schema.Types.ObjectId,

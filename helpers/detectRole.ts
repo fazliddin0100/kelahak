@@ -1,3 +1,5 @@
+// @/helpers/detectRole.ts
+
 export function detectRole(position: string): string {
   if (!position) return 'user';
 
@@ -10,10 +12,11 @@ export function detectRole(position: string): string {
     .replace(/қ/g, 'q')
     .replace(/ғ/g, 'g')
     .replace(/’/g, "'")
-    .replace(/‘/g, "'");
+    .replace(/‘/g, "'")
+    .replace(/\s+/g, ' ') // ortiqcha bo‘shliqlarni tozalash
+    .trim();
 
   // ------------------- KOTIBIYAT / SECRETARIAT ------------------- //
-
   const isSecretariat = [
     'kotibiyat',
     'kotibiyati',
@@ -25,48 +28,51 @@ export function detectRole(position: string): string {
     'секретариат',
     'секретарь',
     'делопроизводитель',
-    'hujjat', // hujjat bilan ishlovchi xodimlar
+    'hujjat',
   ].some((w) => p.includes(w));
 
   if (isSecretariat) return 'admin';
 
-  // ------------------- KALIT SO‘ZLAR (HARBIY) ------------------- //
-
+  // ------------------- KALIT SO‘ZLAR ------------------- //
   const isCommander = [
     "qo'mondon",
     'qomondon',
+    'komandir',
+    'komandiri',
     'rais',
     'raisi',
     'xizmat raisi',
     'раис',
     'раиси',
+    'командир',
     'командири',
-    'komandiri',
-    'komandir',
-    'komanduyushchego',
-    'начальник службы',
+    'командири',
     "bosh qo'mondon",
     'general',
     'generali',
+    'qism komandiri',
+    'harbiy qisim komandiri',
   ].some((w) => p.includes(w));
 
   const isDeputyCommander = [
     "qo'mondon o'rinbosari",
+    "komandir o'rinbosari",
     "komandiri o'rinbosari",
-    "boshlig’i o'rinbosari",
+    "qo'mondonning o'rinbosari",
     'qomondon orinbosari',
     'заместитель командира',
     'замком',
-    "o'rinbosar qo'mondon",
+    "o'rinbosar komandir",
     "orinbosar qo'mondon",
   ].some((w) => p.includes(w));
 
   const isChief = [
     'boshliq',
-    'boshlig’i',
+    'boshlig‘i',
     'бошлиғи',
     'начальник',
     'руководитель',
+    'bosh',
   ].some((w) => p.includes(w));
 
   const isDeputy = [
@@ -75,99 +81,59 @@ export function detectRole(position: string): string {
     'у̀ринбосар',
     'заместитель',
     'зам',
+    "o'rinbosari",
   ].some((w) => p.includes(w));
 
   const isDepartment = ["bo'lim", 'bolim', 'bo‘lim', 'бўлим', 'отдел'].some(
     (w) => p.includes(w)
   );
-
   const isBrigade = ['brigada', 'бригада'].some((w) => p.includes(w));
-
   const isBattalion = ['batalyon', 'батальон'].some((w) => p.includes(w));
-
-  const isCompany = ['rota', 'рота', 'vzvod', 'vzbod', 'взвод'].some((w) =>
+  const isCompany = ['rota', 'рота', 'vzvod', 'взвод'].some((w) =>
     p.includes(w)
   );
 
-  const isSeniorOfficer = [
-    'katta ofitser',
-    'senior officer',
-    'старший офицер',
-  ].some((w) => p.includes(w));
+  // ------------------- ROLE ANIQLASH QOIDALARI ------------------- //
 
+  // 1. Qo‘mondon o‘rinbosari (avval, chunki "komandir" so‘zini o‘z ichiga oladi)
+  if (isDeputyCommander) return 'deputyCommander';
+
+  // 2. Brigada, batalyon, yoki rota komandirlari
+  if (isCommander && (isBrigade || isBattalion || isCompany))
+    return 'commander';
+
+  // 3. Boshqa komandirlar (masalan, harbiy qisim komandiri)
+  if (isCommander) return 'commander';
+
+  // 4. Bo‘lim boshlig‘i
+  if (isChief && isDepartment) return 'departmentCommander';
+
+  // 5. Bo‘lim boshlig‘i o‘rinbosari
+  if (isDeputy && isDepartment) return 'departmentDeputy';
+
+  // 6. Oddiy boshliq (bo‘limsiz ham yuqori lavozim)
+  if (isChief) return 'commander';
+
+  // 7. Ofitserlar, serjantlar, askarlar → oddiy user
   const isOfficer = [
     'ofitser',
     'офицер',
-    'лейтенант',
-    'капитан',
-    'major',
+    'leytenant',
+    'kapitan',
     'mayor',
-    'майор',
     'podpolkovnik',
-    'подполковник',
     'polkovnik',
-    'полковник',
   ].some((w) => p.includes(w));
 
-  const isSergeant = [
-    'serjant',
-    'сержант',
-    'солдат-сержант',
-    'yeldor',
-    'yeldosh',
-    'ефрейтор',
-  ].some((w) => p.includes(w));
+  const isSergeant = ['serjant', 'сержант', 'yefreyt', 'ефрейтор'].some((w) =>
+    p.includes(w)
+  );
+  const isSoldier = ['askar', 'soldat', 'солдат', 'xizmatchi'].some((w) =>
+    p.includes(w)
+  );
 
-  const isSoldier = [
-    'askar',
-    'soldat',
-    'солдат',
-    'harbiy xizmatchi',
-    'служащий',
-  ].some((w) => p.includes(w));
+  if (isOfficer || isSergeant || isSoldier) return 'user';
 
-  // ------------------- ROLE ANIQLASH QOIDALARI ------------------- //
-
-  // 1. Bosh qo‘mondonlar (General, Korpus qo‘mondoni)
-  if (
-    isCommander &&
-    (p.includes('bosh') || p.includes('general') || p.includes('raisi'))
-  ) {
-    return 'commander';
-  }
-
-  // 2. Otryad, brigada, batalyon qo‘mondoni
-  if (isCommander && (isBrigade || isBattalion || isCompany)) {
-    return 'commander';
-  }
-
-  // 3. Qo‘mondon o‘rinbosari
-  if (isDeputyCommander) return 'deputyCommander';
-
-  // 4. Harbiy bo‘lim boshlig‘i (Начальник отдела)
-  if (isChief && isDepartment) return 'departmentCommander';
-
-  // 5. Harbiy bo‘lim boshlig‘i o‘rinbosari
-  if (isDeputy && isDepartment) return 'departmentDeputy';
-
-  // 6. Harbiy boshqarma (Начальник управления)
-  if (isChief && !isDepartment && !isDeputy) return 'commander';
-
-  // 7. Boshqarma boshlig‘i o‘rinbosari
-  if (isChief && isDeputy) return 'deputyCommander';
-
-  // 8. Katta ofitser
-  if (isSeniorOfficer) return 'user';
-
-  // 9. Oddiy ofitserlar
-  if (isOfficer) return 'user';
-
-  // 10. Serjantlar
-  if (isSergeant) return 'user';
-
-  // 11. Oddiy askarlar / harbiy xizmatchilar
-  if (isSoldier) return 'user';
-
-  // 12. Default
+  // 8. Agar hech narsa topilmasa
   return 'user';
 }

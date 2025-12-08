@@ -47,6 +47,8 @@ export default function DocumentClient({ documentId }: { documentId: string }) {
               ? '/kotibiyat'
               : currentRole === 'user'
               ? '/user'
+              : currentRole === 'commander'
+              ? '/komandir'
               : '/'
           }>
           <Button className="flex items-center gap-2 bg-linear-to-r from-blue-600 to-indigo-600 text-white px-5 py-2 rounded-lg shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-300">

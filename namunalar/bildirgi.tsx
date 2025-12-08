@@ -59,7 +59,7 @@ export const Bildirgi: React.FC<MalumotnomaProps> = ({
                 {/* Grif va nusxa */}
                 <div className="flex flex-col justify-end items-end mb-1">
                     <p>{formatGrif(document.grif)}</p>
-                    <p>{document.copyNumber?.length ?? 0} -Nusxada</p>
+                    <p>{document.copyNumber?.length === 0 ? 1 : document.copyNumber?.length} -Nusxa</p>
                 </div>
 
                 {/* Receiver */}
@@ -74,11 +74,6 @@ export const Bildirgi: React.FC<MalumotnomaProps> = ({
               </span>
                         </div>
                     ))}
-                </div>
-
-                {/* Sarlavha */}
-                <div className="font-bold mt-4">
-                    <p>Bildirgi</p>
                 </div>
 
                 {/* Kontent */}

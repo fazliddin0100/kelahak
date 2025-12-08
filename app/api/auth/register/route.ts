@@ -11,7 +11,8 @@ import Job from '@/models/Job';
 import User from '@/models/User';
 import Role from '@/models/Role';
 import Device from '@/models/Device';
-// Helper
+
+// Helper funksiyalar
 import { getPermissionsForRole } from '@/helpers/PermissionsForRole';
 import connectToDatabase from '@/lib/mongodb';
 import { detectRole } from '@/helpers/detectRole';
@@ -28,7 +29,7 @@ interface UserRequest {
   login: string;
   password: string;
 
-  // Device ma’lumotlari (ixtiyoriy)
+  // Device (ixtiyoriy)
   mac?: string;
   ip?: string;
   hostname?: string;
@@ -47,8 +48,8 @@ export async function POST(request: NextRequest) {
       sName,
       province,
       organ,
-      position,
-      department,
+      position = '',
+      department = '',
       militaryRank,
       login,
       password,
@@ -77,11 +78,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Sanitizatsiya
+    // Sanitizatsiya
     const cleanLogin = validator.trim(validator.escape(login)).toLowerCase();
     const cleanPassword = validator.trim(password);
 
-    // 4. Validatsiya
+    // Validatsiya
     if (!validator.isLength(cleanLogin, { min: 3, max: 50 })) {
       return NextResponse.json(
         { message: 'Login 3-50 belgidan iborat bo‘lsin' },
@@ -101,27 +102,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. Login unique
+    // Login unique
     const existingAuth = await Auth.findOne({ login: cleanLogin });
     if (existingAuth) {
       return NextResponse.json({ message: 'Bu login band' }, { status: 409 });
     }
 
-    //6. Role aniqlash
-    const autoRole = detectRole(department);
-    console.log('Aniqlangan role:', autoRole);
-    // 7. Role yaratish
+    // ROLE ANIQLASH – ENG MUHIM QISM!
+    // position va departmentni birlashtirib qidirdik → hech qachon o‘tib ketmaydi
+    const searchText = `${position} ${department}`.trim();
+    const autoRole = detectRole(searchText);
+
+    // Debug log (keyin o‘chirib qo‘yishingiz mumkin)
+    console.log('Rol aniqlash uchun matn:', searchText);
+    console.log('Aniqlangan rol:', autoRole);
+
+    // Role yaratish
     const permissions = getPermissionsForRole(autoRole);
     const role = await Role.create({
       role: autoRole,
-      province,
+      province: validator.trim(province),
       permissions,
     });
 
     // Parolni hash qilish
     const hashedPassword = await bcrypt.hash(cleanPassword, 10);
 
-    // 8. Alohida modellar
+    // Personal ma'lumotlari
     const personal = await Personal.create({
       name: validator.trim(name),
       fName: validator.trim(fName),
@@ -129,11 +136,13 @@ export async function POST(request: NextRequest) {
       province: validator.trim(province),
     });
 
+    // Auth (login/parol)
     const auth = await Auth.create({
       login: cleanLogin,
       password: hashedPassword,
     });
 
+    // Job (lavozim, bo‘lim va h.k.)
     const job = await Job.create({
       position: validator.trim(position),
       organ: validator.trim(organ),
@@ -143,28 +152,27 @@ export async function POST(request: NextRequest) {
       isUserTrue: false,
     });
 
-    // ✅ DEVICE YARATILDI (ixtiyoriy)
+    // DEVICE yaratish (ixtiyoriy)
     let deviceId = null;
-
     try {
       const device = await Device.create({
-        mac: mac || '00:00:00:00:00:00', // dummy MAC (keyin o‘zgartirilishi mumkin)
+        mac: mac || '00:00:00:00:00:00',
         ip:
           ip ||
           request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+          request.headers.get('x-real-ip') ||
           '127.0.0.1',
-        hostname: hostname || os.hostname(), // ✅ Node.js server hostname
-        note: note || 'User first registration device',
+        hostname: hostname || os.hostname(),
+        note: note || 'Foydalanuvchi birinchi ro‘yxatdan o‘tgan qurilma',
         lastSeen: new Date(),
       });
-
       deviceId = device._id;
     } catch (e: any) {
       console.error('Device yaratishda xato:', e.message);
-      // agar device xato bo‘lsa ham user ro‘yxatdan o‘tadi
+      // Xato bo‘lsa ham davom etamiz
     }
 
-    // ✅ 9. User — bog‘lovchi model
+    // Asosiy User modelini yaratish
     const user = await User.create({
       personal: personal._id,
       auth: auth._id,
@@ -172,11 +180,11 @@ export async function POST(request: NextRequest) {
       devices: deviceId ? [deviceId] : [],
     });
 
-    // ✅ Device bo‘lsa userga bog‘lab qo‘ydik
+    // Agar device yaratilgan bo‘lsa, unga user ID qo‘shib qo‘yamiz
     if (deviceId) {
       await Device.updateOne(
         { _id: deviceId },
-        { note: `Attached to user ${user._id}` }
+        { note: `Foydalanuvchi bilan bog‘landi: ${user._id}` }
       );
     }
 
@@ -184,6 +192,7 @@ export async function POST(request: NextRequest) {
       {
         message: 'Muvaffaqiyatli ro‘yxatdan o‘tildi!',
         userId: user._id,
+        role: autoRole,
         deviceId,
       },
       { status: 201 }

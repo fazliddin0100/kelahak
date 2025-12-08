@@ -73,7 +73,7 @@ const DocumentPage = () => {
           buyruqReceivers: Array.isArray(doc.receiver) ? doc.receiver : [],
           xatSender: doc.sender || null,
           xatReceivers: Array.isArray(doc.receiver) ? doc.receiver : [],
-          attachmentText: doc.attachmentText || [], // <-- backenddan kelganini yuklaydi
+          attachmentText: doc.attachmentText || [],
         });
       } catch (err: any) {
         toast.error(err.message || 'Hujjatni ochishda xatolik');
@@ -171,7 +171,11 @@ const DocumentPage = () => {
           setTimeout(() => {
             router.push('/kotibiyat');
           }, 500);
-        } else {
+        } else if (result.user === 'komandir') {
+            setTimeout(() => {
+                router.push('/komandir');
+            }, 500);
+        }else {
           setTimeout(() => {
             router.push('/user');
           }, 500);

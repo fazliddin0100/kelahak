@@ -57,9 +57,9 @@ export async function PUT(
       (u: { toString: () => string }) => u.toString() === userId
     );
 
-    if (!isOwner && !isAllowed) {
-      return NextResponse.json({ message: "Ruxsat yo'q" }, { status: 403 });
-    }
+    // if (!isOwner && !isAllowed) {
+    //   return NextResponse.json({ message: "Ruxsat yo'q" }, { status: 403 });
+    // }
 
     // Body
     const body = await request.json();
@@ -178,13 +178,6 @@ export async function PUT(
     document.updatedAt = new Date();
     await document.save();
 
-    // const populatedDoc = await DocumentModel.findById(document._id)
-    //   .populate('owner', 'fullName militaryRank position')
-    //   .populate('author.userId', 'fullName militaryRank position')
-    //   .populate('sender.userId', 'fullName militaryRank position')
-    //   .populate('receiver.userId', 'fullName militaryRank position')
-    //   .lean();
-
     return NextResponse.json(
       {
         message: "Hujjat o'zgartirildi",
@@ -210,6 +203,7 @@ export async function GET(
   try {
     await connectToDatabase();
     const { id } = await params;
+
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ message: 'Noto‘g‘ri ID' }, { status: 400 });
     }
@@ -223,28 +217,7 @@ export async function GET(
       );
     }
 
-    // Hujjatni topish va owner ni populate qilish (ruxsat tekshiruvi uchun)
-    const document = await DocumentModel.findById(id).populate('owner').exec();
-
-    if (!document) {
-      return NextResponse.json(
-        { message: 'Hujjat topilmadi' },
-        { status: 404 }
-      );
-    }
-
-    // Ruxsat tekshiruvi
-    const ownerId = document.owner?._id?.toString();
-    const isOwner = ownerId === userId;
-    const isAllowed = document.allowedUsers?.some(
-      (u: any) => u.toString() === userId
-    );
-
-    if (!isOwner && !isAllowed) {
-      return NextResponse.json({ message: "Ruxsat yo'q" }, { status: 403 });
-    }
-
-    // To'liq populate qilingan hujjatni qaytarish
+    // Hujjatni olish (ruxsat tekshiruvi yo‘q)
     const populatedDoc = await DocumentModel.findById(id)
       .populate('owner', 'fullName militaryRank position')
       .populate('author.userId', 'fullName militaryRank position')
@@ -256,6 +229,13 @@ export async function GET(
         select: 'fullName militaryRank position',
       })
       .lean();
+
+    if (!populatedDoc) {
+      return NextResponse.json(
+        { message: 'Hujjat topilmadi' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(populatedDoc, { status: 200 });
   } catch (error: any) {

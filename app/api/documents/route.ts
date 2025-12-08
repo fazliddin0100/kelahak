@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
       signerInfo: signerInfo || null,
       approvers: approvers || [],
-      sender: sender || null,
+      sender: sender || [],
       receiver: receiver || [],
     });
 

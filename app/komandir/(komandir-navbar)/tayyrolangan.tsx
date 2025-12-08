@@ -12,30 +12,25 @@ import {
 } from '@/components/ui/table';
 import { motion } from 'framer-motion';
 import { Search } from 'lucide-react';
-
-const data = [
-  { id: 1, title: 'Shartnoma 2024', author: 'Ali', date: '2024-03-10' },
-  { id: 2, title: 'Hisobot 1-chorak', author: 'Vali', date: '2024-04-05' },
-  { id: 3, title: 'Tender hujjati', author: 'Gulbahor', date: '2024-02-12' },
-  { id: 4, title: 'Litsenziya nusxasi', author: 'Aziza', date: '2024-05-01' },
-];
+import { useBosSignDocuments } from '@/hooks/useBosSignDocuments';
+import AmallarButtons from './amallar';
+import { DocumentType } from '@/types/document';
 
 export default function Tayyyorlangan() {
   const [searchQuery, setSearchQuery] = useState('');
+  const { documents, loading, error } = useBosSignDocuments();
 
-  const filteredData = data.filter((item) =>
-    item.title.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter qilish (title optional bo‘lgani uchun fallback "")
+  const filteredData = documents.filter((item: DocumentType) =>
+    (item.title ?? '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="h-screen w-full bg-gray-100 flex flex-col">
       {/* Search Input */}
       <div className="relative max-w-xl mx-auto mb-8 w-full mt-6">
-        {/* Container */}
         <div className="flex items-center bg-white rounded-2xl shadow-md border border-gray-200 transition-all duration-300 hover:shadow-lg focus-within:ring-2 focus-within:ring-indigo-500">
-          {/* Icon */}
           <Search className="ml-4 h-6 w-6 text-gray-400" />
-          {/* Input */}
           <Input
             type="text"
             placeholder="Hujjat nomi bo‘yicha izlash..."
@@ -46,60 +41,74 @@ export default function Tayyyorlangan() {
         </div>
       </div>
 
-      {/* Table full screen */}
+      {/* Table */}
       <div className="flex-1 overflow-auto px-6 pb-6">
         <div className="w-full h-full rounded-2xl border border-gray-200 shadow-sm bg-white">
-          <Table className="w-full h-full p-2">
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="font-semibold text-gray-700 w-16 border-r-2">
-                  #
-                </TableHead>
-                <TableHead className="font-semibold text-gray-700 border-r-2">
-                  Hujjat nomi
-                </TableHead>
-                <TableHead className="font-semibold text-gray-700 border-r-2">
-                  Muallif
-                </TableHead>
-                <TableHead className="font-semibold text-gray-700 border-r-2">
-                  Sana
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredData.length > 0 ? (
-                filteredData.map((item, index) => (
-                  <motion.tr
-                    key={item.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="hover:bg-gray-50 transition-all">
-                    <TableCell className="text-center border-r-2 border-b-2">
-                      {index + 1}
-                    </TableCell>
-                    <TableCell className="font-medium text-gray-900 border-r-2 border-b-2">
-                      {item.title}
-                    </TableCell>
-                    <TableCell className="text-gray-700 border-r-2 border-b-2">
-                      {item.author}
-                    </TableCell>
-                    <TableCell className="text-gray-700 border-r-2 border-b-2">
-                      {item.date}
-                    </TableCell>
-                  </motion.tr>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={4}
-                    className="text-center text-gray-400 py-6">
-                    Hech narsa topilmadi
-                  </TableCell>
+          {loading ? (
+            <div className="text-center py-6 text-gray-500">Yuklanmoqda...</div>
+          ) : error ? (
+            <div className="text-center py-6 text-red-500">{error}</div>
+          ) : (
+            <Table className="w-full h-full p-2">
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="font-semibold text-gray-700 w-16 border-r-2">
+                    #
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700 border-r-2">
+                    Hujjat nomi
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700 border-r-2">
+                    Reg/Raqami
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700 border-r-2">
+                    Imzolanganligi
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700 border-r-2">
+                    Ochish
+                  </TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredData.length > 0 ? (
+                  filteredData.map((item, index) => (
+                    <motion.tr
+                      key={item._id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="hover:bg-gray-50 transition-all">
+                      <TableCell className="text-center border-r-2 border-b-2">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell className="font-medium text-gray-900 border-r-2 border-b-2">
+                        {item.title ?? '-'}
+                      </TableCell>
+                      <TableCell className="text-gray-700 border-r-2 border-b-2">
+                        {item.ownerRegion ?? '-'}
+                      </TableCell>
+                      <TableCell className="text-gray-700 border-r-2 border-b-2">
+                        {item.bosSigned?.hasSigned
+                          ? '✅ Imzolangan'
+                          : '❌ Imzolanmagan'}
+                      </TableCell>
+                      <TableCell className="text-gray-700 border-r-2 border-b-2">
+                        <AmallarButtons document={item} />
+                      </TableCell>
+                    </motion.tr>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-center text-gray-400 py-6">
+                      Hech narsa topilmadi
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </div>
     </div>

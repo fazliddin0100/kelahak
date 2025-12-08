@@ -67,7 +67,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 🔑 Rate limiting: token-based vs IP-based
-  const limitKey = decoded?.userId ? `user:${decoded.userId}` : `ip:${ip}`;
+  const limitKey = decoded?.userId ? `user:${decoded?.userId}` : `ip:${ip}`;
 
   let maxRequests = 30; // default for anonymous
   if (decoded?.department === 'admin') {
@@ -124,7 +124,7 @@ export async function middleware(request: NextRequest) {
   try {
     // 🔑 Extra check for /admin: require ref_token
     if (pathname.startsWith('/admin')) {
-      const refToken = request.cookies.get('ref_token')?.value;
+      const refToken = request.cookies.get('token')?.value;
       if (!refToken) {
         return NextResponse.redirect(new URL('/sign-in', request.url));
       }
@@ -145,14 +145,14 @@ export async function middleware(request: NextRequest) {
     }
 
     if (pathname.startsWith('/kotibiyat')) {
-      if (decoded.department !== 'kotibiyat') {
+      if (decoded?.department !== 'kotibiyat') {
         return NextResponse.redirect(new URL('/sign-in', request.url));
       }
     }
 
     const requestHeaders = new Headers(request.headers);
     if (decoded?.userId) {
-      requestHeaders.set('x-user-id', decoded.userId.toString());
+      requestHeaders.set('x-user-id', decoded?.userId.toString());
     }
 
     return NextResponse.next({ request: { headers: requestHeaders } });
