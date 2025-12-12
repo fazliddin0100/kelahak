@@ -6,7 +6,7 @@ import { DocumentModel } from '@/models/DocumentModal';
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> } // params endi Promise
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectToDatabase();
@@ -16,14 +16,6 @@ export async function POST(
       return NextResponse.json(
         { message: 'Foydalanuvchi aniqlanmadi' },
         { status: 401 }
-      );
-    }
-
-    const { userId } = await request.json();
-    if (!userId) {
-      return NextResponse.json(
-        { message: 'userId talab qilinadi' },
-        { status: 400 }
       );
     }
 
@@ -38,14 +30,25 @@ export async function POST(
       );
     }
 
+    // body dan userId ni olish
+    const { userId } = await request.json();
+    if (!userId) {
+      return NextResponse.json(
+        { message: 'userId yuborilmadi' },
+        { status: 400 }
+      );
+    }
+
+    // allowedUsers ga qo‘shish
     document.allowedUsers = [
       ...new Set([...(document.allowedUsers || []), userId]),
     ];
+
     document.sharedWithAdmin = true;
     await document.save();
 
     return NextResponse.json(
-      { message: 'Hujjat muvaffaqiyatli ulashildi', document },
+      { message: 'Hujjat muvaffaqiyatli yuborildi' },
       { status: 200 }
     );
   } catch (error) {

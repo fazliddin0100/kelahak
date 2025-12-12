@@ -44,7 +44,7 @@ export default function ShareUserModal({
       }
       toast.success('Hujjat yuborildi!');
       onClose();
-    } catch (e) {
+    } catch {
       toast.error('Server xatosi');
     }
   };

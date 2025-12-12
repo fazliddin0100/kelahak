@@ -4,7 +4,7 @@ import Buyruq from './(navbar)/buyruq';
 import Chat from './(navbar)/chat';
 import Controlni from './(navbar)/controlni';
 import File from './(navbar)/file';
-import Jurnal from './(navbar)/jurnal';
+import Jurnal from './(navbar)/jurnal/jurnal';
 import KelDocument from './(navbar)/kel-document';
 import Nomeklatura from './(navbar)/nomeklatura';
 
