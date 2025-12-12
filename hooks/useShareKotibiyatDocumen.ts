@@ -25,14 +25,12 @@ export function useGetSharedDocuments() {
       });
 
       const data: ApiResponse = await res.json();
-
       if (!res.ok) {
         toast.error(data.message || 'Xatolik yuz berdi');
         return;
       }
-
       setDocuments(data.documents || []);
-      toast.success(data.message || 'Hujjatlar olindi');
+      // toast.success(data.message || 'Hujjatlar olindi');
     } catch (error) {
       console.error('Fetch documents error:', error);
       toast.error('Server xatosi');

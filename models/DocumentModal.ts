@@ -53,8 +53,8 @@ export type IDocument = Document & {
   ownerRegion?: string;
   parentId?: mongoose.Types.ObjectId;
   isCopy?: boolean;
-  forwardedBy?: mongoose.Types.ObjectId;
-  forwardedTo?: mongoose.Types.ObjectId[];
+  forwardedBy?: mongoose.Types.ObjectId; // hujjatni qabul qilgan shaxs
+  forwardedTo?: mongoose.Types.ObjectId[]; // hujjatni yuborgan shaxslar
   forwardedComment?: string;
   replyTo?: mongoose.Types.ObjectId;
   resolvedAt?: Date;

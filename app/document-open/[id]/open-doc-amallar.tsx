@@ -258,6 +258,7 @@ export default function DocumentOpenButtons({ document }: AmallarButtonsProps) {
           </Tooltip>
         </TooltipProvider>
 
+        {/* comment yozish doskasi */}
         <div className="min-w-full">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -267,13 +268,12 @@ export default function DocumentOpenButtons({ document }: AmallarButtonsProps) {
                    bg-linear-to-r from-gray-50 to-white
                    shadow-md hover:shadow-lg max-w-4xl mx-auto">
             <Textarea
-              placeholder="Komment yozing..."
+              placeholder="Izoh..."
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               className="w-full h-[400px] resize-none
                        focus:ring-2 focus:ring-blue-400 transition-all"
             />
-
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}

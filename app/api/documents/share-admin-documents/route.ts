@@ -7,7 +7,6 @@ import { DocumentModel } from '@/models/DocumentModal';
 export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
-
     const currentUserId = getUserId(request);
     if (!currentUserId) {
       return NextResponse.json(
@@ -15,11 +14,11 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-
     // Shartga mos keladigan barcha hujjatlarni olish
     const documents = await DocumentModel.find({
       sharedWithAdmin: true,
       allowedUsers: { $in: [currentUserId] },
+      status: 'registered',
     });
 
     if (!documents || documents.length === 0) {
@@ -28,9 +27,8 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       );
     }
-
     return NextResponse.json(
-      { message: 'Mos hujjatlar olindi', documents },
+      { message: 'Ro‘yhatdagi hujjatlar', documents },
       { status: 200 }
     );
   } catch (error) {

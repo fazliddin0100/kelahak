@@ -8,7 +8,7 @@ import KelganHujjatlar from './kel-documents';
 import { BookText } from 'lucide-react';
 
 const Jurnal = () => {
-  const [activeComponent, setActiveComponent] = useState<string>('');
+  const [activeComponent, setActiveComponent] = useState<string>('forma3');
 
   const renderContent = () => {
     switch (activeComponent) {
@@ -19,7 +19,7 @@ const Jurnal = () => {
       case 'kelgan':
         return <KelganHujjatlar />;
       default:
-        return <div className="text-gray-500">Jurnal Content</div>;
+        return <div className="text-gray-500"></div>;
     }
   };
 

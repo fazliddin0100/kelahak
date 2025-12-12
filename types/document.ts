@@ -49,6 +49,22 @@ export interface PersonalDocument {
   __v?: number;
 }
 
+export interface NomeklaturaDocument {
+  _id: string;
+  registrationIndex: string;
+  title: string;
+  grif: string;
+  qonunTuri: string;
+  bolinma: string;
+  bolim: string;
+  owner: string;
+  author: BaseSigner;
+  saqlashMuddati: string | number;
+  createdAt?: Date;
+  updatedAt?: Date;
+  __v?: number;
+}
+
 // Hujjat tipi
 export interface DocumentType {
   _id: string;
@@ -74,13 +90,13 @@ export interface DocumentType {
   fullName: string;
   hasSigned?: boolean;
   onSign: () => void;
-
+  forwardedBy?: BaseSigner;
   sender?: Sender;
   receiver?: Receiver[];
   author?: Author;
   approvers?: Approver[];
   bosSigned?: Sender;
-
+  nomenclatureId?: NomeklaturaDocument;
   allowedUsers?: Array<IUserPopulated | ObjectIdLike>;
   forwardedTo?: Array<IUserPopulated | ObjectIdLike>;
 

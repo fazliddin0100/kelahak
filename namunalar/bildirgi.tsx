@@ -86,7 +86,8 @@ export const Bildirgi: React.FC<MalumotnomaProps> = ({
             </div>
           ))}
         </div>
-        <div>
+        {/* Title */}
+        <div className="mt-[10rem]">
           <strong>
             {document.title
               ? document.title.charAt(0).toUpperCase() + document.title.slice(1)
