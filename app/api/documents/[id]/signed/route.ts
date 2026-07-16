@@ -79,7 +79,7 @@ export async function POST(
       );
     }
 
-    const docView = serializeDocumentForApi(document) as DocumentType;
+    const docView = serializeDocumentForApi(document) as unknown as DocumentType;
     const pendingForwardSign = canForwardReviewerSign(docView, userId);
     const isCommander = roleName && isCommanderRole(roleName);
 
@@ -149,7 +149,10 @@ export async function POST(
     };
 
     if (roleName && isCommanderRole(roleName)) {
-      const commanderResult = await applyCommanderDocumentSign(mutableDoc, userId);
+      const commanderResult = await applyCommanderDocumentSign(
+        mutableDoc as Parameters<typeof applyCommanderDocumentSign>[0],
+        userId
+      );
       if (commanderResult.ok) {
         await updateDocument(id, {
           bosSigned: mutableDoc.bosSigned,
@@ -202,8 +205,12 @@ export async function POST(
           forwardedSigner: document.forwardedSigner,
           currentViewIndex: document.currentViewIndex,
         };
-        advanceForwardQueueAfterSign(queueDoc);
-        completeForwardWorkflowIfReady(queueDoc);
+        advanceForwardQueueAfterSign(
+          queueDoc as Parameters<typeof advanceForwardQueueAfterSign>[0]
+        );
+        completeForwardWorkflowIfReady(
+          queueDoc as unknown as Parameters<typeof completeForwardWorkflowIfReady>[0]
+        );
         patch.currentViewIndex = queueDoc.currentViewIndex;
         patch.status = queueDoc.status;
         if ('resolvedAt' in queueDoc) {
@@ -243,11 +250,15 @@ export async function POST(
     const previewDoc = serializeDocumentForApi({
       ...document,
       ...patch,
-    }) as DocumentType;
+    } as import('@/lib/db/document').DocumentWithRelations) as unknown as DocumentType;
 
-    const signedCondition = canMarkDocumentFullySigned(previewDoc, mode, {
-      isForwardReviewerSign,
-    });
+    const signedCondition = canMarkDocumentFullySigned(
+      previewDoc as unknown as Parameters<typeof canMarkDocumentFullySigned>[0],
+      mode,
+      {
+        isForwardReviewerSign,
+      }
+    );
 
     if (signedCondition && !isForwardReviewerSign) {
       const commanderFlow =

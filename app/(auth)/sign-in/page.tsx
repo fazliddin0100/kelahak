@@ -14,7 +14,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight, UserPlus } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import validator from 'validator';
 import { PENDING_ACCESS_MESSAGE } from '@/lib/authConstants';
@@ -30,16 +30,15 @@ const formSchema = z.object({
 });
 
 export default function LoginPage() {
-  const [responseMessage, setResponseMessage] = useState<string | null>(null);
-
-  useEffect(() => {
+  const [responseMessage, setResponseMessage] = useState<string | null>(() => {
     if (
       typeof window !== 'undefined' &&
       window.location.search.includes('pending=approval')
     ) {
-      setResponseMessage(PENDING_ACCESS_MESSAGE);
+      return PENDING_ACCESS_MESSAGE;
     }
-  }, []);
+    return null;
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

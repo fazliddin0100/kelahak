@@ -14,8 +14,14 @@ export async function GET(request: NextRequest) {
 
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
+    const { user } = auth;
 
+    if (!user.personal) {
+      return NextResponse.json(
+        { message: 'Foydalanuvchi ma\'lumoti topilmadi' },
+        { status: 400 }
+      );
+    }
 
     const documents = await findDocuments(
       commanderLocalInboxWhere(user.personal.province),

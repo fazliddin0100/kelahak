@@ -18,6 +18,7 @@ import {
   Tag,
 } from 'lucide-react';
 import NotData from '@/utils/not-data';
+import { toDate } from '@/lib/dateLike';
 import AmallarButtons from './amallar';
 
 const statusStyles: Record<string, string> = {
@@ -134,7 +135,7 @@ const DocumentTable = ({ userId }: { userId?: string }) => {
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-slate-600">
                       {doc.createdAt ?
-                        new Date(doc.createdAt).toLocaleDateString('uz-UZ')
+                        toDate(doc.createdAt).toLocaleDateString('uz-UZ')
                       : '—'}
                     </TableCell>
                     <TableCell>

@@ -23,6 +23,14 @@ export async function POST(request: NextRequest) {
     if (isAuthError(auth)) return auth;
     const { userId, role, user, department } = auth;
 
+    if (!user.personal) {
+      return NextResponse.json(
+        { message: 'Foydalanuvchi ma\'lumoti topilmadi' },
+        { status: 400 }
+      );
+    }
+    const personal = user.personal;
+
         const {
       title,
       content = '',
@@ -51,7 +59,7 @@ export async function POST(request: NextRequest) {
     const authorPayload = {
       userId,
       fullName:
-        `${user.personal.fName} ${user.personal.name} ${user.personal.sName}`.trim() ||
+        `${personal.fName} ${personal.name} ${personal.sName}`.trim() ||
         '',
       militaryRank: user.job?.militaryRank || '',
       position: user.job?.position || '',
@@ -74,7 +82,7 @@ export async function POST(request: NextRequest) {
       attachmentIds: parseAttachmentTextIds(attachmentText),
       ownerId: userId,
       status: DocumentStatus.YANGI,
-      ownerRegion: user.personal.province,
+      ownerRegion: personal.province,
       author: authorPayload,
       approvers: approvers || [],
       sender: hasSender ? sender : authorPayload,

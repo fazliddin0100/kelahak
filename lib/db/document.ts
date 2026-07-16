@@ -111,7 +111,7 @@ export async function findDocumentById(
   return prisma.document.findUnique({
     where: { id },
     include: documentInclude(options),
-  });
+  }) as Promise<DocumentWithRelations | null>;
 }
 
 export async function findDocuments(
@@ -130,7 +130,7 @@ export async function findDocuments(
     orderBy,
     skip,
     take,
-  });
+  }) as Promise<DocumentWithRelations[]>;
 }
 
 export async function countDocuments(where: Prisma.DocumentWhereInput): Promise<number> {
@@ -576,7 +576,7 @@ export async function updateDocument(
     ...fields
   } = input;
 
-  const data: Prisma.DocumentUpdateInput = { ...fields };
+  const data: Prisma.DocumentUpdateInput = { ...(fields as Prisma.DocumentUpdateInput) };
   if (forwardedById !== undefined) {
     data.forwardedBy =
       forwardedById ?

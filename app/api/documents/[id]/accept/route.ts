@@ -9,6 +9,12 @@ import {
 import { DocumentStatus } from '@/types/document-status.enum';
 import { type NextRequest, NextResponse } from 'next/server';
 
+type SignerSnapshot = {
+  fullName?: string;
+  militaryRank?: string;
+  position?: string;
+};
+
 /** Hujjat egasi ro'yxatga olingan nusxani bir marta qabul qiladi */
 export async function POST(
   request: NextRequest,
@@ -17,17 +23,41 @@ export async function POST(
   try {
     await connectToDatabase();
 
+    const { id } = await context.params;
+    if (!id || !isValidDbId(id)) {
+      return NextResponse.json({ message: "Noto'g'ri ID" }, { status: 400 });
+    }
+
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
+    const { userId, user } = auth;
 
+    const document = await findDocumentById(id);
+    if (!document) {
+      return NextResponse.json(
+        { message: 'Hujjat topilmadi' },
+        { status: 404 }
+      );
+    }
+
+    if (document.ownerId !== userId) {
+      return NextResponse.json(
+        { message: 'Faqat hujjat egasi qabul qila oladi' },
+        { status: 403 }
+      );
+    }
+
+    const author = document.author as SignerSnapshot | null;
+    const personal = user.personal;
 
     const fullName =
-      buildPersonalFullName({
-        fName: user.personal.fName,
-        name: user.personal.name,
-        sName: user.personal.sName,
-      }) ||
+      (personal ?
+        buildPersonalFullName({
+          fName: personal.fName,
+          name: personal.name,
+          sName: personal.sName,
+        })
+      : null) ||
       author?.fullName ||
       '';
 

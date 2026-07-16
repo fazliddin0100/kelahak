@@ -11,6 +11,7 @@ import {
 import { useDocuments } from '@/hooks/useDocuments';
 import { cn } from '@/lib/utils';
 import NotData from '@/utils/not-data';
+import { toDate } from '@/lib/dateLike';
 import {
   Calendar,
   FileText,
@@ -143,7 +144,7 @@ const DocumentTable = ({ userId }: { userId?: string }) => {
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-slate-600">
                       {doc.createdAt ?
-                        new Date(doc.createdAt).toLocaleDateString('uz-UZ')
+                        toDate(doc.createdAt).toLocaleDateString('uz-UZ')
                       : '—'}
                     </TableCell>
                     <TableCell>

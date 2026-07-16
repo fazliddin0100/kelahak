@@ -22,29 +22,37 @@ const TERMINAL_QUEUE_STATUSES: DocumentStatus[] = [
   DocumentStatus.DELETED,
 ];
 
-function sortBySubmittedAt(
-  a: { submittedToKotibiyatAt?: Date | null; updatedAt?: Date },
-  b: { submittedToKotibiyatAt?: Date | null; updatedAt?: Date }
-): number {
-  const ta = new Date(a.submittedToKotibiyatAt ?? a.updatedAt ?? 0).getTime();
-  const tb = new Date(b.submittedToKotibiyatAt ?? b.updatedAt ?? 0).getTime();
-  return tb - ta;
-}
-
-function mergeUniqueById<T extends { _id: unknown }>(
-  primary: T[],
-  extra: T[]
-): T[] {
+function mergeUniqueById(
+  primary: Record<string, unknown>[],
+  extra: Record<string, unknown>[]
+): Record<string, unknown>[] {
   const seen = new Set(primary.map((d) => String(d._id)));
   const merged = [...primary];
   for (const doc of extra) {
-    const id = String(doc._id);
-    if (!seen.has(id)) {
+    const docId = String(doc._id);
+    if (!seen.has(docId)) {
       merged.push(doc);
-      seen.add(id);
+      seen.add(docId);
     }
   }
   return merged;
+}
+
+function sortBySubmittedAt(
+  a: Record<string, unknown>,
+  b: Record<string, unknown>
+): number {
+  const ta = new Date(
+    (a.submittedToKotibiyatAt as Date | string | undefined) ??
+      (a.updatedAt as Date | string | undefined) ??
+      0
+  ).getTime();
+  const tb = new Date(
+    (b.submittedToKotibiyatAt as Date | string | undefined) ??
+      (b.updatedAt as Date | string | undefined) ??
+      0
+  ).getTime();
+  return tb - ta;
 }
 
 function isTerminalStatus(status?: string): boolean {

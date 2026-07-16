@@ -44,6 +44,14 @@ export async function POST(
     if (isAuthError(auth)) return auth;
     const { userId, role, user, department } = auth;
 
+    if (!user.personal) {
+      return NextResponse.json(
+        { message: 'Foydalanuvchi ma\'lumoti topilmadi' },
+        { status: 400 }
+      );
+    }
+    const personal = user.personal;
+
     const roleRecord = user.job!.role!;
 
     const canRegister =
@@ -77,7 +85,7 @@ export async function POST(
       );
     }
 
-    if (!regionsMatch(document.ownerRegion ?? undefined, user.personal.province)) {
+    if (!regionsMatch(document.ownerRegion ?? undefined, personal.province)) {
       return NextResponse.json(
         { message: 'Hujjat sizning viloyatingizga tegishli emas' },
         { status: 403 }
@@ -87,12 +95,12 @@ export async function POST(
     const docView = serializeDocumentForApi(document, {
       includeContent: true,
       populateAttachments: false,
-    }) as DocumentType;
+    }) as unknown as DocumentType;
 
     const kotibiyatStaff = isKotibiyatStaffRole(roleRecord.role);
     if (
       !kotibiyatStaff &&
-      !isKotibiyatRegistrationEligible(docView, user.personal.province)
+      !isKotibiyatRegistrationEligible(docView, personal.province)
     ) {
       return NextResponse.json(
         {
@@ -105,7 +113,7 @@ export async function POST(
 
     const year = new Date().getFullYear();
     const registrationIndex = await getRegistrationIndex(
-      user.personal.province,
+      personal.province,
       year,
       document.id
     );
@@ -115,7 +123,7 @@ export async function POST(
     await updateDocument(id, {
       registrationIndex,
       year,
-      ownerRegion: user.personal.province,
+      ownerRegion: personal.province,
       status: DocumentStatus.REGISTERED,
       copyIndex,
       copyTotal,
@@ -136,7 +144,7 @@ export async function POST(
       attachmentText: (document.attachments ?? []).map((a) => a.attachmentId),
       copyNumber: document.copyNumber,
       owner: document.ownerId,
-      ownerRegion: user.personal.province,
+      ownerRegion: personal.province,
       year,
       registrationIndex,
     };
@@ -144,7 +152,7 @@ export async function POST(
     const distributeResult =
       document.isCopy === true ?
         { created: 0, regions: [], missing: [], skipped: [] }
-      : await distributeRegionalCopies(sourceForCopy, user.personal.province);
+      : await distributeRegionalCopies(sourceForCopy, personal.province);
 
     const response: Record<string, unknown> = {
       message: "Hujjat muvaffaqiyatli ro'yxatga olindi",

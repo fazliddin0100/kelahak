@@ -17,6 +17,7 @@ import {
 import { USER_NOMEKLATURA_RELATION_LABEL } from '@/lib/userNomeklaturaLabels';
 import { cn } from '@/lib/utils';
 import NotData from '@/utils/not-data';
+import { toDate } from '@/lib/dateLike';
 import dayjs from 'dayjs';
 import { Check, FolderOpen, Library, Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
@@ -110,6 +111,8 @@ export default function UserNomeklaturaView({
       description={description}
       icon={Library}
       iconClassName={iconClassName}
+      thClass={thClass}
+      tdClass={tdClass}
       actions={actions}>
       <div className="p-5">
         <p className="mb-4 text-sm text-slate-500">
@@ -201,10 +204,7 @@ export default function UserNomeklaturaView({
                               </TableCell>
                               <TableCell
                                 className={`${tdClass} text-center whitespace-nowrap`}>
-                                {dayjs(
-                                  (item.createdAt as { $date?: string })
-                                    ?.$date ?? item.createdAt
-                                ).format('DD.MM.YYYY')}
+                                {dayjs(toDate(item.createdAt)).format('DD.MM.YYYY')}
                               </TableCell>
                               <TableCell className={tdClass}>
                                 {item.author?.fullName || '—'}

@@ -15,7 +15,16 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://127.0.0.1:3001](http://127.0.0.1:3001) with your browser to see the result.
+
+## Database (PostgreSQL)
+
+```bash
+npm run docker:up
+npm run db:push
+```
+
+Copy `.env.example` to `.env.local` and set `DATABASE_URL`, `JWT_SECRET`, and `JWT_SECRET_REFRESH`.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

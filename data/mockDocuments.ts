@@ -50,4 +50,4 @@ export const mockDocuments: DocumentType[] = [
     saqlashMuddati: 3,
     qonunTuri: "123-band",
   },
-];
+] as unknown as DocumentType[];

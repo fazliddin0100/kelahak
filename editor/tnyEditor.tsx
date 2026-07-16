@@ -163,12 +163,14 @@ const TinyEditor = forwardRef<TinyEditorHandle, TnyEditorProps>(
             licenseKey="gpl"
             onInit={(_, editor) => {
               editorRef.current = editor as TinyEditorInstance;
+              if (readOnly) {
+                editor.mode.set('readonly');
+              }
               applyLtrToEditorBody(editorRef.current);
             }}
             init={{
               height: '100%',
               resize: false,
-              readonly: readOnly,
               statusbar: true,
               branding: false,
               promotion: false,

@@ -15,8 +15,14 @@ export async function GET(request: NextRequest) {
     await connectToDatabase();
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
+    const { user, userId } = auth;
 
+    if (!user.personal) {
+      return NextResponse.json(
+        { message: 'Foydalanuvchi ma\'lumoti topilmadi' },
+        { status: 400 }
+      );
+    }
 
     const province = user.personal.province;
 

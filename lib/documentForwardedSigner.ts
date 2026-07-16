@@ -33,7 +33,7 @@ export async function buildForwardedSignerFromUserId(
 }
 
 type DocumentWithForward = {
-  forwardedComment?: string;
+  forwardedComment?: string | null;
   forwardedById?: string | null;
   forwardedAt?: Date | null;
   forwardedSigner?: ForwardedSignerPayload | unknown;

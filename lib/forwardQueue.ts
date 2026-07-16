@@ -153,13 +153,13 @@ export function completeForwardWorkflowIfReady(
     !document.bosSigned?.hasSigned
   ) {
     document.bosSigned = {
-      userId: fs.userId,
-      fullName: fs.fullName,
-      militaryRank: fs.militaryRank,
-      position: fs.position,
+      userId: fs.userId ?? '',
+      fullName: fs.fullName ?? '',
+      militaryRank: fs.militaryRank ?? '',
+      position: fs.position ?? '',
       hasSigned: true,
-      signedAt: fs.signedAt,
-    };
+      signedAt: fs.signedAt ?? new Date(),
+    } as unknown as DocumentType['bosSigned'];
   }
 
   return true;

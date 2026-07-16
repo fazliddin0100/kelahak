@@ -27,8 +27,14 @@ export async function POST(
 
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
+    const { userId, user } = auth;
 
+    if (!user.personal) {
+      return NextResponse.json(
+        { message: 'Foydalanuvchi ma\'lumoti topilmadi' },
+        { status: 400 }
+      );
+    }
 
     const province = user.personal.province || '';
 

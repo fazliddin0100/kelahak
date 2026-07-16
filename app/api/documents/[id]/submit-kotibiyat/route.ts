@@ -80,7 +80,7 @@ export async function POST(
     const docView = serializeDocumentForApi({
       ...document,
       ...patch,
-    }) as DocumentType;
+    } as import('@/lib/db/document').DocumentWithRelations) as unknown as DocumentType;
 
     if (!canUserSubmitToKotibiyat(docView)) {
       if (!isUserAuthorSigned(docView)) {

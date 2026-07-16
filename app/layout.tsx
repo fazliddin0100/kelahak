@@ -4,7 +4,6 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { headers } from 'next/headers';
 import React from 'react';
 import Providers from '../providers/providers';
-// @ts-expect-error: import of global CSS file (side-effect) — add a .d.ts declaration if you prefer a stricter fix
 import './globals.css';
 
 const geistSans = Geist({

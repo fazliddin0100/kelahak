@@ -1,6 +1,6 @@
 'use client';
 
-import { IUserPopulated } from '@/types/user';
+import { IUserPopulated, IPersonal, IJob } from '@/types/user';
 import { useCallback, useEffect, useState } from 'react';
 import type { DepartmentPeer } from './useDepartmentPeers';
 
@@ -14,14 +14,14 @@ function peerToPopulated(peer: DepartmentPeer): IUserPopulated {
       fName: p.fName ?? '',
       sName: p.sName ?? '',
       province: p.province ?? peer.province,
-    },
+    } as IPersonal,
     job: {
       position: j.position ?? '',
       organ: j.organ ?? peer.organ,
       department: j.department ?? peer.department,
       militaryRank: j.militaryRank ?? '',
       isUserTrue: true,
-    },
+    } as IJob,
   };
 }
 

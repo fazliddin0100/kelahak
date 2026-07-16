@@ -40,9 +40,6 @@ export async function PUT(
     if (isAuthError(auth)) return auth;
     const { userId, role, user, department } = auth;
 
-
-    const role = user.job?.role?.role ?? '';
-
     const document = await findDocumentById(id, {
       includeOwner: true,
       includeAttachments: true,

@@ -1,4 +1,5 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
+import { findUserById } from '@/lib/db/user';
 import connectToDatabase, { prisma } from '@/lib/prisma';
 import {
   createDbId,

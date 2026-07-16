@@ -44,7 +44,10 @@ export function useDocumentActionPermissions({
       !!currentUserId && !!forwarderId && forwarderId === currentUserId;
     const commanderBosSigned =
       document.bosSigned?.hasSigned === true &&
-      resolveMongoId(document.bosSigned?.userId) === currentUserId;
+      resolveMongoId(
+        (document.bosSigned as { userId?: unknown; user?: { userId?: unknown } })
+          ?.userId ?? document.bosSigned?.user?.userId
+      ) === currentUserId;
 
     const forwardQueueEntry =
       currentUserId ?

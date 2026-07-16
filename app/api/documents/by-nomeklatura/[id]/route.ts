@@ -17,10 +17,21 @@ export async function GET(
   try {
     await connectToDatabase();
 
+    const { id } = await context.params;
+    if (!id || !isValidDbId(id)) {
+      return NextResponse.json({ message: "Noto'g'ri ID" }, { status: 400 });
+    }
+
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
+    const { userId, user } = auth;
 
+    if (!user.personal) {
+      return NextResponse.json(
+        { message: 'Foydalanuvchi ma\'lumoti topilmadi' },
+        { status: 400 }
+      );
+    }
 
     const allowed = await userCanAccessNomeklatura(
       userId,

@@ -1,4 +1,5 @@
 import { canCommanderReviewEdit } from '@/lib/documentLifecycle';
+import type { WorkflowDocument } from '@/lib/documentWorkflow';
 import { resolveMongoId } from '@/lib/resolveMongoId';
 import { DocumentStatus } from '@/types/document-status.enum';
 
@@ -17,14 +18,19 @@ export function isDocumentEditableStatus(status?: string): boolean {
 }
 
 export function isDocumentCreator(
-  doc: { owner?: unknown; author?: { userId?: unknown } | null },
+  doc: {
+    owner?: unknown;
+    author?: { userId?: unknown; user?: { userId?: unknown } } | null;
+  },
   userId: string | null | undefined
 ): boolean {
   if (!userId) return false;
   const uid = userId.toString();
   const ownerId = resolveMongoId(doc.owner);
   if (ownerId && ownerId === uid) return true;
-  const authorId = resolveMongoId(doc.author?.userId);
+  const authorId = resolveMongoId(
+    doc.author?.userId ?? doc.author?.user?.userId
+  );
   if (authorId && authorId === uid) return true;
   return false;
 }
@@ -33,7 +39,7 @@ export function isDocumentCreator(
 export function canUserEditDocument(
   doc: {
     owner?: unknown;
-    author?: { userId?: unknown } | null;
+    author?: { userId?: unknown; user?: { userId?: unknown } } | null;
     status?: string;
     sentToCommander?: boolean;
     forwardedBy?: unknown;
@@ -41,14 +47,14 @@ export function canUserEditDocument(
   userId: string | null | undefined
 ): boolean {
   if (canUserEditOwnDocument(doc, userId)) return true;
-  return canCommanderReviewEdit(doc, userId);
+  return canCommanderReviewEdit(doc as unknown as WorkflowDocument, userId);
 }
 
 /** Hujjat egasi ro‘yxatga olinguncha tahrirlashi mumkin */
 export function canUserEditOwnDocument(
   doc: {
     owner?: unknown;
-    author?: { userId?: unknown } | null;
+    author?: { userId?: unknown; user?: { userId?: unknown } } | null;
     status?: string;
   },
   userId: string | null | undefined
