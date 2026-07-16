@@ -1,60 +1,142 @@
 // @/helpers/detectRole.ts
 
-export function detectRole(position: string): string {
-  if (!position) return 'user';
-
-  const pos = position.toLowerCase();
-
-  const p = pos
+/** Matnni solishtirish uchun normallashtirish */
+function normalizeText(input: string): string {
+  return input
+    .toLowerCase()
     .replace(/ў/g, "o'")
     .replace(/о‘/g, "o'")
     .replace(/оʻ/g, "o'")
     .replace(/қ/g, 'q')
     .replace(/ғ/g, 'g')
+    .replace(/ҳ/g, 'h')
     .replace(/’/g, "'")
     .replace(/‘/g, "'")
-    .replace(/\s+/g, ' ') // ortiqcha bo‘shliqlarni tozalash
+    .replace(/\s+/g, ' ')
     .trim();
+}
 
-  // ------------------- KOTIBIYAT / SECRETARIAT ------------------- //
-  const isSecretariat = [
-    'kotibiyat',
-    'kotibiyati',
-    'kotib',
-    'kotibi',
-    'котибият',
-    'котибияти',
-    'сектретариат',
-    'секретариат',
-    'секретарь',
-    'делопроизводитель',
-    'hujjat',
-  ].some((w) => p.includes(w));
+/**
+ * So‘z yoki iborani butun so‘z sifatida qidirish (boshqarma ≠ bosh).
+ * Qisqa tokenlar (≤4) uchun word-boundary majburiy.
+ */
+function hasPhrase(text: string, phrase: string): boolean {
+  const t = normalizeText(text);
+  const q = normalizeText(phrase);
+  if (!q) return false;
 
-  if (isSecretariat) return 'admin';
+  if (q.length <= 4) {
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(
+      `(?:^|[\\s,./(\\[]|-)${escaped}(?:$|[\\s,./)\\]]|-)`,
+      'i'
+    );
+    return re.test(t);
+  }
 
-  // ------------------- KALIT SO‘ZLAR ------------------- //
-  const isCommander = [
+  return t.includes(q);
+}
+
+function hasAnyPhrase(text: string, phrases: readonly string[]): boolean {
+  return phrases.some((phrase) => hasPhrase(text, phrase));
+}
+
+/** Kadrlar, moliya va h.k. — hujjat komandir oqimiga kirmaydi */
+const ADMINISTRATIVE_UNIT_PHRASES = [
+  'kadrlar',
+  'kadr bolimi',
+  'kadr xizmati',
+  'buxgalteriya',
+  'moliya',
+  'moliyaviy',
+  'axborot',
+  'matbuot',
+  'tibbiyot',
+  'shifoxona',
+  'tibbiy',
+  'oshxona',
+  'taminot',
+  'logistika',
+  'transport',
+  "xo'jalik",
+  'xojalik',
+  'yuridik',
+  'huquqiy',
+  'audit',
+  'arxiv',
+  'tarjima',
+  'talim',
+  "o'quv",
+  'profilaktika',
+  'psixolog',
+  'maishiy',
+  'kommunal',
+  'ijtimoiy',
+  'maorif',
+] as const;
+
+/** Harbiy qism / bo‘lim boshlig‘i — komandir paneli */
+const MILITARY_OPERATIONAL_PHRASES = [
+  'harbiy',
+  'qism',
+  'qarang',
+  'brigada',
+  'batalyon',
+  'rota',
+  'vzvod',
+  'otryad',
+  "qo'mondonlik",
+  'komandirlik',
+  'nazorat',
+  'operativ',
+  'razvedka',
+  'maxsus',
+  'chegara',
+  'garnizon',
+] as const;
+
+function isAdministrativeUnit(text: string): boolean {
+  return hasAnyPhrase(text, ADMINISTRATIVE_UNIT_PHRASES);
+}
+
+type RoleFlags = {
+  isCommander: boolean;
+  isDeputyCommander: boolean;
+  isChief: boolean;
+  isDeputy: boolean;
+  isDepartmentHead: boolean;
+  isBrigade: boolean;
+  isBattalion: boolean;
+  isCompany: boolean;
+  isOfficer: boolean;
+  isSergeant: boolean;
+  isSoldier: boolean;
+  isStaff: boolean;
+};
+
+function collectRoleFlags(p: string): RoleFlags {
+  const isCommander = hasAnyPhrase(p, [
     "qo'mondon",
     'qomondon',
+    "bosh qo'mondon",
     'komandir',
     'komandiri',
-    'rais',
-    'raisi',
     'xizmat raisi',
-    'раис',
-    'раиси',
+    'hokimiyat raisi',
+    'tuman raisi',
+    'viloyat raisi',
     'командир',
     'командири',
-    'командири',
-    "bosh qo'mondon",
+    'генерал',
     'general',
     'generali',
     'qism komandiri',
     'harbiy qisim komandiri',
-  ].some((w) => p.includes(w));
+    'brigada komandiri',
+    'batalyon komandiri',
+  ]);
 
-  const isDeputyCommander = [
+  const isDeputyCommander = hasAnyPhrase(p, [
     "qo'mondon o'rinbosari",
     "komandir o'rinbosari",
     "komandiri o'rinbosari",
@@ -64,76 +146,217 @@ export function detectRole(position: string): string {
     'замком',
     "o'rinbosar komandir",
     "orinbosar qo'mondon",
-  ].some((w) => p.includes(w));
+  ]);
 
-  const isChief = [
+  const isChief = hasAnyPhrase(p, [
     'boshliq',
-    'boshlig‘i',
+    "boshlig'i",
+    'boshligi',
     'бошлиғи',
     'начальник',
     'руководитель',
-    'bosh',
-  ].some((w) => p.includes(w));
+    "bo'lim boshlig",
+    'bolim boshlig',
+    "bo'lim boshlig'i",
+  ]);
 
-  const isDeputy = [
+  const isDeputy = hasAnyPhrase(p, [
     "o'rinbosar",
     'orinbosar',
-    'у̀ринбосар',
+    'уринбосар',
     'заместитель',
-    'зам',
     "o'rinbosari",
-  ].some((w) => p.includes(w));
+    "bo'lim boshlig'i o'rinbosar",
+    'bolim boshlig\'i orinbosar',
+  ]);
 
-  const isDepartment = ["bo'lim", 'bolim', 'bo‘lim', 'бўлим', 'отдел'].some(
-    (w) => p.includes(w)
-  );
-  const isBrigade = ['brigada', 'бригада'].some((w) => p.includes(w));
-  const isBattalion = ['batalyon', 'батальон'].some((w) => p.includes(w));
-  const isCompany = ['rota', 'рота', 'vzvod', 'взвод'].some((w) =>
-    p.includes(w)
-  );
+  const isDepartmentHead = hasAnyPhrase(p, [
+    "bo'lim boshlig",
+    'bolim boshlig',
+    "bo'lim boshlig'i",
+    'bolim boshligi',
+    "bo'lim boshlig'i",
+  ]);
 
-  // ------------------- ROLE ANIQLASH QOIDALARI ------------------- //
+  const isBrigade = hasAnyPhrase(p, ['brigada', 'бригада']);
+  const isBattalion = hasAnyPhrase(p, ['batalyon', 'батальон']);
+  const isCompany = hasAnyPhrase(p, ['rota', 'рота', 'vzvod', 'взвод']);
 
-  // 1. Qo‘mondon o‘rinbosari (avval, chunki "komandir" so‘zini o‘z ichiga oladi)
-  if (isDeputyCommander) return 'deputyCommander';
-
-  // 2. Brigada, batalyon, yoki rota komandirlari
-  if (isCommander && (isBrigade || isBattalion || isCompany))
-    return 'commander';
-
-  // 3. Boshqa komandirlar (masalan, harbiy qisim komandiri)
-  if (isCommander) return 'commander';
-
-  // 4. Bo‘lim boshlig‘i
-  if (isChief && isDepartment) return 'departmentCommander';
-
-  // 5. Bo‘lim boshlig‘i o‘rinbosari
-  if (isDeputy && isDepartment) return 'departmentDeputy';
-
-  // 6. Oddiy boshliq (bo‘limsiz ham yuqori lavozim)
-  if (isChief) return 'commander';
-
-  // 7. Ofitserlar, serjantlar, askarlar → oddiy user
-  const isOfficer = [
+  const isOfficer = hasAnyPhrase(p, [
     'ofitser',
     'офицер',
     'leytenant',
+    'letenant',
     'kapitan',
     'mayor',
     'podpolkovnik',
     'polkovnik',
-  ].some((w) => p.includes(w));
+    'kichik leytenant',
+    'katta leytenant',
+    'starshiy leytenant',
+  ]);
 
-  const isSergeant = ['serjant', 'сержант', 'yefreyt', 'ефрейтор'].some((w) =>
-    p.includes(w)
-  );
-  const isSoldier = ['askar', 'soldat', 'солдат', 'xizmatchi'].some((w) =>
-    p.includes(w)
-  );
+  const isSergeant = hasAnyPhrase(p, [
+    'serjant',
+    'сержант',
+    'yefreyt',
+    'yefreitor',
+    'ефрейтор',
+    'kichik serjant',
+    'katta serjant',
+    'starshina',
+    'praporshik',
+  ]);
 
-  if (isOfficer || isSergeant || isSoldier) return 'user';
+  const isSoldier = hasAnyPhrase(p, [
+    'askar',
+    'soldat',
+    'солдат',
+    'xizmatchi',
+    'ryadovoy',
+    'рядовой',
+  ]);
 
-  // 8. Agar hech narsa topilmasa
+  const isStaff =
+    hasAnyPhrase(p, [
+      'mutaxassis',
+      'mutaxassislik',
+      'xodim',
+      'ishchi',
+      'kotib',
+      'hisobchi',
+      'dasturchi',
+      'operator',
+      'haydovchi',
+      'texnik',
+      'navbatchi',
+    ]) && !isCommander && !isDeputyCommander && !isChief;
+
+  return {
+    isCommander,
+    isDeputyCommander,
+    isChief,
+    isDeputy,
+    isDepartmentHead,
+    isBrigade,
+    isBattalion,
+    isCompany,
+    isOfficer,
+    isSergeant,
+    isSoldier,
+    isStaff,
+  };
+}
+
+function isMilitaryOperationalContext(p: string, flags: RoleFlags): boolean {
+  if (flags.isCommander || flags.isDeputyCommander) return true;
+  if (flags.isBrigade || flags.isBattalion || flags.isCompany) return true;
+  if (hasAnyPhrase(p, MILITARY_OPERATIONAL_PHRASES)) return true;
+  return false;
+}
+
+/** Bo‘lim boshlig‘i — faqat harbiy/operativ bo‘limlar uchun komandir paneli */
+function resolveDepartmentLeaderRole(
+  p: string,
+  flags: RoleFlags,
+  deputy: boolean
+): string {
+  if (isAdministrativeUnit(p)) {
+    return 'user';
+  }
+  if (!isMilitaryOperationalContext(p, flags)) {
+    return 'user';
+  }
+  return deputy ? 'departmentDeputy' : 'departmentCommander';
+}
+
+/**
+ * Lavozim, bo‘lim va unvon bo‘yicha rol aniqlash.
+ * Ro‘yxatdan o‘tishda: detectRole(position, department, militaryRank)
+ */
+export function detectRole(
+  position: string,
+  department = '',
+  militaryRank = ''
+): string {
+  const combined = [position, department, militaryRank].filter(Boolean).join(' ').trim();
+  if (!combined) return 'user';
+
+  const p = normalizeText(combined);
+  const flags = collectRoleFlags(p);
+
+  // ------------------- KOTIBIYAT / SECRETARIAT ------------------- //
+  if (
+    hasAnyPhrase(p, [
+      'kotibiyat',
+      'kotibiyati',
+      'kotib',
+      'kotibi',
+      'котибият',
+      'котибияти',
+      'сектретариат',
+      'секретариат',
+      'секретарь',
+      'делопроизводитель',
+    ])
+  ) {
+    return 'admin';
+  }
+
+  // Oddiy xizmatchi / mutaxassis
+  if (flags.isSoldier || flags.isSergeant || flags.isStaff) {
+    return 'user';
+  }
+
+  // Ofitser unvoni, lekin komandir lavozimi yo‘q
+  if (
+    flags.isOfficer &&
+    !flags.isCommander &&
+    !flags.isDeputyCommander &&
+    !flags.isChief &&
+    !flags.isDepartmentHead
+  ) {
+    return 'user';
+  }
+
+  // Administrativ bo‘lim (kadrlar, moliya, …) — doim oddiy user
+  if (
+    isAdministrativeUnit(p) &&
+    !flags.isCommander &&
+    !flags.isDeputyCommander
+  ) {
+    return 'user';
+  }
+
+  if (flags.isDeputyCommander) return 'deputyCommander';
+
+  if (
+    flags.isCommander &&
+    (flags.isBrigade || flags.isBattalion || flags.isCompany)
+  ) {
+    return 'commander';
+  }
+
+  if (flags.isCommander) return 'commander';
+
+  if (flags.isDepartmentHead) {
+    return resolveDepartmentLeaderRole(p, flags, false);
+  }
+
+  if (
+    flags.isDeputy &&
+    hasAnyPhrase(p, [
+      "bo'lim boshlig'i o'rinbosar",
+      'bolim boshligi orinbosar',
+      "bo'lim boshlig",
+    ])
+  ) {
+    return resolveDepartmentLeaderRole(p, flags, true);
+  }
+
+  if (flags.isChief) {
+    return resolveDepartmentLeaderRole(p, flags, false);
+  }
+
   return 'user';
 }

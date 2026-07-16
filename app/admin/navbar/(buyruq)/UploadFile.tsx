@@ -1,14 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { AiOutlineFieldNumber } from 'react-icons/ai';
-import { VscGistSecret } from 'react-icons/vsc';
-import { CiCalendarDate } from 'react-icons/ci';
-import { BiRename } from 'react-icons/bi';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Upload } from 'lucide-react';
-import { toast } from '@/components/ui/sonner';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +8,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { toast } from '@/components/ui/sonner';
+import { Upload } from 'lucide-react';
+import { useState } from 'react';
+import { AiOutlineFieldNumber } from 'react-icons/ai';
+import { BiRename } from 'react-icons/bi';
+import { CiCalendarDate } from 'react-icons/ci';
+import { VscGistSecret } from 'react-icons/vsc';
 
 const FileModal = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -76,74 +76,75 @@ const FileModal = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
-          <Upload size={16} />
-          Fayl
+        <Button
+          variant="outline"
+          className="gap-2 border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100">
+          <Upload className="size-4" />
+          Fayl yuklash
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl rounded-2xl border-slate-200">
         <DialogHeader>
-          <DialogTitle>Yangi fayl</DialogTitle>
+          <DialogTitle className="text-slate-800">Yangi buyruq fayli</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {/* Form inputs */}
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="flex items-center gap-2">
-              <BiRename size={20} className="text-gray-500" />
+              <BiRename size={18} className="shrink-0 text-slate-400" />
               <Input
                 placeholder="Nomi"
                 value={nomi}
                 onChange={(e) => setNomi(e.target.value)}
-                className="w-48"
+                className="border-slate-200 focus-visible:ring-sky-500/30"
               />
             </div>
             <div className="flex items-center gap-2">
-              <AiOutlineFieldNumber size={20} className="text-gray-500" />
+              <AiOutlineFieldNumber size={18} className="shrink-0 text-slate-400" />
               <Input
                 placeholder="Raqami"
                 value={raqami}
                 onChange={(e) => setRaqami(e.target.value)}
-                className="w-48"
+                className="border-slate-200 focus-visible:ring-sky-500/30"
               />
             </div>
             <div className="flex items-center gap-2">
-              <VscGistSecret size={20} className="text-gray-500" />
+              <VscGistSecret size={18} className="shrink-0 text-slate-400" />
               <Input
                 placeholder="Maxfiylik darajasi"
                 value={maxfiylik}
                 onChange={(e) => setMaxfiylik(e.target.value)}
-                className="w-48"
+                className="border-slate-200 focus-visible:ring-sky-500/30"
               />
             </div>
             <div className="flex items-center gap-2">
-              <CiCalendarDate size={20} className="text-gray-500" />
+              <CiCalendarDate size={18} className="shrink-0 text-slate-400" />
               <Input
                 placeholder="Sanasi"
                 value={sanasi}
                 onChange={(e) => setSanasi(e.target.value)}
-                className="w-48"
+                className="border-slate-200 focus-visible:ring-sky-500/30"
               />
             </div>
           </div>
 
-          {/* Upload button */}
           <div>
             <input
               type="file"
               id="upload-file-input"
+              accept="application/pdf"
               onChange={handleUpload}
-              disabled={loading}
+              disabled={loading || !isFormValid}
               className="hidden"
             />
             <label
               htmlFor="upload-file-input"
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-md border ${
-                isFormValid
-                  ? 'cursor-pointer bg-white hover:bg-gray-100'
-                  : 'cursor-not-allowed bg-gray-200 text-gray-400'
+              className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition ${
+                isFormValid && !loading ?
+                  'cursor-pointer border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100'
+                : 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
               }`}>
-              <Upload size={16} />
-              {loading ? 'Yuklanmoqda...' : 'Fayl yuklash'}
+              <Upload className="size-4" />
+              {loading ? 'Yuklanmoqda...' : 'PDF fayl yuklash'}
             </label>
           </div>
         </div>

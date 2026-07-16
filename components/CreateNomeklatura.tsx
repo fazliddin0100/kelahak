@@ -1,43 +1,61 @@
 'use client';
 
-import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
-import axios from 'axios';
 import { useBolimlar } from '@/hooks/useBolimData';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useSessionsUsers } from '@/hooks/useSessionsUsers';
+import axios from 'axios';
+import { FolderPlus, Loader2, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
-export default function CreateNomeklatura() {
+function getAuthHeaders(): Record<string, string> {
+  const token =
+    typeof window !== 'undefined' ?
+      localStorage.getItem('ref_token') || localStorage.getItem('token')
+    : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+import {
+  ModalBody,
+  ModalField,
+  ModalFooterBar,
+  ModalHeaderBlock,
+  modalContentFormClass,
+  modalFieldClass,
+  modalTriggerPrimary,
+} from './modal-shared';
+
+interface CreateNomeklaturaProps {
+  onSuccess?: () => void;
+}
+
+export default function CreateNomeklatura({ onSuccess }: CreateNomeklaturaProps) {
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { users, loading: loadingUsers } = useSessionsUsers();
 
-  // Form states
   const [registrationIndex, setRegistrationIndex] = useState('');
   const [title, setTitle] = useState('');
   const [qonunTuri, setQonunTuri] = useState('');
   const [grif, setGrif] = useState('');
   const [saqlashMuddati, setSaqlashMuddati] = useState('');
 
-  const [selectedOrgan, setSelectedOrgan] = useState(''); // Bolim
-  const [selectedDepartment, setSelectedDepartment] = useState(''); // Bo‘linma
+  const [selectedOrgan, setSelectedOrgan] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
 
   const { data: bolimlar = [], isError: errorBolimlar } = useBolimlar();
@@ -48,7 +66,6 @@ export default function CreateNomeklatura() {
     >,
     isError: errorDepts,
   } = useDepartments();
-
 
   const handleSave = async () => {
     if (
@@ -64,39 +81,33 @@ export default function CreateNomeklatura() {
       return;
     }
 
-    // Tanlangan foydalanuvchini topamiz
-    const selectedUser = users.find((u) => u.userId === selectedUserId);
-    if (!selectedUser) {
-      toast.error('Foydalanuvchi topilmadi');
-      return;
-    }
-
-    const payload = {
-      registrationIndex,
-      title,
-      grif,
-      qonunTuri: qonunTuri || null,
-      saqlashMuddati:
-        saqlashMuddati === 'doimiy' ? 'doimiy' : parseInt(saqlashMuddati),
-      bolinma: [selectedDepartment],
-      bolim: [selectedOrgan],
-      author: {
-        userId: selectedUser.userId,
-        fullName: `${selectedUser.personal.name} ${selectedUser.personal.fName} ${selectedUser.personal.sName}`,
-        militaryRank: selectedUser.job.militaryRank,
-        position: selectedUser.job.position, // modelda bor
-        department: selectedUser.job.department,
-        province: selectedUser.personal.province,
-      },
-    };
-
+    setSaving(true);
     try {
-      await axios.post('/api/nameklatura/reg-nomeklatura', payload, {
+      const payload = {
+        registrationIndex,
+        title,
+        grif,
+        qonunTuri: qonunTuri || '',
+        saqlashMuddati:
+          saqlashMuddati === 'doimiy' ? 'doimiy' : parseInt(saqlashMuddati, 10),
+        bolinma: [selectedDepartment],
+        bolim: [selectedOrgan],
+        author: {
+          userId: selectedUserId,
+        },
+      };
+
+      const res = await axios.post('/api/nameklatura/reg-nomeklatura', payload, {
         withCredentials: true,
+        headers: getAuthHeaders(),
       });
+
+      if (res.status < 200 || res.status >= 300) {
+        throw new Error(res.data?.message || 'Yaratishda xatolik');
+      }
+
       toast.success('Nomeklatura muvaffaqiyatli yaratildi');
       setOpen(false);
-      // Formani tozalash
       setRegistrationIndex('');
       setTitle('');
       setGrif('');
@@ -105,179 +116,209 @@ export default function CreateNomeklatura() {
       setSelectedOrgan('');
       setSelectedDepartment('');
       setSelectedUserId('');
-    } catch (err: any) {
-      toast.error(
-        err.response?.data?.message || 'Yaratishda xatolik yuz berdi'
-      );
+      onSuccess?.();
+    } catch (err: unknown) {
+      const data = axios.isAxiosError(err) ? err.response?.data : null;
+      const message =
+        (data && typeof data === 'object' && 'message' in data ?
+          String(data.message)
+        : null) ||
+        (data && typeof data === 'object' && 'error' in data ?
+          String(data.error)
+        : null) ||
+        (err instanceof Error ? err.message : null) ||
+        'Yaratishda xatolik yuz berdi';
+      toast.error(message);
+    } finally {
+      setSaving(false);
     }
   };
 
   const hasError = errorBolimlar || errorDepts;
 
   return (
-    <div className="ml-2">
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        + Nomeklatura yaratish
+    <>
+      <Button
+        variant="outline"
+        className={modalTriggerPrimary}
+        onClick={() => setOpen(true)}>
+        <Plus className="size-4" />
+        Nomeklatura yaratish
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Yangi ish jild yaratish</DialogTitle>
-          </DialogHeader>
+        <DialogContent className={modalContentFormClass} showCloseButton>
+          <ModalHeaderBlock
+            icon={FolderPlus}
+            title="Yangi ish jild yaratish"
+            description="Nomenklatura ro‘yxatiga yangi yozuv qo‘shish"
+            iconClassName="bg-indigo-500/10 text-indigo-600"
+          />
 
           {hasError && (
-            <p className="text-red-500">Ma`lumot yuklashda xatolik</p>
+            <p className="mx-6 mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-100">
+              Ma’lumot yuklashda xatolik
+            </p>
           )}
 
-          <div className="space-y-4 py-4">
-            {/* Raqami */}
-            <div>
-              <Label>Raqami</Label>
-              <Input
-                placeholder="01-2025"
-                value={registrationIndex}
-                onChange={(e) => setRegistrationIndex(e.target.value)}
-              />
+          <ModalBody>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ModalField label="Raqami">
+                <Input
+                  placeholder="01-2025"
+                  value={registrationIndex}
+                  onChange={(e) => setRegistrationIndex(e.target.value)}
+                  className={modalFieldClass}
+                />
+              </ModalField>
+
+              <ModalField label="Maxfiylik darajasi (grif)">
+                <Input
+                  placeholder="Ochiq / Maxfiy / Davlat siri"
+                  value={grif}
+                  onChange={(e) => setGrif(e.target.value)}
+                  className={modalFieldClass}
+                />
+              </ModalField>
             </div>
 
-            {/* Nomi */}
-            <div>
-              <Label>Nomi</Label>
+            <ModalField label="Nomi">
               <Textarea
-                placeholder="Ish jildining to'liq nomi..."
+                placeholder="Ish jildining to‘liq nomi..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 rows={3}
+                className={modalFieldClass}
               />
-            </div>
+            </ModalField>
 
-            {/* Maxfiylik darajasi */}
-            <div>
-              <Label>Maxfiylik darajasi (grif)</Label>
-              <Input
-                placeholder="Ochik / Maxfiy / Davlat sir"
-                value={grif}
-                onChange={(e) => setGrif(e.target.value)}
-              />
-            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ModalField label="Buyruq bandi (ixtiyoriy)">
+                <Input
+                  placeholder="Masalan: 15-band"
+                  value={qonunTuri}
+                  onChange={(e) => setQonunTuri(e.target.value)}
+                  className={modalFieldClass}
+                />
+              </ModalField>
 
-            {/* Buyruq bandi */}
-            <div>
-              <Label>Buyruq bandi (ixtiyoriy)</Label>
-              <Input
-                placeholder="Masalan: 15-band"
-                value={qonunTuri}
-                onChange={(e) => setQonunTuri(e.target.value)}
-              />
-            </div>
-
-            {/* Saqlash muddati */}
-            <div>
-              <Label>Saqlash muddati</Label>
-              <Select value={saqlashMuddati} onValueChange={setSaqlashMuddati}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tanlang" />
-                </SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4, 5, 7, 10, 15, 25, 50, 75].map((y) => (
-                    <SelectItem key={y} value={y.toString()}>
-                      {y} yil
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="doimiy">Doimiy</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Bolim (organ) */}
-            <div>
-              <Label>Bolim</Label>
-              <Select value={selectedOrgan} onValueChange={setSelectedOrgan}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Boshqarmani tanlang" />
-                </SelectTrigger>
-                <SelectContent>
-                  {bolimlar.map((item) => (
-                    <SelectItem key={item._id} value={item._id}>
-                      {item.province} — {item.bolim}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Bo‘linma (department) */}
-            <div>
-              <Label>Bo‘linma</Label>
-              <Select
-                value={selectedDepartment}
-                onValueChange={setSelectedDepartment}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Bo‘linmani tanlang" />
-                </SelectTrigger>
-                <SelectContent>
-                  {bolinmalar.map((item) => {
-                    if (typeof item === 'string') {
-                      return (
-                        <SelectItem key={item} value={item}>
-                          {item}
-                        </SelectItem>
-                      );
-                    }
-
-                    return (
-                      <SelectItem key={item._id} value={item._id}>
-                        {((item as any).province
-                          ? `${(item as any).province} — `
-                          : '') +
-                          ((item as any).bolinma ??
-                            (item as any).department ??
-                            item._id)}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Javobgar shaxs */}
-            <div>
-              <Label>Javobgar shaxs</Label>
-              {loadingUsers ? (
-                <p className="text-sm text-muted-foreground">Yuklanmoqda...</p>
-              ) : (
-                <Select
-                  value={selectedUserId}
-                  onValueChange={setSelectedUserId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Foydalanuvchini tanlang" />
+              <ModalField label="Saqlash muddati">
+                <Select value={saqlashMuddati} onValueChange={setSaqlashMuddati}>
+                  <SelectTrigger className={modalFieldClass}>
+                    <SelectValue placeholder="Tanlang" />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.map((user) => (
-                      <SelectItem key={user.userId} value={user.userId}>
-                        {user.personal.fName +
-                          ' ' +
-                          user.personal.name +
-                          ' ' +
-                          user.personal.sName}{' '}
-                        — {user.job.militaryRank}
+                    {[1, 2, 3, 4, 5, 7, 10, 15, 25, 50, 75].map((y) => (
+                      <SelectItem key={y} value={y.toString()}>
+                        {y} yil
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="doimiy">Doimiy</SelectItem>
+                  </SelectContent>
+                </Select>
+              </ModalField>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ModalField label="Bo‘lim">
+                <Select value={selectedOrgan} onValueChange={setSelectedOrgan}>
+                  <SelectTrigger className={modalFieldClass}>
+                    <SelectValue placeholder="Boshqarmani tanlang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bolimlar.map((item) => (
+                      <SelectItem key={item._id} value={item._id}>
+                        {item.province} — {item.bolim}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              )}
-            </div>
-          </div>
+              </ModalField>
 
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setOpen(false)}>
+              <ModalField label="Bo‘linma">
+                <Select
+                  value={selectedDepartment}
+                  onValueChange={setSelectedDepartment}>
+                  <SelectTrigger className={modalFieldClass}>
+                    <SelectValue placeholder="Bo‘linmani tanlang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bolinmalar.map((item) => {
+                      if (typeof item === 'string') {
+                        return (
+                          <SelectItem key={item} value={item}>
+                            {item}
+                          </SelectItem>
+                        );
+                      }
+
+                      return (
+                        <SelectItem key={item._id} value={item._id}>
+                          {((item as { province?: string }).province ?
+                            `${(item as { province?: string }).province} — `
+                          : '') +
+                            ((item as { bolinma?: string; department?: string })
+                              .bolinma ??
+                              (item as { department?: string }).department ??
+                              item._id)}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </ModalField>
+            </div>
+
+            <ModalField label="Javobgar shaxs">
+              {loadingUsers ?
+                <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+              : <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                  <SelectTrigger className={modalFieldClass}>
+                    <SelectValue placeholder="Foydalanuvchini tanlang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((user) => (
+                      <SelectItem
+                        key={String(user.userId)}
+                        value={String(user.userId)}>
+                        {user.personal.fName} {user.personal.name}{' '}
+                        {user.personal.sName}
+                        {user.job?.militaryRank ?
+                          ` — ${user.job.militaryRank}`
+                        : ''}
+                        {user.job?.department ?
+                          ` (${user.job.department})`
+                        : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              }
+            </ModalField>
+          </ModalBody>
+
+          <ModalFooterBar>
+            <Button
+              variant="outline"
+              className="border-slate-200"
+              onClick={() => setOpen(false)}>
               Bekor qilish
             </Button>
-            <Button onClick={handleSave}>Saqlash</Button>
-          </DialogFooter>
+            <Button
+              type="button"
+              className="bg-indigo-600 hover:bg-indigo-700"
+              disabled={saving}
+              onClick={() => void handleSave()}>
+              {saving ?
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Saqlanmoqda...
+                </>
+              : 'Saqlash'}
+            </Button>
+          </ModalFooterBar>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

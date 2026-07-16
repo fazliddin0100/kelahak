@@ -1,63 +1,28 @@
 // app/api/documents/signet-documents/route.ts
+import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/mongodb';
-import User from '@/models/User';
-import Personal from '@/models/Personal';
-import { getUserId } from '@/lib/userid';
-import { DocumentModel } from '@/models/DocumentModal';
-import mongoose from 'mongoose';
-import { PersonalDocument } from '@/types/document';
+import {
+  findPendingSignatureDocuments,
+  serializeDocumentsForApi,
+} from '@/lib/db/document';
 
 export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
 
-    const userId = getUserId(request);
-    if (!userId) {
-      return NextResponse.json(
-        { message: 'Foydalanuvchi aniqlanmadi' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireApiAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { userId, role, user, department } = auth;
 
-    const userObjId = new mongoose.Types.ObjectId(userId);
 
-    const user = await User.findById(userObjId).lean();
-    if (!user) {
-      return NextResponse.json(
-        { message: 'Foydalanuvchi topilmadi' },
-        { status: 404 }
-      );
-    }
-
-    // FIX: Tipni qo‘lda aniqlaymiz
-    const personal = (await Personal.findById(
-      user.personal
-    ).lean()) as PersonalDocument | null;
-
-    if (!personal || !personal.province) {
-      return NextResponse.json(
-        { message: 'Foydalanuvchining viloyati topilmadi' },
-        { status: 400 }
-      );
-    }
-
-    const userProvince = personal.province;
-
-    const documents = await DocumentModel.find({
-      ownerRegion: userProvince,
-
-      $or: [
-        { 'author.userId': userObjId, 'author.hasSigned': false },
-        { 'sender.userId': userObjId, 'sender.hasSigned': false },
-        {
-          approvers: {
-            $elemMatch: { userId: userObjId, hasSigned: false },
-          },
-        },
-        { 'bosSigned.hasSigned': false },
-      ],
-    }).lean();
+    const docs = await findPendingSignatureDocuments(
+      userId,
+      user.personal.province
+    );
+    const documents = await serializeDocumentsForApi(docs, {
+      includeContent: false,
+    });
 
     return NextResponse.json({ documents }, { status: 200 });
   } catch (error) {

@@ -1,13 +1,5 @@
 'use client';
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import validator from 'validator';
-import Link from 'next/link';
-import { ArrowRight, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -17,10 +9,20 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ArrowRight, UserPlus } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import validator from 'validator';
+import { PENDING_ACCESS_MESSAGE } from '@/lib/authConstants';
+import { getPostLoginPath } from '@/lib/authRedirect';
+import * as z from 'zod';
 
-import dxxlogo from '../../../public/dxxLogo.png';
+import backgroundImage from '../../../public/basgraund.webp';
+import dxxlogo from '../../../public/gerb.png';
 
 const formSchema = z.object({
   login: z.string().min(1, 'Username majburiy'),
@@ -29,7 +31,15 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const [responseMessage, setResponseMessage] = useState<string | null>(null);
-  const router = useRouter();
+
+  useEffect(() => {
+    if (
+      typeof window !== 'undefined' &&
+      window.location.search.includes('pending=approval')
+    ) {
+      setResponseMessage(PENDING_ACCESS_MESSAGE);
+    }
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,22 +60,17 @@ export default function LoginPage() {
       });
 
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok && data.token) {
         localStorage.setItem('token', data.token);
-        // eslint-disable-next-line react-hooks/immutability
-        document.cookie = `token=${data.token}; path=/; SameSite=Lax;`;
         toast.success('Xush kelibsiz!');
-        setTimeout(() => {
-          if (data.department === 'kotibiyat') {
-            router.push('/kotibiyat');
-          } else if (data.department === 'komandir') {
-            router.push('/komandir');
-          } else {
-            router.push('/user');
-          }
-        }, 200);
+        const target = getPostLoginPath(data);
+        window.location.replace(target);
+        return;
       } else {
-        const errorMsg = data.message || 'Xatolik yuz berdi';
+        const errorMsg =
+          data.code === 'PENDING_APPROVAL' ?
+            data.message || PENDING_ACCESS_MESSAGE
+          : data.message || 'Xatolik yuz berdi';
         setResponseMessage(errorMsg);
         toast.error(errorMsg);
       }
@@ -76,10 +81,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-linear-to-br from-gray-50 to-gray-100 p-4">
+    <div
+      className="min-h-screen flex justify-center items-center bg-linear-to-br from-gray-50 to-gray-100 p-4"
+      style={{ backgroundImage: `url(${backgroundImage.src})` }}>
       <div className="w-full max-w-md p-8 mx-auto rounded-2xl shadow-xl bg-white/90 backdrop-blur-sm border border-gray-200">
         {/* Logo */}
-        <div className="w-20 h-20 mx-auto mb-6 rounded-full overflow-hidden">
+        <div className="w-20 h-25 mx-auto mb-6 rounded-full overflow-hidden">
           <Image
             src={dxxlogo}
             alt="DXX Logo"
@@ -100,9 +107,9 @@ export default function LoginPage() {
         {responseMessage && (
           <p
             className={`text-center mb-6 p-3 rounded-lg text-sm font-medium transition-all ${
-              responseMessage.includes('Muvaffaqiyatli')
-                ? 'bg-green-50 text-green-700 border border-green-200'
-                : 'bg-red-50 text-red-700 border border-red-200'
+              responseMessage.includes('Muvaffaqiyatli') ?
+                'bg-green-50 text-green-700 border border-green-200'
+              : 'bg-red-50 text-red-700 border border-red-200'
             }`}>
             {responseMessage}
           </p>

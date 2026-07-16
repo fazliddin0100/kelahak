@@ -1,9 +1,13 @@
-const Buyruq = () => {
-    return (
-        <>
-            buyruq sahifasi
-        </>
-    )
-}
+import { BookMarked } from 'lucide-react';
+import { PlaceholderPage } from './section-shell';
 
-export default Buyruq
+const Buyruq = () => (
+  <PlaceholderPage
+    title="Buyruqlar"
+    description="Buyruqlar bo‘yicha hujjatlar"
+    icon={BookMarked}
+    iconClassName="bg-violet-500/10 text-violet-600"
+  />
+);
+
+export default Buyruq;

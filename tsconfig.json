@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -18,9 +14,7 @@
     "jsx": "react-jsx",
     "incremental": true,
     "ignoreDeprecations": "6.0",
-    "types": [
-      "tinymce"
-    ],
+    "types": ["tinymce"],
     "baseUrl": ".",
     "plugins": [
       {
@@ -28,21 +22,10 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@/models/*": [
-        "models/*"
-      ],
-      "@/schemas/*": [
-        "schemas/*"
-      ],
-      "@/interfaces/*": [
-        "interfaces/*"
-      ],
-      "@/lib/*": [
-        "lib/*"
-      ]
+      "@/*": ["./*"],
+      "@/schemas/*": ["./schemas/*"],
+      "@/interfaces/*": ["./interfaces/*"],
+      "@/lib/*": ["./lib/*"]
     }
   },
   "include": [
@@ -53,7 +36,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

@@ -12,10 +12,12 @@ import {
 } from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Checkbox} from "@/components/ui/checkbox";
+import {MapPin} from "lucide-react";
 
 interface Props {
     selectedRegions: string[];
     setSelectedRegions: (regions: string[]) => void;
+    triggerClassName?: string;
 }
 
 const regions = [
@@ -27,6 +29,7 @@ const regions = [
 export default function RegionSelectModal({
                                               selectedRegions,
                                               setSelectedRegions,
+                                              triggerClassName,
                                           }: Props) {
     const [open, setOpen] = useState(false);
     const [disabled, setDisabled] = useState(true);
@@ -58,7 +61,15 @@ export default function RegionSelectModal({
     return (
         <>
             {/* Modalni ochuvchi tugma */}
-            <Button variant={"outline"} onClick={() => setOpen(true)}>Viloyatlarni tanlash</Button>
+            <Button variant="outline" className={triggerClassName} onClick={() => setOpen(true)}>
+                <MapPin className="mr-2 size-4" />
+                Viloyatlarni tanlash
+                {selectedRegions.length > 0 && (
+                    <span className="ml-1 rounded-full bg-sky-500/20 px-1.5 text-xs text-sky-300">
+                        {selectedRegions.length}
+                    </span>
+                )}
+            </Button>
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <Draggable

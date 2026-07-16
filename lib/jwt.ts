@@ -6,6 +6,7 @@ export interface CustomJwtPayload {
   department?: string;
   exp?: number;
   iat?: number;
+  role: string;
 }
 
 export function decodeToken(token: string): CustomJwtPayload {

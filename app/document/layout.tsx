@@ -1,17 +1,11 @@
-import React from "react";
+import React from 'react';
 
 interface DocumentLayoutProps {
-    children: React.ReactNode
+  children: React.ReactNode;
 }
 
-const DocumentLayout = async ({children}: DocumentLayoutProps) => {
-    return (
-        <>
-            <div className='flex flex-col items-center justify-center font-bold text-[25px] gap-y-4'>
-                {children}
-            </div>
-        </>
-    )
-}
+const DocumentLayout = ({ children }: DocumentLayoutProps) => {
+  return <div className="h-screen w-full overflow-hidden bg-slate-50">{children}</div>;
+};
 
-export default DocumentLayout
+export default DocumentLayout;

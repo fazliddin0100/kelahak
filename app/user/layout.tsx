@@ -1,11 +1,20 @@
-import React from 'react';
+'use client';
 
-interface DocumentLayoutProps {
-  children: React.ReactNode;
-}
+import { useState } from 'react';
+import NavbarUser from './(navbar)/navbar';
+import { UserPage } from './page';
 
-const UserLayout = async ({ children }: DocumentLayoutProps) => {
-  return <>{children}</>;
+const UserPanelLayout = () => {
+  const [page, setPage] = useState('file');
+
+  return (
+    <div className="min-h-screen w-full bg-slate-50">
+      <NavbarUser setPage={setPage} />
+      <main className="w-full">
+        <UserPage page={page} />
+      </main>
+    </div>
+  );
 };
 
-export default UserLayout;
+export default UserPanelLayout;

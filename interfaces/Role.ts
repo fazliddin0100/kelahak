@@ -1,9 +1,9 @@
-import {Document} from "mongoose";
+import type { DbRole } from '@/lib/roles';
 
-export interface RoleInterface extends Document {
-    role: "admin" | "superAdmin" | "user" | "commander" | "deputyCommander";
-    province: string;
-    permissions: string[];
-    createdAt?: Date;
-    updatedAt?: Date;
+export interface RoleInterface {
+  role: DbRole;
+  province: string;
+  permissions: string[];
+  createdAt?: Date;
+  updatedAt?: Date;
 }

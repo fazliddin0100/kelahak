@@ -1,8 +1,13 @@
-// app/api/documents/[id]/share/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import connectToDatabase from '@/lib/mongodb';
-import { getUserId } from '@/lib/userid';
-import { DocumentModel } from '@/models/DocumentModal';
+import { canGrantDocumentViewAccess } from '@/lib/documentShare';
+import {
+  findDocumentById,
+  isValidDbId,
+  serializeDocumentForApi,
+  updateDocument,
+} from '@/lib/db/document';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
   request: NextRequest,
@@ -11,18 +16,18 @@ export async function POST(
   try {
     await connectToDatabase();
 
-    const currentUserId = getUserId(request);
-    if (!currentUserId) {
-      return NextResponse.json(
-        { message: 'Foydalanuvchi aniqlanmadi' },
-        { status: 401 }
-      );
+    const auth = await requireApiAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { userId, role, user, department } = auth;
+    const currentUserId = userId;
+
+
+    const { id } = await context.params;
+    if (!id || !isValidDbId(id)) {
+      return NextResponse.json({ message: "Noto'g'ri ID" }, { status: 400 });
     }
 
-    // params ni await qilish kerak
-    const { id } = await context.params;
-
-    const document = await DocumentModel.findById(id);
+    const document = await findDocumentById(id, { includeAllowedUsers: true });
     if (!document) {
       return NextResponse.json(
         { message: 'Hujjat topilmadi' },
@@ -30,25 +35,48 @@ export async function POST(
       );
     }
 
-    // body dan userId ni olish
-    const { userId } = await request.json();
-    if (!userId) {
+    const roleName = role ?? null;
+    const docView = serializeDocumentForApi(document);
+
+    if (!canGrantDocumentViewAccess(docView, currentUserId, roleName)) {
       return NextResponse.json(
-        { message: 'userId yuborilmadi' },
+        { message: "Hujjatni boshqalarga yuborish huquqi yo'q" },
+        { status: 403 }
+      );
+    }
+
+    const { userId: targetUserId } = await request.json();
+    if (!targetUserId || !isValidDbId(targetUserId)) {
+      return NextResponse.json(
+        { message: 'Foydalanuvchi tanlanmadi' },
         { status: 400 }
       );
     }
 
-    // allowedUsers ga qo‘shish
-    document.allowedUsers = [
-      ...new Set([...(document.allowedUsers || []), userId]),
-    ];
+    if (targetUserId === currentUserId) {
+      return NextResponse.json(
+        { message: "O'zingizga yuborib bo'lmaydi" },
+        { status: 400 }
+      );
+    }
 
-    document.sharedWithAdmin = true;
-    await document.save();
+    const existing = (document.allowedUsers ?? []).map((row) => row.userId);
+    if (existing.includes(targetUserId)) {
+      return NextResponse.json(
+        { message: "Bu foydalanuvchiga allaqachon ko'rish huquqi berilgan" },
+        { status: 400 }
+      );
+    }
+
+    await updateDocument(id, {
+      allowedUserIds: [...existing, targetUserId],
+    });
 
     return NextResponse.json(
-      { message: 'Hujjat muvaffaqiyatli yuborildi' },
+      {
+        message:
+          "Foydalanuvchiga hujjatni ko'rish huquqi berildi. U «Mening hujjatlarim» yoki ulashilgan ro'yxatdan ochishi mumkin.",
+      },
       { status: 200 }
     );
   } catch (error) {

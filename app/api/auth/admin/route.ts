@@ -1,18 +1,21 @@
-// app/api/auth/admin/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+// app/api/auth/admin/route.ts — superAdmin / tasdiqlangan admin uchun ref_token
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
-import validator from 'validator';
+import { NextRequest, NextResponse } from 'next/server';
 import { RateLimiterMemory } from 'rate-limiter-flexible';
+import validator from 'validator';
 
-import Auth from '@/models/Auth';
-import User from '@/models/User';
-import Job from '@/models/Job';
-import Role from '@/models/Role';
-import { getUserId } from '@/lib/userid';
-import connectToDatabase from '@/lib/mongodb';
+import { findUserByLogin } from '@/lib/db/user';
+import {
+  canLoginWithoutApproval,
+  PENDING_ACCESS_MESSAGE,
+} from '@/lib/userAccess';
+import { getClientIp, logSecurityEvent } from '@/lib/securityLog';
+import {
+  setSuperAdminCookie,
+  signSuperAdminToken,
+} from '@/lib/superadminAuth';
 
-// Rate limiter: 5 urinish 15 daqiqa ichida (moslashtirish mumkin)
 const rateLimiter = new RateLimiterMemory({
   points: 5,
   duration: 15 * 60,
@@ -29,17 +32,14 @@ if (!JWT_SECRET_REFRESH) {
 interface JWTPayload {
   userId: string;
   department: string;
+  role: string;
+  accessApproved: true;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // 1) IPni olish (x-forwarded-for mavjud bo'lsa foydalanamiz)
-    const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-      request.headers.get('x-real-ip') ||
-      'unknown';
+    const ip = getClientIp(request.headers);
 
-    // 2) Body
     const body = (await request.json()) as Record<string, unknown>;
     const login = typeof body.login === 'string' ? body.login : '';
     const password = typeof body.password === 'string' ? body.password : '';
@@ -51,103 +51,145 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3) Sanitizatsiya
     const cleanLogin = validator.trim(validator.escape(login)).toLowerCase();
     const cleanPassword = validator.trim(password);
 
-    // 4) Validatsiya
     if (!validator.isLength(cleanLogin, { min: 3, max: 50 })) {
       return NextResponse.json(
         { message: 'Login 3-50 belgi oralig‘ida bo‘lishi kerak' },
         { status: 400 }
       );
     }
-    if (!validator.isAlphanumeric(cleanLogin, 'en-US', { ignore: '_-' })) {
-      return NextResponse.json(
-        { message: "Login faqat harf, raqam, '_' yoki '-' bo‘lishi mumkin" },
-        { status: 400 }
-      );
-    }
 
-    // 5) Rate limit tekshiruvi
     try {
       await rateLimiter.consume(ip);
     } catch (rej) {
-      const rejected = rej as any;
-      const retryAfter = Math.ceil(rejected.msBeforeNext / 1000) || 60;
+      const rejected = rej as { msBeforeNext?: number };
+      const retryAfter = Math.ceil((rejected.msBeforeNext ?? 60000) / 1000) || 60;
+      void logSecurityEvent({
+        type: 'rate_limit',
+        ip,
+        path: '/api/auth/admin',
+        method: 'POST',
+        loginHint: cleanLogin,
+        message: 'Admin login rate limit',
+        statusCode: 429,
+      });
       return NextResponse.json(
         { message: `Juda ko‘p urinish. Iltimos ${retryAfter}s kuting` },
         { status: 429, headers: { 'Retry-After': String(retryAfter) } }
       );
     }
 
-    // 6) DB ga ulanish
-    await connectToDatabase();
+    const authRow = await findUserByLogin(cleanLogin);
+    if (!authRow) {
+      void logSecurityEvent({
+        type: 'login_failed',
+        ip,
+        path: '/api/auth/admin',
+        method: 'POST',
+        loginHint: cleanLogin,
+        message: 'Admin panel: login topilmadi',
+        statusCode: 401,
+      });
+      return NextResponse.json(
+        { message: 'Noto‘g‘ri login yoki parol' },
+        { status: 401 }
+      );
+    }
 
-    const userId = getUserId(request);
+    const isValid = await bcrypt.compare(cleanPassword, authRow.password);
+    if (!isValid) {
+      void logSecurityEvent({
+        type: 'login_failed',
+        ip,
+        path: '/api/auth/admin',
+        method: 'POST',
+        loginHint: cleanLogin,
+        message: 'Admin panel: parol noto‘g‘ri',
+        statusCode: 401,
+      });
+      return NextResponse.json(
+        { message: 'Noto‘g‘ri login yoki parol' },
+        { status: 401 }
+      );
+    }
 
-    // 7) User topish va kerakli populate
-    const user = await User.findOne({ _id: userId });
+    const user = authRow.user;
     if (!user) {
       return NextResponse.json(
         { message: 'Foydalanuvchi topilmadi' },
         { status: 404 }
       );
     }
-    const job = await Job.findById(user?.job);
-    // 8) role
-    const role = await Role.findById(job?.role);
-    if (job?.department !== 'kotibiyat' && role?.role !== 'admin') {
+
+    const job = user.job;
+    const role = job?.role;
+    if (!job || !role) {
       return NextResponse.json(
-        { message: 'Sizga kirish huquqi berilmagan!' },
+        { message: 'Foydalanuvchi roli topilmadi' },
+        { status: 500 }
+      );
+    }
+
+    if (!['admin', 'superAdmin'].includes(role.role)) {
+      void logSecurityEvent({
+        type: 'login_failed',
+        ip,
+        path: '/api/auth/admin',
+        method: 'POST',
+        loginHint: cleanLogin,
+        message: 'Admin panel: rol ruxsati yo‘q',
+        statusCode: 403,
+      });
+      return NextResponse.json(
+        { message: 'Admin panelga faqat admin yoki superAdmin kira oladi' },
         { status: 403 }
       );
     }
 
-    // 9) Auth topish (parolni ham selekt qilish)
-    const auth = await Auth.findOne({ login: cleanLogin }).select('+password');
-    if (!auth) {
-      // Bad credentials — lekin xavfsizlik uchun umumiy xabar
+    if (!canLoginWithoutApproval(role.role, Boolean(job.isUserTrue))) {
+      void logSecurityEvent({
+        type: 'login_failed',
+        ip,
+        path: '/api/auth/admin',
+        method: 'POST',
+        loginHint: cleanLogin,
+        message: 'Admin panel: tasdiqlanmagan',
+        statusCode: 403,
+      });
       return NextResponse.json(
-        { message: 'Noto‘g‘ri login yoki parol' },
-        { status: 401 }
-      );
-    }
-    // 10) userni solishtiramiz
-    if (user.auth?._id.toString() !== auth._id.toString()) {
-      return NextResponse.json(
-        { message: 'Sizga kirish huquqi berilmagan!' },
-        { status: 401 }
-      );
-    }
-
-    // 8) Parol tekshirish
-    const isValid = await bcrypt.compare(cleanPassword, auth.password);
-    if (!isValid) {
-      return NextResponse.json(
-        { message: 'Noto‘g‘ri login yoki parol' },
-        { status: 401 }
+        {
+          message: PENDING_ACCESS_MESSAGE,
+          code: 'PENDING_APPROVAL',
+        },
+        { status: 403 }
       );
     }
 
-    // 10) JWT yaratish
     const payload: JWTPayload = {
-      userId: user._id.toString(),
+      userId: user.id,
       department: job.department,
+      role: role.role,
+      accessApproved: true,
     };
 
     const ref_token = jwt.sign(payload, JWT_SECRET_REFRESH, {
       expiresIn: JWT_REFRESH_DAY,
     });
 
-    return NextResponse.json(
-      {
-        ref_token,
-      },
-      { status: 200 }
-    );
+    if (role.role === 'superAdmin') {
+      const saToken = signSuperAdminToken(user.id);
+      const response = NextResponse.json(
+        { ref_token, token: saToken, role: role.role },
+        { status: 200 }
+      );
+      return setSuperAdminCookie(response, saToken);
+    }
+
+    return NextResponse.json({ ref_token, role: role.role }, { status: 200 });
   } catch (error) {
-    console.error('User topishda xatolik:', error);
+    console.error('Admin login xatosi:', error);
     return NextResponse.json(
       { message: 'Foydalanuvchini olishda xatolik' },
       { status: 500 }

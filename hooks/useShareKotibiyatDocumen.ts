@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { DocumentType } from '@/types/document';
+import { useEffect, useState } from 'react';
 
 interface ApiResponse {
   message: string;
@@ -18,7 +18,7 @@ export function useGetSharedDocuments() {
       setLoading(true);
       const token = localStorage.getItem('token');
 
-      const res = await fetch('/api/documents/share-admin-documents', {
+      const res = await fetch('/api/documents/registration-documents', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -26,7 +26,7 @@ export function useGetSharedDocuments() {
 
       const data: ApiResponse = await res.json();
       if (!res.ok) {
-        toast.error(data.message || 'Xatolik yuz berdi');
+        setDocuments([]);
         return;
       }
       setDocuments(data.documents || []);

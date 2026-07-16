@@ -16,11 +16,11 @@ const IlovaModal = ({ value = [], onChange }: IlovaModalProps) => {
   const { documents } = useDocuments();
 
   return (
-    <div className="space-y-4 bg-white rounded-lg">
+    <div>
       <Select
-        value={value[0]} // agar faqat bitta tanlansa
+        value={value[0]}
         onValueChange={(id) => onChange(id ? [id] : [])}>
-        <SelectTrigger className="w-[200px] p-2 text-center">
+        <SelectTrigger className="h-8 w-[180px] border-0 bg-transparent text-slate-200 shadow-none focus:ring-0">
           <SelectValue placeholder="Ilovani tanlang" />
         </SelectTrigger>
         <SelectContent className="bg-white">

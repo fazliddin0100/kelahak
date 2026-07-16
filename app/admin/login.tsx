@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import dxxlogo from '@/public/dxxLogo.png';
 import { decodeToken } from '@/lib/jwt';
+import { PENDING_ACCESS_MESSAGE } from '@/lib/authConstants';
 
 const formSchema = z.object({
   login: z.string().min(1, 'Username majburiy'),
@@ -53,19 +54,27 @@ export default function Login() {
         localStorage.setItem('ref_token', data.ref_token);
         // eslint-disable-next-line react-hooks/immutability
         document.cookie = `ref_token=${data.ref_token}; path=/; SameSite=Lax;`;
+        if (data.token) {
+          localStorage.setItem('sa_token', data.token);
+          localStorage.setItem('token', data.token);
+        }
         toast.success('Xush kelibsiz!');
         const decode = decodeToken(data.ref_token);
-        if (decode.department === 'kotibiyat') {
-          setTimeout(() => {
-            router.push('/admin/navbar');
-          }, 200);
+        if (data.role === 'superAdmin') {
+          setTimeout(() => router.push('/superadmin/panel'), 200);
+        } else if (
+          data.role === 'admin' ||
+          decode.department === 'kotibiyat'
+        ) {
+          setTimeout(() => router.push('/admin/navbar'), 200);
         } else {
-          setTimeout(() => {
-            router.push('/sign-in');
-          }, 200);
+          setTimeout(() => router.push('/sign-in'), 200);
         }
       } else {
-        const errorMsg = data.message || 'Xatolik yuz berdi';
+        const errorMsg =
+          data.code === 'PENDING_APPROVAL' ?
+            data.message || PENDING_ACCESS_MESSAGE
+          : data.message || 'Xatolik yuz berdi';
         setResponseMessage(errorMsg);
         toast.error(errorMsg);
       }

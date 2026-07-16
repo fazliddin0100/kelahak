@@ -1,70 +1,174 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FaFilePdf } from 'react-icons/fa6';
-import { mockDocuments } from '@/data/mockDocuments';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import type { DocumentType } from '@/types/document';
+import { ExternalLink, FileText, Loader2, Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 
 interface Props {
-  documentId?: string | null;
+  /** Nomeklatura (ish jild) identifikatori */
+  nomeklaturaId?: string | null;
 }
 
-const FileArxiv: React.FC<Props> = ({ documentId }) => {
+const thClass =
+  'whitespace-nowrap px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500';
+const tdClass = 'px-3 py-2.5 text-sm text-slate-700';
+
+function getAuthHeaders(): HeadersInit {
+  const token =
+    typeof window !== 'undefined' ?
+      localStorage.getItem('ref_token') || localStorage.getItem('token')
+    : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+const FileArxiv: React.FC<Props> = ({ nomeklaturaId }) => {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
+  const [documents, setDocuments] = useState<DocumentType[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const files = useMemo<DocumentType[]>(() => {
-    return documentId
-      ? mockDocuments.filter((doc) => doc._id === documentId)
-      : mockDocuments;
-  }, [documentId]);
+  const loadDocuments = useCallback(async () => {
+    if (!nomeklaturaId) {
+      setDocuments([]);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/documents/by-nomeklatura/${nomeklaturaId}`,
+        {
+          credentials: 'include',
+          headers: getAuthHeaders(),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Hujjatlar yuklanmadi');
+      }
+      setDocuments(Array.isArray(data.documents) ? data.documents : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Xatolik');
+      setDocuments([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [nomeklaturaId]);
 
-  const filteredFiles = files.filter((file) =>
-    file.title?.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => {
+    loadDocuments();
+  }, [loadDocuments]);
+
+  const filteredFiles = documents.filter((file) =>
+    (file.title ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  if (!nomeklaturaId) {
+    return (
+      <p className="py-8 text-center text-sm text-slate-500">
+        Ish jild tanlanmagan
+      </p>
+    );
+  }
+
   return (
-    <div className="w-full">
-      <Input
-        placeholder="Hujjat nomidan qidirish..."
-        className="mb-3"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
+    <div className="w-full space-y-4">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <Input
+          placeholder="Hujjat nomidan qidirish..."
+          className="border-slate-200 bg-slate-50/80 pl-10 focus-visible:ring-sky-500/20"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
 
-      <Card className="divide-y">
-        {filteredFiles.length === 0 ? (
-          <div className="p-4 text-center text-gray-500">
-            Hujjat topilmadi...
+      <div className="overflow-hidden rounded-xl border border-slate-200">
+        {loading ?
+          <div className="flex justify-center py-12">
+            <Loader2 className="size-7 animate-spin text-sky-500" />
           </div>
-        ) : (
-          filteredFiles.map((file) => (
-            <div
-              key={String(file._id)}
-              className="grid grid-cols-12 items-center p-3 hover:bg-gray-50 transition">
-              <div className="col-span-1 text-center">
-                {file.registrationIndex}
-              </div>
+        : error ?
+          <div className="py-12 text-center text-sm text-red-500">{error}</div>
+        : filteredFiles.length === 0 ?
+          <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+            <FileText className="size-10 text-slate-300" />
+            <p className="text-sm text-slate-500">
+              Ushbu ish jildda hujjat yo‘q
+            </p>
+            <p className="text-xs text-slate-400">
+              «Ish jildga yuborish» orqali biriktirilgan hujjatlar shu yerda
+              ko‘rinadi
+            </p>
+          </div>
+        : <Table>
+            <TableHeader>
+              <TableRow className="border-slate-200 bg-slate-50/90 hover:bg-slate-50/90">
+                <TableHead className={`${thClass} w-14 text-center`}>№</TableHead>
+                <TableHead className={thClass}>Hujjat nomi</TableHead>
+                <TableHead className={thClass}>Muallif</TableHead>
+                <TableHead className={`${thClass} text-center`}>Holat</TableHead>
+                <TableHead className={`${thClass} text-center`}>Amal</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredFiles.map((file, index) => (
+                <TableRow
+                  key={String(file._id)}
+                  className="border-slate-100 transition-colors hover:bg-sky-50/40">
+                  <TableCell className={`${tdClass} text-center font-medium`}>
+                    {file.registrationIndex ?? index + 1}
+                  </TableCell>
+                  <TableCell className={tdClass}>
+                    <div className="flex items-center gap-2">
+                      <FileText className="size-4 shrink-0 text-red-500" />
+                      <span className="font-medium text-slate-800">
+                        {file.title ?? '—'}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className={tdClass}>
+                    {file.author?.fullName || '—'}
+                  </TableCell>
+                  <TableCell className={`${tdClass} text-center`}>
+                    <span className="inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800 ring-1 ring-indigo-200 ring-inset">
+                      ish jildda
+                    </span>
+                  </TableCell>
+                  <TableCell className={`${tdClass} text-center`}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1 border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                      onClick={() =>
+                        router.push(`/document-open/${file._id}`)
+                      }>
+                      <ExternalLink className="size-3.5" />
+                      Ochish
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        }
+      </div>
 
-              <div className="col-span-1 text-center">
-                <FaFilePdf size={22} className="text-red-600 mx-auto" />
-              </div>
-
-              <div className="col-span-6">{file.title}</div>
-
-              <div className="col-span-2 text-center">
-                {file.author?.fullName}
-              </div>
-
-              <div className="col-span-2 flex justify-center">
-                <Button variant="outline">Ochish</Button>
-              </div>
-            </div>
-          ))
-        )}
-      </Card>
+      <p className="text-xs text-slate-400">
+        Jami: {filteredFiles.length} ta hujjat
+      </p>
     </div>
   );
 };

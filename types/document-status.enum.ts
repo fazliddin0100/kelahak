@@ -3,6 +3,8 @@ export enum DocumentStatus {
     CREATED = "created", // Tizimda yaratilgan, lekin hali boshqa jarayonga o‘tmagan
     SIGNED = "signed", // Muallif yoki mas'ul tomonidan imzolangan
     REGISTERED = "registered", // Rasmiy tarzda ro‘yxatga olingan hujjat
+    ACCEPTED = "qabul_qilindi", // Egasi ro‘yxatga olingan nusxani qabul qilgan
+    IN_WORK_FILE = "ishjildda", // Egasi ish jildga (nomeklaturaga) biriktirgan
     APPROVED = "imzolandi", // Yuqori bosqich tomonidan tasdiqlangan yoki imzolangan
     REJECTED = "rad etildi", // Hujjat rad etilgan yoki qabul qilinmagan
     ARCHIVED = "arxivlangan", // Ish jildiga yakunlangan, hujjat arxivga topshirilgan
@@ -29,6 +31,8 @@ export const DocumentStatusValues = [
     "created",
     "signed",
     "registered",
+    "qabul_qilindi",
+    "ishjildda",
     "imzolandi",
     "rad etildi",
     "arxivlangan",

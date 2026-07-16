@@ -1,17 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useRouter } from 'next/navigation';
-import { CircleUser, Loader2, LogOut, ShieldUser } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { CircleUser, Loader2, LogOut, ShieldUser } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 
 interface UserData {
@@ -20,6 +20,7 @@ interface UserData {
   sName: string;
   province: string;
   isUserTrue?: boolean;
+  role?: string;
 }
 
 export default function UserProfile() {
@@ -29,12 +30,9 @@ export default function UserProfile() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        // ✅ Endi token kerak emas — middleware bizga userni tekshiradi
         const res = await axios.get('/api/something', {
           withCredentials: true,
         });
-
-        // Backendda biz personal qaytarganmiz
         setData(res.data.person);
       } catch {
         router.push('/sign-in');

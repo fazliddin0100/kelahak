@@ -1,36 +1,26 @@
-// app/api/nameklatura/get-bolim/route.ts
+import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
+import connectToDatabase, { prisma } from '@/lib/prisma';
+import { serializeBolim } from '@/lib/db/nomeklatura';
 import { type NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import User from '@/models/User';
-import Personal from '@/models/Personal';
-import { getUserId } from '@/lib/userid';
-import { BolimModel } from '@/models/bolim';
 
 export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
 
-    // 1. Current userni olish
-    const userId = getUserId(request);
-    const user = await User.findById(userId);
-    if (!user) {
-      return NextResponse.json(
-        { message: 'Foydalanuvchi topilmadi' },
-        { status: 404 }
-      );
-    }
+    const auth = await requireApiAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { userId, role, user, department } = auth;
 
-    // 2. Personal check
-    const personal = await Personal.findById(user.personal);
-    if (!personal) {
+    if (!user.personal) {
       return NextResponse.json(
         { message: "Foydalanuvchining ma'lumoti topilmadi" },
         { status: 400 }
       );
     }
 
-    // 3. Province bo‘yicha bo‘limlarni olish
-    const bolimlar = await BolimModel.find({ province: personal.province });
+    const bolimlar = await prisma.bolim.findMany({
+      where: { province: user.personal.province },
+    });
 
     if (!bolimlar || bolimlar.length === 0) {
       return NextResponse.json(
@@ -40,13 +30,13 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { message: 'Bo‘limlar muvaffaqiyatli olindi', bolimlar },
+      { message: 'OK', bolimlar: bolimlar.map(serializeBolim) },
       { status: 200 }
     );
-  } catch (error: any) {
-    // console.error('Bo‘limlarni olishda xato:', error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { message: 'Serverda xatolik', error: error.message },
+      { message: 'Serverda xatolik', error: message },
       { status: 500 }
     );
   }

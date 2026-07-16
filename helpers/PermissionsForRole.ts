@@ -1,43 +1,48 @@
-export const getPermissionsForRole = (roleName: string): string[] => {
-    const ALL_PERMISSIONS = [
-        "create_document", // yaratish
-        "edit_document", // ozgartirish
-        "create_user", // yaratish
-        "edit_user", // ozgartirish
-        "delete_user", // ochirish
-        "assign_roles", //rollarni almashtirish
-        "view_document", // korish
-        "view_all_provinces", // barchasini korish
-        "register_document", // royxatdan otqazish
-        "sign_document", // imzolash
-        "archive_document", // arxivlash
-        "print_document", // chop etish
-    ];
+import { COMMANDER_ROLES, type DbRole } from '@/lib/roles';
 
-    switch (roleName) {
-        case "admin":
-            return ALL_PERMISSIONS; // barcha ruxsatlar
-        case "superAdmin":
-            return ALL_PERMISSIONS;
-        case "commander":
-        case "deputyCommander":
-            return [
-                "create_document", // yaratish
-                "edit_document", // ozgartirish
-                "sign_document", // imzolash
-                "send_document", // yuborish
-                "archive_document", // arxivlash
-                "view_document", // korish
-            ];
-        default:
-            return [
-                "create_document", // yaratish
-                "edit_document", // ozgartirish
-                "sign_document", // imzolash
-                "send_document", // yuborish
-                "archive_document", // arxivlash
-                "view_document", // korish
-                "delete_user", // ochirish
-            ];
-    }
+const ALL_PERMISSIONS = [
+  'create_document',
+  'edit_document',
+  'create_user',
+  'edit_user',
+  'delete_user',
+  'assign_roles',
+  'view_document',
+  'view_all_provinces',
+  'register_document',
+  'sign_document',
+  'archive_document',
+  'print_document',
+] as const;
+
+const COMMANDER_PERMISSIONS = [
+  'create_document',
+  'edit_document',
+  'sign_document',
+  'send_document',
+  'archive_document',
+  'view_document',
+] as const;
+
+/** Oddiy foydalanuvchi ruxsatlari */
+const USER_PERMISSIONS = [
+  'create_document',
+  'edit_document',
+  'sign_document',
+  'send_document',
+  'view_document',
+] as const;
+
+export const getPermissionsForRole = (roleName: string): string[] => {
+  const role = roleName as DbRole;
+
+  if (role === 'admin' || role === 'superAdmin') {
+    return [...ALL_PERMISSIONS];
+  }
+
+  if ((COMMANDER_ROLES as readonly string[]).includes(role)) {
+    return [...COMMANDER_PERMISSIONS];
+  }
+
+  return [...USER_PERMISSIONS];
 };

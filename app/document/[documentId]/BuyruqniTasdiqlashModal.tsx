@@ -19,7 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import {useSessionsUsers} from "@/hooks/useSessionsUsers";
+import { useDocumentFormUsers } from '@/hooks/useDocumentFormUsers';
 import {IUserPopulated} from "@/types/user";
 
 interface Props {
@@ -37,13 +37,13 @@ interface Props {
 const BuyruqniTasdiqlashModal = ({open, onClose, onSave}: Props) => {
     const [senderId, setSenderId] = useState<string | undefined>(undefined);
     const [receiverIds, setReceiverIds] = useState<string[]>([]);
-    const {users, loading} = useSessionsUsers();
+    const { users, loading } = useDocumentFormUsers(open, 'organ');
 
     const userOptions = useMemo(
         () =>
             users.map((user) => ({
                 value: user.userId,
-                label: `${user.personal.name} ${user.personal.fName} ${user.personal.sName} (${user.job.position})`,
+                label: `${user.personal?.fName ?? ''} ${user.personal?.name ?? ''} ${user.personal?.sName ?? ''} (${user.job?.position ?? ''})`.trim(),
             })),
         [users]
     );
@@ -80,8 +80,8 @@ const BuyruqniTasdiqlashModal = ({open, onClose, onSave}: Props) => {
                     </p>
                 ) : userOptions.length === 0 ? (
                     <p className="text-sm text-red-600 mt-4">
-                        Foydalanuvchilar ma’lumotlari mavjud emas yoki noto‘g‘ri. Iltimos,
-                        qayta urinib ko‘ring.
+                        Foydalanuvchilar topilmadi. Sizning viloyat va organingizdagi boshqa
+                        xodimlar ro‘yxatdan o‘tgan va ruxsat olgan bo‘lishi kerak.
                     </p>
                 ) : (
                     <div className="space-y-6 mt-4">

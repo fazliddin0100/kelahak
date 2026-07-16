@@ -17,9 +17,11 @@ import axios from 'axios';
 const create = async ({
   title,
   content,
+  attachmentText = [],
 }: {
   title: string;
   content: string;
+  attachmentText?: string[];
 }) => {
   if (typeof window === 'undefined') throw new Error('Client-side only');
 
@@ -29,7 +31,7 @@ const create = async ({
   try {
     const response = await axios.post(
       '/api/documents',
-      { title, content },
+      { title, content, attachmentText },
       {
         headers: {
           'Content-Type': 'application/json',
@@ -48,7 +50,11 @@ const create = async ({
   }
 };
 
-export const TemplateGallery = () => {
+interface TemplateGalleryProps {
+  className?: string;
+}
+
+export const TemplateGallery = ({ className }: TemplateGalleryProps) => {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
 
@@ -69,17 +75,21 @@ export const TemplateGallery = () => {
   };
 
   return (
-    <div className="bg-[#F1F3F4] mt-[15px]">
-      <div className="max-w-7xl  mx-auto px-16 py-6 flex-col gap-y-4">
+    <div
+      className={cn(
+        'mt-[15px] bg-[#F1F3F4]',
+        className
+      )}>
+      <div className="mx-auto flex max-w-7xl flex-col gap-y-4 px-8 py-6 sm:px-12 lg:px-16">
         <Carousel>
           <CarouselContent className="ml-4">
             {templates.map((template) => (
               <CarouselItem
                 key={template.id}
-                className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6 2xl:basis-[14.285714%] pl-4">
+                className="basis-1/2 pl-4 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6 2xl:basis-[14.285714%]">
                 <div
                   className={cn(
-                    'aspect-3/4 flex flex-col gap-y-2.5',
+                    'flex aspect-3/4 flex-col gap-y-2.5',
                     isCreating && 'pointer-events-none opacity-50'
                   )}>
                   <button
@@ -91,13 +101,18 @@ export const TemplateGallery = () => {
                       backgroundPosition: 'center',
                       backgroundRepeat: 'no-repeat',
                     }}
-                    className="w-full h-full hover:border-blue-500 rounded-sm border hover:bg-blue-50 flex flex-col items-center justify-center gap-y-4 bg-white"
+                    className={cn(
+                      'group flex h-full w-full flex-col items-center justify-center gap-y-4 rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200',
+                      'hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md hover:shadow-sky-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+                    )}
                     aria-label={`Create new document from ${template.label} template`}>
-                    {isCreating && <span className="animate-spin">⏳</span>}
+                    {isCreating && (
+                      <span className="size-5 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
+                    )}
                   </button>
 
                   <p
-                    className="text-sm font-medium truncate text-center text-[18px]"
+                    className="truncate text-center text-sm font-medium capitalize text-slate-700 sm:text-base"
                     title={template.label}>
                     {template.label}
                   </p>
@@ -105,8 +120,8 @@ export const TemplateGallery = () => {
               </CarouselItem>
             ))}
           </CarouselContent>
-          <CarouselPrevious />
-          <CarouselNext />
+          <CarouselPrevious className="-left-2 border-slate-200 bg-white shadow-md hover:bg-slate-50" />
+          <CarouselNext className="-right-2 border-slate-200 bg-white shadow-md hover:bg-slate-50" />
         </Carousel>
       </div>
     </div>

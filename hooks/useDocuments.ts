@@ -1,32 +1,45 @@
 // hooks/useDocuments.ts
-import { useState, useEffect } from 'react';
+import { DocumentType } from '@/types/document';
+import { useCallback, useEffect, useState } from 'react';
 
-export const useDocuments = (userId?: string) => {
-  const [documents, setDocuments] = useState<any[]>([]);
+type UseDocumentsOptions = {
+  /** `owner` — faqat joriy foydalanuvchi yaratgan hujjatlar (kotibiyat Hujjat sahifasi) */
+  scope?: 'all' | 'owner';
+};
+
+export const useDocuments = (userId?: string, options?: UseDocumentsOptions) => {
+  const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchDocuments = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const params = new URLSearchParams();
+      if (userId) params.set('userId', userId);
+      if (options?.scope === 'owner') params.set('scope', 'owner');
+      const qs = params.toString();
+      const url = `/api/documents/get-documents-user${qs ? `?${qs}` : ''}`;
+
+      const token = localStorage.getItem('token');
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Hujjatlarni olishda xato');
+
+      const data = await res.json();
+      setDocuments(data.documents || data);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Xatolik');
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, options?.scope]);
+
   useEffect(() => {
-    const fetchDocuments = async () => {
-      try {
-        setLoading(true);
-        let url = '/api/documents/get-documents-user';
-        if (userId) url += `?userId=${userId}`;
-
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Hujjatlarni olishda xato');
-
-        const data = await res.json();
-        setDocuments(data.documents || data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchDocuments();
-  }, [userId]);
+  }, [fetchDocuments]);
 
-  return { documents, loading, error };
+  return { documents, loading, error, refetch: fetchDocuments };
 };

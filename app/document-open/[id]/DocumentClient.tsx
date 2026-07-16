@@ -1,44 +1,164 @@
 'use client';
 
+import DocumentViewStack from '@/components/DocumentViewStack';
 import { useDocumentById } from '@/hooks/useDocumentById';
-import DocumentRenderer from '@/components/DocumentRenderer';
-import DocumentOpenButtons from './open-doc-amallar';
+import { useRoleHook } from '@/hooks/useRoleHook';
+import { useTashkilot } from '@/hooks/useTashkilot';
+import { cn } from '@/lib/utils';
+import dxxlogo from '@/public/dxxLogo.png';
+import { DocumentStatus } from '@/types/document-status.enum';
+import {
+  AlertCircle,
+  ArrowLeft,
+  Eye,
+  FileText,
+  Loader2,
+} from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import {
+  DocumentOpenSidebar,
+  DocumentOpenToolbar,
+} from './open-doc-amallar';
+
+type Role = 'admin' | 'user' | 'commander' | null;
+
+const roleRoutes: Record<string, string> = {
+  admin: '/kotibiyat',
+  user: '/user',
+  commander: '/komandir',
+};
+
+const getHomeRoute = (role: Role): string => {
+  if (!role) return '/';
+  return roleRoutes[role] ?? '/';
+};
+
+const statusStyles: Record<string, string> = {
+  yangi: 'bg-sky-100 text-sky-700 ring-sky-200',
+  created: 'bg-sky-100 text-sky-700 ring-sky-200',
+  signed: 'bg-amber-100 text-amber-700 ring-amber-200',
+  registered: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
+  qabul_qilindi: 'bg-teal-100 text-teal-800 ring-teal-200',
+  ishjildda: 'bg-indigo-100 text-indigo-800 ring-indigo-200',
+  imzolandi: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
+  'rad etildi': 'bg-red-100 text-red-700 ring-red-200',
+  arxivlangan: 'bg-slate-100 text-slate-600 ring-slate-200',
+  forwarded: 'bg-violet-100 text-violet-700 ring-violet-200',
+};
 
 export default function DocumentClient({ documentId }: { documentId: string }) {
+  const searchParams = useSearchParams();
+  const viewFrom = searchParams.get('from');
   const { document, error, refetch } = useDocumentById(documentId);
+  const { role, loading } = useRoleHook();
+  const { data: tashkilotData } = useTashkilot();
+
+  const currentRole: Role = Array.isArray(role) ? role[0] : role;
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="rounded-2xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
+          <Loader2 className="mx-auto mb-4 size-10 animate-spin text-sky-500" />
+          <p className="text-sm font-medium text-slate-600">Yuklanmoqda...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
-      <div className="p-10 bg-gray-100 min-h-screen flex flex-col items-center justify-center gap-4">
-        <div className="text-red-600">Xato: {error}</div>
-        <button
-          onClick={() => refetch()}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-          Qayta yuklash
-        </button>
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4">
+        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm">
+          <AlertCircle className="size-10 text-red-500" />
+          <p className="text-base font-semibold text-red-600">{error}</p>
+          <Link
+            href={getHomeRoute(currentRole)}
+            className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm text-white hover:bg-sky-500">
+            <ArrowLeft className="size-4" />
+            Bosh sahifa
+          </Link>
+        </div>
       </div>
     );
   }
 
   if (!document) {
     return (
-      <div className="p-10 bg-gray-100 min-h-screen flex items-center justify-center">
-        <div>Hujjat topilmadi</div>
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="rounded-2xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
+          <FileText className="mx-auto mb-3 size-10 text-slate-400" />
+          <p className="font-medium text-slate-600">Hujjat topilmadi</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-10 bg-gray-100 min-h-screen">
-      <div
-        className={
-          'w-full pr-[120px] flex items-center justify-end gap-4 fixed z-100'
-        }>
+    <div className="flex h-screen flex-col overflow-hidden bg-white">
+      <header className="shrink-0 border-b border-slate-700/60 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 shadow-lg">
+        <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/5 ring-1 ring-white/10">
+              <Image
+                src={dxxlogo}
+                alt="logo"
+                width={36}
+                height={36}
+                className="image_navbar360 rounded-sm object-contain"
+              />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-white">
+                {tashkilotData?.organ ?
+                  tashkilotData.organ.charAt(0).toUpperCase() +
+                  tashkilotData.organ.slice(1)
+                : 'Hujjat ko‘rish'}
+              </p>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                <p className="flex items-center gap-1.5 truncate text-xs text-slate-400">
+                  <Eye className="size-3.5 shrink-0" />
+                  {document.title || 'Hujjat'}
+                </p>
+                {document.status && (
+                  <span
+                    className={cn(
+                      'inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset',
+                      statusStyles[document.status] ??
+                        'bg-slate-100 text-slate-600 ring-slate-200'
+                    )}>
+                    {document.status}
+                  </span>
+                )}
+                {document.grif && (
+                  <span className="text-[10px] text-slate-500">
+                    Grif: {document.grif}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
 
-        <DocumentOpenButtons document={document} />
-      </div>
-      <div className="max-w-[210mm] min-h-[297mm] mx-auto">
-        <DocumentRenderer document={document} />
+          <DocumentOpenToolbar
+            document={document}
+            onRefresh={refetch}
+            viewFrom={viewFrom}
+          />
+        </div>
+      </header>
+
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        <main className="min-h-0 flex-1 overflow-auto bg-white">
+          <div className="flex justify-center px-4 py-8 sm:px-8">
+            <DocumentViewStack document={document} />
+          </div>
+        </main>
+
+        <div className="shrink-0 lg:h-full">
+          <DocumentOpenSidebar document={document} onRefresh={refetch} />
+        </div>
       </div>
     </div>
   );

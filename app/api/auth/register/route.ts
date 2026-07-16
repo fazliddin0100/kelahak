@@ -1,21 +1,18 @@
 // app/api/register/route.ts
-import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import validator from 'validator';
+import { NextRequest, NextResponse } from 'next/server';
 import os from 'os';
+import validator from 'validator';
+import type { DbRole } from '@prisma/client';
 
-// Modellar
-import Personal from '@/models/Personal';
-import Auth from '@/models/Auth';
-import Job from '@/models/Job';
-import User from '@/models/User';
-import Role from '@/models/Role';
-import Device from '@/models/Device';
-
-// Helper funksiyalar
-import { getPermissionsForRole } from '@/helpers/PermissionsForRole';
-import connectToDatabase from '@/lib/mongodb';
-import { detectRole } from '@/helpers/detectRole';
+import { commanderExistsInUnit } from '@/lib/commanderSlot';
+import { createDbId } from '@/lib/db/document';
+import { authLoginExists } from '@/lib/db/user';
+import connectToDatabase, { prisma } from '@/lib/prisma';
+import { normalizeRoleForDb } from '@/lib/roles';
+import { roleBypassesApproval } from '@/lib/userAccess';
+import { detectRole } from '../../../../helpers/detectRole';
+import { getPermissionsForRole } from '../../../../helpers/PermissionsForRole';
 
 interface UserRequest {
   fName: string;
@@ -103,105 +100,155 @@ export async function POST(request: NextRequest) {
     }
 
     // Login unique
-    const existingAuth = await Auth.findOne({ login: cleanLogin });
-    if (existingAuth) {
-      return NextResponse.json({ message: 'Bu login band' }, { status: 409 });
-    }
-
-    // ROLE ANIQLASH – ENG MUHIM QISM!
-    // position va departmentni birlashtirib qidirdik → hech qachon o‘tib ketmaydi
-    const searchText = `${position} ${department}`.trim();
-    const autoRole = detectRole(searchText);
-
-    // Debug log (keyin o‘chirib qo‘yishingiz mumkin)
-    console.log('Rol aniqlash uchun matn:', searchText);
-    console.log('Aniqlangan rol:', autoRole);
-
-    // Role yaratish
-    const permissions = getPermissionsForRole(autoRole);
-    const role = await Role.create({
-      role: autoRole,
-      province: validator.trim(province),
-      permissions,
-    });
-
-    // Parolni hash qilish
-    const hashedPassword = await bcrypt.hash(cleanPassword, 10);
-
-    // Personal ma'lumotlari
-    const personal = await Personal.create({
-      name: validator.trim(name),
-      fName: validator.trim(fName),
-      sName: validator.trim(sName),
-      province: validator.trim(province),
-    });
-
-    // Auth (login/parol)
-    const auth = await Auth.create({
-      login: cleanLogin,
-      password: hashedPassword,
-    });
-
-    // Job (lavozim, bo‘lim va h.k.)
-    const job = await Job.create({
-      position: validator.trim(position),
-      organ: validator.trim(organ),
-      department: validator.trim(department),
-      militaryRank: validator.trim(militaryRank),
-      role: role._id,
-      isUserTrue: false,
-    });
-
-    // DEVICE yaratish (ixtiyoriy)
-    let deviceId = null;
-    try {
-      const device = await Device.create({
-        mac: mac || '00:00:00:00:00:00',
-        ip:
-          ip ||
-          request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-          request.headers.get('x-real-ip') ||
-          '127.0.0.1',
-        hostname: hostname || os.hostname(),
-        note: note || 'Foydalanuvchi birinchi ro‘yxatdan o‘tgan qurilma',
-        lastSeen: new Date(),
-      });
-      deviceId = device._id;
-    } catch (e: any) {
-      console.error('Device yaratishda xato:', e.message);
-      // Xato bo‘lsa ham davom etamiz
-    }
-
-    // Asosiy User modelini yaratish
-    const user = await User.create({
-      personal: personal._id,
-      auth: auth._id,
-      job: job._id,
-      devices: deviceId ? [deviceId] : [],
-    });
-
-    // Agar device yaratilgan bo‘lsa, unga user ID qo‘shib qo‘yamiz
-    if (deviceId) {
-      await Device.updateOne(
-        { _id: deviceId },
-        { note: `Foydalanuvchi bilan bog‘landi: ${user._id}` }
+    if (await authLoginExists(cleanLogin)) {
+      return NextResponse.json(
+        { message: 'Bu foydalanuvchi tizimda mavjud' },
+        { status: 409 }
       );
     }
 
+    // ROLE ANIQLASH — lavozim, bo‘lim va unvon bo‘yicha
+    const cleanProvince = validator.trim(province);
+    const cleanDepartment = validator.trim(department);
+    const cleanPosition = validator.trim(position);
+    const cleanMilitaryRank = validator.trim(militaryRank);
+
+    const detectedRole = detectRole(
+      cleanPosition,
+      cleanDepartment,
+      cleanMilitaryRank
+    );
+    const autoRole = normalizeRoleForDb(detectedRole);
+    /** Kotibiyat (admin) va superAdmin darhol kiradi; user/komandir kutadi */
+    const isUserTrue = roleBypassesApproval(autoRole);
+
+    // Bir viloyat + bo‘limda faqat bitta `commander`
+    if (autoRole === 'commander') {
+      const taken = await commanderExistsInUnit(cleanProvince, cleanDepartment);
+      if (taken) {
+        return NextResponse.json(
+          {
+            message: `«${cleanProvince}» viloyati, «${cleanDepartment}» bo‘limida komandir allaqachon mavjud. Boshqa lavozim bilan ro‘yxatdan o‘ting yoki admin bilan bog‘laning.`,
+            code: 'COMMANDER_SLOT_TAKEN',
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    const permissions = getPermissionsForRole(autoRole);
+    const hashedPassword = await bcrypt.hash(cleanPassword, 10);
+
+    const userId = createDbId();
+    const roleId = createDbId();
+    const personalId = createDbId();
+    const authId = createDbId();
+    const jobId = createDbId();
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.create({ data: { id: userId } });
+
+      await tx.role.create({
+        data: {
+          id: roleId,
+          role: autoRole as DbRole,
+          province: cleanProvince,
+          permissions,
+        },
+      });
+
+      await tx.personal.create({
+        data: {
+          id: personalId,
+          userId,
+          name: validator.trim(name),
+          fName: validator.trim(fName),
+          sName: validator.trim(sName),
+          province: cleanProvince,
+        },
+      });
+
+      await tx.auth.create({
+        data: {
+          id: authId,
+          userId,
+          login: cleanLogin,
+          password: hashedPassword,
+        },
+      });
+
+      await tx.job.create({
+        data: {
+          id: jobId,
+          userId,
+          roleId,
+          position: cleanPosition,
+          organ: validator.trim(organ),
+          department: cleanDepartment,
+          militaryRank: cleanMilitaryRank,
+          isUserTrue,
+        },
+      });
+    });
+
+    // DEVICE yaratish (ixtiyoriy)
+    let deviceId: string | null = null;
+    try {
+      const deviceDbId = createDbId();
+      const deviceIp =
+        ip ||
+        request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+        request.headers.get('x-real-ip') ||
+        '127.0.0.1';
+
+      await prisma.device.create({
+        data: {
+          id: deviceDbId,
+          mac: mac || '00:00:00:00:00:00',
+          ip: deviceIp,
+          hostname: hostname || os.hostname(),
+          note: note || 'Foydalanuvchi birinchi ro‘yxatdan o‘tgan qurilma',
+          lastSeen: new Date(),
+        },
+      });
+
+      await prisma.userDevice.create({
+        data: {
+          userId,
+          deviceId: deviceDbId,
+        },
+      });
+
+      await prisma.device.update({
+        where: { id: deviceDbId },
+        data: { note: `Foydalanuvchi bilan bog‘landi: ${userId}` },
+      });
+
+      deviceId = deviceDbId;
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error('Device yaratishda xato:', message);
+    }
+
+    const successMessage =
+      autoRole === 'superAdmin' ?
+        'Muvaffaqiyatli ro‘yxatdan o‘tildi! SuperAdmin sifatida darhol tizimga kira olasiz.'
+      : 'Muvaffaqiyatli ro‘yxatdan o‘tildi! Tizimga kirish uchun ruxsat berilguncha kuting.';
+
     return NextResponse.json(
       {
-        message: 'Muvaffaqiyatli ro‘yxatdan o‘tildi!',
-        userId: user._id,
+        message: successMessage,
+        userId,
         role: autoRole,
+        detectedRole,
+        isUserTrue,
         deviceId,
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Server xatosi';
     console.error('Registration xatosi:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server xatosi' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message }, { status: 500 });
   }
 }

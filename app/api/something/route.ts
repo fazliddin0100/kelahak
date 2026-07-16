@@ -1,53 +1,24 @@
 // app/api/something/route.ts
-import {NextRequest, NextResponse} from "next/server";
-import {decodeToken} from "@/lib/jwt";
-import User from "@/models/User";
-import Personal from '@/models/Personal'
+import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
-    try {
-        // ✅ Cookie-dan token olish
-        const token = req.cookies.get("token")?.value;
+  try {
+    const auth = await requireApiAuth(req);
+    if (isAuthError(auth)) return auth;
+    const { user } = auth;
 
-        if (!token) {
-            return NextResponse.json(
-                {error: "Token topilmadi"},
-                {status: 401}
-            );
-        }
+    const person =
+      user.personal ?
+        { ...user.personal, _id: user.personal.id }
+      : null;
 
-        // ✅ Tokenni tekshirish
-        const decoded: any = decodeToken(token);
-
-        if (!decoded || !decoded.userId) {
-            return NextResponse.json(
-                {error: "Token yaroqsiz"},
-                {status: 403}
-            );
-        }
-
-        // ✅ Userni bazadan olish
-        const user = await User.findById(decoded.userId);
-
-        if (!user) {
-            return NextResponse.json(
-                {error: "Foydalanuvchi topilmadi"},
-                {status: 404}
-            );
-        }
-
-        // find person
-        const person = await Personal.findById(user.personal)
-
-        return NextResponse.json(
-            {person},
-            {status: 200}
-        );
-    } catch (err) {
-        console.log(err);
-        return NextResponse.json(
-            {error: "Tokenni tekshirishda xato"},
-            {status: 500}
-        );
-    }
+    return NextResponse.json({ person }, { status: 200 });
+  } catch (err) {
+    console.log(err);
+    return NextResponse.json(
+      { error: 'Tokenni tekshirishda xato' },
+      { status: 500 }
+    );
+  }
 }

@@ -5,38 +5,49 @@ import logo from '@/public/dxxLogo.png';
 
 interface QrCodeWithLogoProps {
   fullNames?: string;
+  size?: number;
+  logoSize?: number;
 }
 
-const QrCode = ({ fullNames }: QrCodeWithLogoProps): JSX.Element => {
-  // Convert array to string safely
+const QrCode = ({
+  fullNames,
+  size = 50,
+  logoSize,
+}: QrCodeWithLogoProps): JSX.Element => {
   const qrValue = fullNames || "Noma'lum";
+  const centerLogo = logoSize ?? Math.max(14, Math.round(size * 0.4));
 
   return (
-    <div className="relative w-full h-full">
+    <span
+      className="relative inline-block shrink-0"
+      style={{ width: size, height: size }}
+      title={qrValue}>
       <ReactQrCode
         value={qrValue}
-        size={50}
-        level="H" // Yuqori xato tuzatish darajasi
+        size={size}
+        level="H"
+        style={{ display: 'block', width: size, height: size }}
       />
-      {logo && (
-        <Image
-          src={logo}
-          alt={qrValue}
+      {logo ?
+        <span
+          className="pointer-events-none absolute left-1/2 top-1/2 flex items-center justify-center rounded bg-white p-px"
           style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            width: 20,
-            height: 20,
+            width: centerLogo + 4,
+            height: centerLogo + 4,
             transform: 'translate(-50%, -50%)',
-            borderRadius: '6px',
-            backgroundColor: 'white',
-            padding: '2px',
             zIndex: 10,
-          }}
-        />
-      )}
-    </div>
+          }}>
+          <Image
+            src={logo}
+            alt={qrValue}
+            width={centerLogo}
+            height={centerLogo}
+            className="object-contain"
+            style={{ width: centerLogo, height: centerLogo }}
+          />
+        </span>
+      : null}
+    </span>
   );
 };
 

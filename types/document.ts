@@ -65,6 +65,15 @@ export interface NomeklaturaDocument {
   __v?: number;
 }
 
+/** Populate qilingan ilova hujjati */
+export interface DocumentAttachmentRef {
+  _id?: string;
+  title?: string;
+  registrationIndex?: string | number;
+  ownerRegion?: string;
+  grif?: string;
+}
+
 // Hujjat tipi
 export interface DocumentType {
   _id: string;
@@ -72,9 +81,26 @@ export interface DocumentType {
   content?: string | object;
   grif?: string; // Maxfiylik darajasi
   copyNumber?: string[];
-  attachmentText?: string[]; // ilova matni
+  copyIndex?: number;
+  copyTotal?: number;
+  attachmentText?: Array<string | DocumentAttachmentRef>;
   status?: string;
   sharedWithAdmin?: boolean;
+  sentToCommander?: boolean;
+  sentToCommanderAt?: DateLike;
+  submittedToKotibiyat?: boolean;
+  submittedToKotibiyatAt?: DateLike;
+  createdByKotibiyat?: boolean;
+  ownerAccepted?: boolean;
+  ownerAcceptedAt?: DateLike;
+  ownerAcceptedBy?: {
+    userId?: ObjectIdLike;
+    fullName?: string;
+    militaryRank?: string;
+    position?: string;
+    hasSigned?: boolean;
+    signedAt?: DateLike;
+  };
   registrationIndex?: string | number;
   registrationIndexCopy?: string | number;
   receivedCopy?: string | number;
@@ -98,7 +124,29 @@ export interface DocumentType {
   bosSigned?: Sender;
   nomenclatureId?: NomeklaturaDocument;
   allowedUsers?: Array<IUserPopulated | ObjectIdLike>;
-  forwardedTo?: Array<IUserPopulated | ObjectIdLike>;
+  forwardedTo?: Array<
+    | IUserPopulated
+    | ObjectIdLike
+    | {
+        userId?: string | ObjectIdLike;
+        fullName?: string;
+        militaryRank?: string;
+        position?: string;
+        order?: number;
+        hasSigned?: boolean;
+      }
+  >;
+  forwardedComment?: string;
+  forwardedAt?: DateLike;
+  forwardedSigner?: {
+    userId?: ObjectIdLike;
+    fullName?: string;
+    militaryRank?: string;
+    position?: string;
+    hasSigned?: boolean;
+    signedAt?: DateLike;
+  };
+  currentViewIndex?: number;
 
   pdfBuffer?: string;
   pdfPath?: string;

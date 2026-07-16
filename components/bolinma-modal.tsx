@@ -1,23 +1,28 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
-import { toast } from 'sonner';
 import axios from 'axios';
+import { GitBranch, Save } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import {
+  ModalBody,
+  ModalField,
+  ModalFooterBar,
+  ModalHeaderBlock,
+  ModalLoading,
+  modalContentFormClass,
+  modalFieldClass,
+  modalTriggerAccent,
+} from './modal-shared';
 
 interface BolinmaResponse {
   province: string;
@@ -29,6 +34,7 @@ export default function BolinmaModal() {
   const [data, setData] = useState<BolinmaResponse | null>(null);
   const [selectedOrgan, setSelectedOrgan] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -40,8 +46,7 @@ export default function BolinmaModal() {
           });
           setData(res.data);
         } catch {
-          toast.error('Bo;linma mavjud emas!');
-          // console.error(err);
+          toast.error("Bo'linma mavjud emas!");
         } finally {
           setLoading(false);
         }
@@ -52,70 +57,100 @@ export default function BolinmaModal() {
 
   const handleSave = async () => {
     if (!selectedOrgan) {
-      toast.error('Iltimos, organ tanlang');
+      toast.error('Iltimos, bo‘linmani tanlang');
       return;
     }
 
+    setSaving(true);
     try {
       await axios.post(
         '/api/nameklatura/reg-bolinma',
         { bolinma: selectedOrgan },
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
-      toast.success('Bolinma yaratildi');
+      toast.success('Bo‘linma qo‘shildi');
       setOpen(false);
       setSelectedOrgan('');
     } catch (err) {
-      toast.error('Saqlashda xatolik yuz berdi');
-      console.error(err);
+      const errorMessage =
+        axios.isAxiosError(err) && err.response?.data?.message ?
+          err.response.data.message
+        : 'Xatolik yuz berdi';
+      toast.error(errorMessage);
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <div className="ml-2">
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        Bolinma
+    <>
+      <Button
+        variant="outline"
+        className={modalTriggerAccent}
+        onClick={() => setOpen(true)}>
+        <GitBranch className="size-4" />
+        Bo‘linma
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Bolinma tanlash</DialogTitle>
-          </DialogHeader>
+        <DialogContent className={modalContentFormClass} showCloseButton>
+          <ModalHeaderBlock
+            icon={GitBranch}
+            title="Bo‘linma qo‘shish"
+            description="Tashkilot ichidagi bo‘linmani tanlash"
+            iconClassName="bg-sky-500/10 text-sky-600"
+          />
 
-          {loading && <p className="text-sm text-gray-500">Yuklanmoqda...</p>}
+          <ModalBody>
+            {loading ?
+              <ModalLoading />
+            : data ?
+              <>
+                <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm">
+                  <span className="text-slate-500">Viloyat: </span>
+                  <span className="font-semibold text-slate-800">
+                    {data.province}
+                  </span>
+                </div>
 
-          {!loading && data && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-700">
-                Viloyat: <span className="font-semibold">{data.province}</span>
+                <ModalField label="Bo‘linma">
+                  <Select onValueChange={setSelectedOrgan} value={selectedOrgan}>
+                    <SelectTrigger className={modalFieldClass}>
+                      <SelectValue placeholder="Bo‘linma tanlang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {data.departments.map((department, idx) => (
+                        <SelectItem key={idx} value={department}>
+                          {department}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </ModalField>
+              </>
+            : <p className="text-center text-sm text-slate-500">
+                Ma’lumot topilmadi
               </p>
+            }
+          </ModalBody>
 
-              <Select onValueChange={setSelectedOrgan} value={selectedOrgan}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Bolinma tanlang" />
-                </SelectTrigger>
-                <SelectContent>
-                  {data.departments.map((department, idx) => (
-                    <SelectItem key={idx} value={department}>
-                      {department}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setOpen(false)}>
-              Close
+          <ModalFooterBar>
+            <Button
+              variant="outline"
+              className="border-slate-200"
+              onClick={() => setOpen(false)}>
+              Yopish
             </Button>
-            <Button onClick={handleSave}>Saqlash</Button>
-          </DialogFooter>
+            <Button
+              className="gap-2 bg-sky-600 hover:bg-sky-700"
+              onClick={handleSave}
+              disabled={saving || !selectedOrgan}>
+              <Save className="size-4" />
+              {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+            </Button>
+          </ModalFooterBar>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

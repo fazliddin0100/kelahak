@@ -48,11 +48,12 @@ const ModalCountUser = () => {
         <DialogTrigger asChild>
           <Button
             variant="outline"
-            className="flex items-center gap-2 relative">
-            <FaUserTie className="text-lg" />
+            size="sm"
+            className="relative h-8 gap-1 border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100">
+            <FaUserTie className="text-sm" />
             Foydalanayotganlar
             <Badge
-              className="absolute -top-2 -right-2 rounded-full px-2 py-0 text-xs"
+              className="absolute -top-2 -right-2 size-5 justify-center rounded-full p-0 text-[10px]"
               variant="secondary">
               {users.length}
             </Badge>

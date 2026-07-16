@@ -1,13 +1,29 @@
 // app/api/documents/[id]/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import connectToDatabase from '@/lib/mongodb';
-import { DocumentModel } from '@/models/DocumentModal';
-import mongoose from 'mongoose';
+import { parseAttachmentTextIds } from '@/lib/parseAttachmentTextIds';
+import {
+  canUserEditDocument,
+  isDocumentCreator,
+} from '@/lib/documentEditRules';
 import { sanitizeHTML } from '@/lib/purify';
-import { getUserId } from '@/lib/userid';
-import User from '@/models/User';
-import Role from '@/models/Role';
-import Job from '@/models/Job';
+import {
+  findDocumentById,
+  findDocuments,
+  isValidDbId,
+  serializeDocumentForApi,
+  updateDocument,
+} from '@/lib/db/document';
+import { NextRequest, NextResponse } from 'next/server';
+
+type SignerInput = {
+  userId?: unknown;
+  fullName?: string;
+  militaryRank?: string;
+  position?: string;
+  hasSigned?: boolean;
+  signedAt?: Date;
+};
 
 export async function PUT(
   request: NextRequest,
@@ -17,31 +33,22 @@ export async function PUT(
     await connectToDatabase();
     const { id } = await params;
 
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ message: 'Noto‘g‘ri ID' }, { status: 400 });
+    if (!id || !isValidDbId(id)) {
+      return NextResponse.json({ message: "Noto'g'ri ID" }, { status: 400 });
     }
-    const userId = getUserId(request);
-    if (!userId) {
-      return NextResponse.json(
-        { message: 'Foydalanuvchi yo‘q' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireApiAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { userId, role, user, department } = auth;
 
-    // userni olish
-    const user = await User.findById(userId);
-    if (!user) {
-      return NextResponse.json(
-        { message: 'Foydalanuvchi topilmadi' },
-        { status: 404 }
-      );
-    }
-    // find jon and jon is role
-    const job = await Job.findById(user.job);
-    const role = await Role.findById(job?.role);
 
-    // MUHIM: owner ni populate qilish
-    const document = await DocumentModel.findById(id).populate('owner').exec();
+    const role = user.job?.role?.role ?? '';
+
+    const document = await findDocumentById(id, {
+      includeOwner: true,
+      includeAttachments: true,
+      includeAllowedUsers: true,
+      includeContent: true,
+    });
 
     if (!document) {
       return NextResponse.json(
@@ -50,35 +57,44 @@ export async function PUT(
       );
     }
 
-    // owner._id ni olish
-    const ownerId = document.owner?._id?.toString();
-    const isOwner = ownerId === userId;
-    const isAllowed = document.allowedUsers?.some(
-      (u: { toString: () => string }) => u.toString() === userId
-    );
+    const docForRules = serializeDocumentForApi(document, { populateOwner: true });
 
-    // if (!isOwner && !isAllowed) {
-    //   return NextResponse.json({ message: "Ruxsat yo'q" }, { status: 403 });
-    // }
+    if (!canUserEditDocument(docForRules, userId)) {
+      if (!isDocumentCreator(docForRules, userId)) {
+        return NextResponse.json(
+          { message: 'Faqat hujjat egasi tahrirlashi mumkin' },
+          { status: 403 }
+        );
+      }
+      return NextResponse.json(
+        {
+          message: "Hujjat ro'yxatga olingan -- tahrirlash mumkin emas",
+        },
+        { status: 403 }
+      );
+    }
 
-    // Body
     const body = await request.json();
 
-    // Update fields
-    document.content =
-      typeof body.content === 'string'
-        ? sanitizeHTML(body.content)
-        : body.content;
-    document.grif = body.grif || '';
-    document.copyNumber = Array.isArray(body.copyNumber) ? body.copyNumber : [];
-    document.title = body.title || document.title;
+    const updatePayload: Parameters<typeof updateDocument>[1] = {
+      grif: body.grif || '',
+      copyNumber: Array.isArray(body.copyNumber) ? body.copyNumber : [],
+      title: body.title || document.title || undefined,
+      content:
+        typeof body.content === 'string' ?
+          sanitizeHTML(body.content)
+        : body.content,
+    };
 
-    // Signer info
+    if (body.attachmentText !== undefined) {
+      updatePayload.attachmentIds = parseAttachmentTextIds(body.attachmentText);
+    }
+
     if (
       body.signerInfo?.userId &&
-      mongoose.Types.ObjectId.isValid(body.signerInfo.userId)
+      isValidDbId(String(body.signerInfo.userId))
     ) {
-      document.bosSigned = {
+      updatePayload.bosSigned = {
         userId: body.signerInfo.userId,
         fullName: body.signerInfo.fullName,
         militaryRank: body.signerInfo.militaryRank || '',
@@ -88,44 +104,21 @@ export async function PUT(
       };
     }
 
-    // Approvers
     if (Array.isArray(body.signerInfo?.approvers)) {
-      document.approvers = body.signerInfo.approvers
-        .filter(
-          (a: {
-            userId:
-              | string
-              | number
-              | mongoose.mongo.BSON.ObjectId
-              | mongoose.mongo.BSON.ObjectIdLike
-              | Uint8Array<ArrayBufferLike>;
-          }) => a.userId && mongoose.Types.ObjectId.isValid(a.userId)
-        )
-        .map(
-          (a: {
-            userId: any;
-            fullName: any;
-            militaryRank: any;
-            position: any;
-            hasSigned: any;
-            signedAt: any;
-          }) => ({
-            userId: a.userId,
-            fullName: a.fullName,
-            militaryRank: a.militaryRank || '',
-            position: a.position || '',
-            hasSigned: a.hasSigned || false,
-            signedAt: a.signedAt || undefined,
-          })
-        );
+      updatePayload.approvers = (body.signerInfo.approvers as SignerInput[])
+        .filter((a) => a.userId && isValidDbId(String(a.userId)))
+        .map((a) => ({
+          userId: a.userId,
+          fullName: a.fullName,
+          militaryRank: a.militaryRank || '',
+          position: a.position || '',
+          hasSigned: a.hasSigned || false,
+          signedAt: a.signedAt || undefined,
+        }));
     }
 
-    // Sender & Receiver
-    if (
-      body.sender?.userId &&
-      mongoose.Types.ObjectId.isValid(body.sender.userId)
-    ) {
-      document.sender = {
+    if (body.sender?.userId && isValidDbId(String(body.sender.userId))) {
+      updatePayload.sender = {
         userId: body.sender.userId,
         fullName: body.sender.fullName,
         militaryRank: body.sender.militaryRank || '',
@@ -135,38 +128,18 @@ export async function PUT(
     }
 
     if (Array.isArray(body.receiver)) {
-      document.receiver = body.receiver
-        .filter(
-          (r: {
-            userId:
-              | string
-              | number
-              | mongoose.mongo.BSON.ObjectId
-              | mongoose.mongo.BSON.ObjectIdLike
-              | Uint8Array<ArrayBufferLike>;
-          }) => r.userId && mongoose.Types.ObjectId.isValid(r.userId)
-        )
-        .map(
-          (r: {
-            userId: any;
-            fullName: any;
-            militaryRank: any;
-            position: any;
-          }) => ({
-            userId: r.userId,
-            fullName: r.fullName,
-            militaryRank: r.militaryRank || '',
-            position: r.position || '',
-          })
-        );
+      updatePayload.receiver = (body.receiver as SignerInput[])
+        .filter((r) => r.userId && isValidDbId(String(r.userId)))
+        .map((r) => ({
+          userId: r.userId,
+          fullName: r.fullName,
+          militaryRank: r.militaryRank || '',
+          position: r.position || '',
+        }));
     }
 
-    // Author
-    if (
-      body.author?.userId &&
-      mongoose.Types.ObjectId.isValid(body.author.userId)
-    ) {
-      document.author = {
+    if (body.author?.userId && isValidDbId(String(body.author.userId))) {
+      updatePayload.author = {
         userId: body.author.userId,
         fullName: body.author.fullName,
         militaryRank: body.author.militaryRank || '',
@@ -175,22 +148,21 @@ export async function PUT(
       };
     }
 
-    document.updatedAt = new Date();
-    await document.save();
+    const updated = await updateDocument(id, updatePayload);
 
     return NextResponse.json(
       {
         message: "Hujjat o'zgartirildi",
-        user: role.role,
+        user: role,
+        attachmentText: (updated.attachments ?? []).map((a) => a.attachmentId),
       },
-      {
-        status: 200,
-      }
+      { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Nomaʼlum xato';
     console.error('Xato:', error);
     return NextResponse.json(
-      { message: 'Xatolik', error: error.message },
+      { message: 'Xatolik', error: message },
       { status: 500 }
     );
   }
@@ -204,44 +176,65 @@ export async function GET(
     await connectToDatabase();
     const { id } = await params;
 
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ message: 'Noto‘g‘ri ID' }, { status: 400 });
+    if (!id || !isValidDbId(id)) {
+      return NextResponse.json({ message: "Noto'g'ri ID" }, { status: 400 });
     }
 
-    const userId = getUserId(request);
+    const auth = await requireApiAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { userId, role, user, department } = auth;
 
-    if (!userId) {
-      return NextResponse.json(
-        { message: 'Foydalanuvchi yo‘q' },
-        { status: 401 }
-      );
-    }
 
-    // Hujjatni olish (ruxsat tekshiruvi yo‘q)
-    const populatedDoc = await DocumentModel.findById(id)
-      .populate('owner', 'fullName militaryRank position')
-      .populate('author.userId', 'fullName militaryRank position')
-      .populate('sender.userId', 'fullName militaryRank position')
-      .populate('receiver.userId', 'fullName militaryRank position')
-      .populate('bosSigned.userId', 'fullName militaryRank position')
-      .populate({
-        path: 'approvers.userId',
-        select: 'fullName militaryRank position',
-      })
-      .lean();
+    const document = await findDocumentById(id, {
+      includeContent: true,
+      includeAttachments: true,
+      includeOwner: true,
+      includeForwardedBy: true,
+    });
 
-    if (!populatedDoc) {
+    if (!document) {
       return NextResponse.json(
         { message: 'Hujjat topilmadi' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(populatedDoc, { status: 200 });
-  } catch (error: any) {
+    const attachmentIds = parseAttachmentTextIds(
+      (document.attachments ?? []).map((a) => a.attachmentId)
+    );
+
+    if (attachmentIds.length > 0) {
+      const attachmentDocs = await findDocuments({ id: { in: attachmentIds } });
+      const byId = new Map(attachmentDocs.map((d) => [d.id, d]));
+      document.attachments = attachmentIds.map((attachmentId) => ({
+        documentId: id,
+        attachmentId,
+        attachment: byId.get(attachmentId),
+      }));
+    }
+
+    const populatedDoc = serializeDocumentForApi(document, {
+      includeContent: true,
+      populateOwner: true,
+      populateAuthorUser: true,
+      populateSenderUser: true,
+      populateReceiverUsers: true,
+      populateBosSignedUser: true,
+      populateApproversUsers: true,
+      populateAttachments: true,
+      populateForwardedBy: true,
+    });
+
+    const { ensureSenderFromAuthor } = await import('@/lib/ensureDocumentParties');
+
+    return NextResponse.json(ensureSenderFromAuthor(populatedDoc), {
+      status: 200,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Nomaʼlum xato';
     console.error('Hujjatni olishda xato:', error);
     return NextResponse.json(
-      { message: 'Hujjatni olishda xatolik', error: error.message },
+      { message: 'Hujjatni olishda xatolik', error: message },
       { status: 500 }
     );
   }

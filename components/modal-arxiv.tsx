@@ -1,12 +1,9 @@
 'use client';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { FolderOpen } from 'lucide-react';
 import FileArxiv from './file-arxiv';
+import { ModalHeaderBlock, modalContentWideClass } from './modal-shared';
 
 interface Props {
   open: boolean;
@@ -16,12 +13,17 @@ interface Props {
 
 const ModalArxiv: React.FC<Props> = ({ open, onClose, id }) => {
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Ish jildidagi hujjatlar</DialogTitle>
-        </DialogHeader>
-        <FileArxiv documentId={id} />
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className={modalContentWideClass} showCloseButton>
+        <ModalHeaderBlock
+          icon={FolderOpen}
+          title="Ish jildidagi hujjatlar"
+          description="Tanlangan ish jild ichidagi hujjatlar ro‘yxati"
+          iconClassName="bg-amber-500/10 text-amber-600"
+        />
+        <div className="overflow-y-auto px-6 py-5">
+          <FileArxiv nomeklaturaId={id} />
+        </div>
       </DialogContent>
     </Dialog>
   );

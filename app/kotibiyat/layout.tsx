@@ -1,26 +1,20 @@
-"use client";
+'use client';
 
-import React, {useState} from "react";
+import { useState } from 'react';
 import NavbarKotibiyat from './(navbar)/navbar';
-import KotibiyatPage from "./page";
+import { KotibiyatPage } from './page';
 
-interface DocumentLayoutProps {
-    setPage?: (value: (((prevState: string) => string) | string)) => void
-    children: React.ReactNode;
-}
+const KotibiyatLayout = () => {
+  const [page, setPage] = useState('file');
 
-const KotibiyatLayout = ({children}: DocumentLayoutProps) => {
-    const [page, setPage] = useState<string>('');
-
-    return (
-        <div className='flex flex-col items-center justify-center font-bold text-[25px] gap-y-4'>
-            <div className="w-full">
-                <NavbarKotibiyat setPage={setPage} organ={""}/>
-            </div>
-                 <KotibiyatPage page={page}/>
-            {children}
-        </div>
-    );
+  return (
+    <div className="min-h-screen w-full bg-slate-50">
+      <NavbarKotibiyat setPage={setPage} organ="" />
+      <main className="w-full">
+        <KotibiyatPage page={page} />
+      </main>
+    </div>
+  );
 };
 
 export default KotibiyatLayout;

@@ -1,4 +1,4 @@
-import { RegistrationSchemaModel } from '@/models/registrationModal';
+import connectToDatabase, { prisma } from '@/lib/prisma';
 
 export const getRegistrationIndex = async (
   ownerRegion: string,
@@ -9,23 +9,44 @@ export const getRegistrationIndex = async (
   if (!year) throw new Error('Yil noto‘g‘ri');
   if (!documentId) throw new Error('Hujjat ID mavjud emas');
 
-  let record = await RegistrationSchemaModel.findOne({
-    ownerRegion,
-    year,
-    documentId,
+  await connectToDatabase();
+
+  const existingRecord = await prisma.registration.findUnique({
+    where: {
+      ownerRegion_year_documentId: { ownerRegion, year, documentId },
+    },
   });
 
-  if (!record) {
-    record = new RegistrationSchemaModel({
-      ownerRegion,
-      year,
-      registrationIndex: 1,
-      documentId,
-    });
-  } else {
-    record.registrationIndex += 1;
+  if (existingRecord) {
+    return existingRecord.registrationIndex;
   }
 
-  await record.save();
-  return record.registrationIndex;
+  const registrationIndex = await prisma.$transaction(async (tx) => {
+    const counter = await tx.registrationCounter.upsert({
+      where: { ownerRegion_year: { ownerRegion, year } },
+      create: {
+        id: crypto.randomUUID().replace(/-/g, '').slice(0, 24),
+        ownerRegion,
+        year,
+        seq: 1,
+      },
+      update: { seq: { increment: 1 } },
+    });
+
+    const index = counter.seq;
+
+    await tx.registration.create({
+      data: {
+        id: crypto.randomUUID().replace(/-/g, '').slice(0, 24),
+        ownerRegion,
+        year,
+        documentId,
+        registrationIndex: index,
+      },
+    });
+
+    return index;
+  });
+
+  return registrationIndex;
 };

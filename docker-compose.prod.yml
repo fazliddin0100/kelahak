@@ -1,0 +1,110 @@
+# Production deploy — barcha xizmatlar bir tarmoqda
+# Ishlatish: docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mysayt-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mysayt-prod
+
+  pgbouncer:
+    image: edoburu/pgbouncer:1.22.1-p0
+    container_name: mysayt-pgbouncer-prod
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 500
+      DEFAULT_POOL_SIZE: 50
+    networks:
+      - mysayt-prod
+
+  redis:
+    image: redis:7-alpine
+    container_name: mysayt-redis-prod
+    restart: always
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - mysayt-prod
+
+  migrate:
+    image: node:20-alpine
+    container_name: mysayt-migrate-prod
+    working_dir: /app
+    env_file: .env.production.local
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    volumes:
+      - ./prisma:/app/prisma
+      - ./node_modules/.prisma:/app/node_modules/.prisma
+      - ./node_modules/@prisma:/app/node_modules/@prisma
+    command: sh -c "npx prisma migrate deploy && psql $$DATABASE_URL -f prisma/sql/init-performance.sql || true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mysayt-prod
+    profiles:
+      - deploy
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mysayt-app-prod
+    restart: always
+    env_file: .env.production.local
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB}?pgbouncer=true&schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    ports:
+      - '${APP_PORT:-3001}:3001'
+    volumes:
+      - uploads_data:/app/public/uploads
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3001/api/superadmin/setup-status']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mysayt-prod
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
+  uploads_data:
+
+networks:
+  mysayt-prod:
+    driver: bridge

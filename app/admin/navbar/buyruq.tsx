@@ -1,12 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { FaFolder } from 'react-icons/fa';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import ModalFile from './(buyruq)/UploadFile';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { BookMarked, ExternalLink, FileText, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import ModalCountOrder from './(buyruq)/ModalCountUser';
 import ModalCountUserOrder from './(buyruq)/ModalCountUserOrder';
+import ModalFile from './(buyruq)/UploadFile';
+import { SectionShell, adminTdClass, adminThClass } from './shared';
 
 type FileItem = {
   _id: string;
@@ -19,15 +27,18 @@ type FileItem = {
 
 const Buyruq = () => {
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchFiles = async () => {
       try {
         const res = await fetch('/api/file/upload-get');
         const data = await res.json();
-        setFiles(data);
+        setFiles(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Fayllarni olishda xato:', err);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -35,69 +46,113 @@ const Buyruq = () => {
   }, []);
 
   return (
-    <div className="w-full mt-4 space-y-4">
-      {/* File upload + modal */}
-      <div className="flex justify-center items-center gap-4">
-        <ModalFile />
+    <SectionShell
+      title="Buyruqlar"
+      description="Buyruq hujjatlari va nusxa oluvchilar"
+      icon={BookMarked}
+      iconClassName="bg-sky-500/10 text-sky-600"
+      actions={<ModalFile />}>
+      <div className="p-5">
+        <p className="mb-4 text-sm text-slate-500">
+          Jami:{' '}
+          <span className="font-semibold text-slate-800">{files.length}</span> ta
+          buyruq
+        </p>
+
+        {loading ?
+          <div className="flex h-64 items-center justify-center">
+            <Loader2 className="size-8 animate-spin text-sky-500" />
+          </div>
+        : files.length === 0 ?
+          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-16">
+            <FileText className="size-10 text-slate-300" />
+            <p className="text-sm text-slate-500">Hozircha buyruq yuklanmagan</p>
+          </div>
+        : <div className="overflow-hidden rounded-xl border border-slate-200">
+            <div className="max-h-[calc(100vh-300px)] overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-slate-200 bg-slate-50/90 hover:bg-slate-50/90">
+                    <TableHead className={`${adminThClass} w-12 text-center`}>
+                      №
+                    </TableHead>
+                    <TableHead className={adminThClass}>Nomi</TableHead>
+                    <TableHead className={`${adminThClass} text-center`}>
+                      Maxfiylik
+                    </TableHead>
+                    <TableHead className={`${adminThClass} text-center`}>
+                      Raqam
+                    </TableHead>
+                    <TableHead className={`${adminThClass} text-center`}>
+                      Sana
+                    </TableHead>
+                    <TableHead className={`${adminThClass} text-center`}>
+                      Foydalanuvchilar
+                    </TableHead>
+                    <TableHead className={`${adminThClass} text-center`}>
+                      So‘rovlar
+                    </TableHead>
+                    <TableHead className={`${adminThClass} text-center`}>
+                      Amal
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {files.map((file, index) => (
+                    <TableRow
+                      key={file._id}
+                      className="border-slate-100 transition-colors hover:bg-sky-50/40">
+                      <TableCell
+                        className={`${adminTdClass} text-center font-medium`}>
+                        {index + 1}
+                      </TableCell>
+                      <TableCell className={`${adminTdClass} font-medium text-slate-800`}>
+                        <div className="flex items-center gap-2">
+                          <FileText className="size-4 shrink-0 text-sky-500" />
+                          {file.nomi}
+                        </div>
+                      </TableCell>
+                      <TableCell className={`${adminTdClass} text-center`}>
+                        <span className="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-200">
+                          {file.maxfiylik}
+                        </span>
+                      </TableCell>
+                      <TableCell className={`${adminTdClass} text-center`}>
+                        {file.raqami}
+                      </TableCell>
+                      <TableCell
+                        className={`${adminTdClass} text-center whitespace-nowrap`}>
+                        {file.sanasi}
+                      </TableCell>
+                      <TableCell className={`${adminTdClass} text-center`}>
+                        <ModalCountOrder />
+                      </TableCell>
+                      <TableCell className={`${adminTdClass} text-center`}>
+                        <ModalCountUserOrder />
+                      </TableCell>
+                      <TableCell className={`${adminTdClass} text-center`}>
+                        <a
+                          href={`/api/file/${file._id}`}
+                          target="_blank"
+                          rel="noopener noreferrer">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-1 border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100">
+                            <ExternalLink className="size-3.5" />
+                            Ochish
+                          </Button>
+                        </a>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        }
       </div>
-
-      {/* Files list */}
-      {files.map((file, index) => (
-        <Card key={file._id} className="shadow-md border rounded-lg">
-          <CardContent className="grid grid-cols-12 gap-4 items-center py-1">
-            {/* Index */}
-            <div className="col-span-1 text-center font-semibold">
-              {index + 1}
-            </div>
-
-            {/* Icon */}
-            <div className="col-span-1 flex justify-center">
-              <FaFolder size={22} className="text-blue-600" />
-            </div>
-
-            {/* Description */}
-            <div className="col-span-3 text-sm text-gray-700">{file.nomi}</div>
-
-            {/* Count */}
-            <div className="col-span-1 text-center text-gray-600">
-              {file.maxfiylik}
-            </div>
-
-            {/* Code */}
-            <div className="col-span-1 text-center text-gray-600">
-              {file.raqami}
-            </div>
-
-            {/* Date */}
-            <div className="col-span-1 text-center text-gray-600">
-              {file.sanasi}
-            </div>
-
-            {/* Orders modal */}
-            <div className="col-span-2 flex justify-center">
-              <ModalCountOrder />
-            </div>
-
-            {/* Users modal */}
-            <div className="col-span-1 flex justify-center">
-              <ModalCountUserOrder />
-            </div>
-
-            {/* Ochish tugmasi */}
-            <div className="col-span-1 flex justify-center">
-              <a
-                href={`/api/file/${file._id}`}
-                target="_blank"
-                rel="noopener noreferrer">
-                <Button variant="outline" size="sm">
-                  Ochish
-                </Button>
-              </a>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+    </SectionShell>
   );
 };
 

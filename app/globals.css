@@ -196,3 +196,100 @@ body {
   font-family: 'Times New Roman', serif !important;
   line-height: 1.6;
 }
+
+/* Hujjat tahriri — to‘liq ekran, A4 sahifa markazda */
+.document-editor-fullscreen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+}
+
+.document-editor-fullscreen .tox.tox-tinymce {
+  flex: 1 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.document-editor-fullscreen .tox-editor-container {
+  flex: 1 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.document-editor-fullscreen .tox-edit-area {
+  flex: 1 !important;
+  min-height: 0 !important;
+  background-color: #909090 !important;
+}
+
+.document-editor-fullscreen .tox-edit-area__iframe {
+  background-color: #909090 !important;
+}
+
+/* Komandir izohi — ko‘k qo‘lyozma uslubi */
+.commander-comment-hand {
+  font-family: 'Segoe Script', 'Brush Script MT', 'Snell Roundhand', cursive;
+  font-style: italic;
+  color: #1d4ed8;
+  font-size: 1.15rem;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+}
+
+/* Tahrirdan keyin ko‘rish — jadval ustunlari saqlanadi */
+.document-html-content table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  max-width: 100%;
+}
+
+.document-html-content table td,
+.document-html-content table th {
+  border: 1px solid #333;
+  padding: 4px 6px;
+  vertical-align: top;
+  word-wrap: break-word;
+}
+
+.document-html-content colgroup col {
+  width: auto;
+}
+
+/* Hujjat ko‘rish — faqat A4 sahifa, tashqi fon yo‘q */
+.document-view-a4 {
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Shablon tashqi o‘rash (min-h-screen, kulrang fon) ni o‘chirish */
+.document-view-a4 > div {
+  display: block !important;
+  min-height: auto !important;
+  height: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+.document-view-a4 > div > div {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 297mm !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+.document-view-a4 .document-container {
+  min-height: 297mm;
+}

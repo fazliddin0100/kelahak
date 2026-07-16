@@ -1,11 +1,7 @@
-// api/nameklatura/reg-bolinma
-
+import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
+import connectToDatabase, { prisma } from '@/lib/prisma';
+import { createDbId, serializeBolinma } from '@/lib/db/nomeklatura';
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import User from '@/models/User';
-import { BolinmaModel } from '@/models/bolinma';
-import Personal from '@/models/Personal';
-import { getUserId } from '@/lib/userid';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +10,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { bolinma } = body;
 
-    // 1. Validate
     if (!bolinma) {
       return NextResponse.json(
         { message: "Bo'linma field is required" },
@@ -22,46 +17,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Current userni olish
-    const userId = getUserId(request);
-    if (!userId) {
-      return NextResponse.json(
-        { message: 'User ID not found' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireApiAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { userId, role, user, department } = auth;
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return NextResponse.json({ message: 'User not found' }, { status: 404 });
-    }
-
-    // 3. Personal check
-    const personal = await Personal.findById(user.personal);
-    if (!personal) {
+        if (!user.personal) {
       return NextResponse.json(
         { message: "Foydalanuvchining ma'lumoti topilmadi" },
         { status: 400 }
       );
     }
-    // 5. Create new bolinma
-    const newBolinma = new BolinmaModel({
-      province: personal.province || 'Unknown',
-      bolinma,
+
+    const oldBolinma = await prisma.bolinma.findFirst({ where: { bolinma } });
+    if (oldBolinma) {
+      return NextResponse.json(
+        { message: "Bu bo'linma allaqachon mavjud" },
+        { status: 400 }
+      );
+    }
+
+    const newBolinma = await prisma.bolinma.create({
+      data: {
+        id: createDbId(),
+        province: user.personal.province || 'Unknown',
+        bolinma,
+      },
     });
-    await newBolinma.save();
 
     return NextResponse.json(
       {
         message: "Bo'linma muvaffaqiyatli yaratildi",
-        bolinma: newBolinma,
+        bolinma: serializeBolinma(newBolinma),
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Xatolik:', error);
     return NextResponse.json(
-      { message: 'Serverda xatolik', error: error.message },
+      { message: 'Serverda xatolik', error: message },
       { status: 500 }
     );
   }

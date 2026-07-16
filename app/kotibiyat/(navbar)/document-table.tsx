@@ -8,13 +8,32 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { FileText, Loader, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
+  Calendar,
+  FileText,
+  Hash,
+  Loader2,
+  Search,
+  Tag,
+} from 'lucide-react';
 import NotData from '@/utils/not-data';
 import AmallarButtons from './amallar';
 
+const statusStyles: Record<string, string> = {
+  yangi: 'bg-sky-100 text-sky-700 ring-sky-200',
+  created: 'bg-sky-100 text-sky-700 ring-sky-200',
+  signed: 'bg-amber-100 text-amber-700 ring-amber-200',
+  registered: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
+  imzolandi: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
+  'rad etildi': 'bg-red-100 text-red-700 ring-red-200',
+  arxivlangan: 'bg-slate-100 text-slate-600 ring-slate-200',
+  forwarded: 'bg-violet-100 text-violet-700 ring-violet-200',
+};
+
 const DocumentTable = ({ userId }: { userId?: string }) => {
   const [search, setSearch] = useState('');
-  const { documents, loading, error } = useDocuments(userId);
+  const { documents, loading, error } = useDocuments(userId, { scope: 'owner' });
 
   const filteredDocuments = documents.filter(
     (doc) =>
@@ -24,87 +43,121 @@ const DocumentTable = ({ userId }: { userId?: string }) => {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader className="animate-pulse h-8 w-8 text-indigo-500" />
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-sky-500" />
       </div>
     );
+
   if (error)
     return (
-      <div className="text-red-500 flex justify-center items-center h-[300px]">
+      <div className="flex h-64 items-center justify-center text-red-500">
         <NotData />
       </div>
     );
 
   return (
-    <div className="h-screen w-full bg-gray-100 flex flex-col p-6">
-      {/* Search Input */}
-      <div className="relative max-w-md mx-auto mb-4 w-full">
-        <div className="flex items-center bg-white rounded-lg shadow-sm border border-gray-200 transition-all duration-300 hover:shadow-md focus-within:ring-1 focus-within:ring-indigo-400">
-          {/* Icon */}
-          <Search className="ml-3 h-4 w-4 text-gray-400" />
-          {/* Input */}
+    <div className="flex flex-col gap-4 p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-slate-500">
+          Jami:{' '}
+          <span className="font-semibold text-slate-800">
+            {filteredDocuments.length}
+          </span>{' '}
+          ta hujjat
+        </p>
+        <div className="relative w-full max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Nomi yoki Reg/raqam bo'yicha qidirish..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 rounded-lg"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-500/20"
           />
         </div>
       </div>
 
-      {/* Table */}
-      <div className="flex-1 overflow-auto">
-        <div className="w-full h-full rounded-2xl border border-gray-200 shadow-sm bg-white">
-          <Table className="w-full h-full">
-            <TableHeader className="sticky top-0 bg-gray-50 z-10">
-              <TableRow>
-                <TableHead className="w-[60px] text-center border-r-2">
+      <div className="overflow-hidden rounded-xl border border-slate-200">
+        <div className="max-h-[calc(100vh-380px)] min-h-[320px] overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-slate-200 bg-slate-50/90 hover:bg-slate-50/90">
+                <TableHead className="w-14 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
                   №
                 </TableHead>
-                <TableHead className="w-[60px] text-center border-r-2">
-                  Icon
+                <TableHead className="w-14 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <FileText className="mx-auto size-4" />
                 </TableHead>
-                <TableHead className="w-[420px] border-r-2">Nomi</TableHead>
-                <TableHead className="border-r-2">Reg/Raqam</TableHead>
-                <TableHead className="border-r-2">Sana</TableHead>
-                <TableHead>Amal</TableHead>
+                <TableHead className="min-w-[220px] text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Nomi
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <span className="inline-flex items-center gap-1">
+                    <Hash className="size-3.5" /> Reg/Raqam
+                  </span>
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <span className="inline-flex items-center gap-1">
+                    <Calendar className="size-3.5" /> Sana
+                  </span>
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <span className="inline-flex items-center gap-1">
+                    <Tag className="size-3.5" /> Holat
+                  </span>
+                </TableHead>
+                <TableHead className="w-20 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Amal
+                </TableHead>
               </TableRow>
             </TableHeader>
 
             <TableBody>
-              {filteredDocuments.length > 0 ? (
+              {filteredDocuments.length > 0 ?
                 filteredDocuments.map((doc, index) => (
                   <TableRow
                     key={doc._id || index}
-                    className="hover:bg-gray-50 transition-all">
-                    <TableCell className="text-center font-medium border-r-2 border-b-2">
+                    className="border-slate-100 transition-colors hover:bg-sky-50/40">
+                    <TableCell className="text-center text-sm font-medium text-slate-500">
                       {index + 1}
                     </TableCell>
-                    <TableCell className="text-center border-r-2 border-b-2">
-                      <FileText className="h-5 w-5 text-blue-500 mx-auto" />
+                    <TableCell className="text-center">
+                      <div className="mx-auto flex size-8 items-center justify-center rounded-lg bg-sky-500/10">
+                        <FileText className="size-4 text-sky-600" />
+                      </div>
                     </TableCell>
-                    <TableCell className="font-medium border-r-2 border-b-2">
-                      {doc.title}
+                    <TableCell className="max-w-[320px] truncate font-medium text-slate-800">
+                      {doc.title || '—'}
                     </TableCell>
-                    <TableCell className="border-r-2 border-b-2">
-                      {doc.registrationIndex}
+                    <TableCell className="text-sm text-slate-600">
+                      {doc.registrationIndex || '—'}
                     </TableCell>
-                    <TableCell className="border-r-2 border-b-2">
-                      {new Date(doc.createdAt).toLocaleDateString()}
+                    <TableCell className="whitespace-nowrap text-sm text-slate-600">
+                      {doc.createdAt ?
+                        new Date(doc.createdAt).toLocaleDateString('uz-UZ')
+                      : '—'}
                     </TableCell>
-                    <TableCell className="text-left p-1 border-b-2">
+                    <TableCell>
+                      <span
+                        className={cn(
+                          'inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
+                          statusStyles[doc.status ?? ''] ??
+                            'bg-slate-100 text-slate-600 ring-slate-200'
+                        )}>
+                        {doc.status ?? 'nomaʼlum'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       <AmallarButtons document={doc} />
                     </TableCell>
                   </TableRow>
                 ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-12 text-center">
+              : <TableRow>
+                  <TableCell colSpan={7} className="py-16 text-center">
                     <NotData />
                   </TableCell>
                 </TableRow>
-              )}
+              }
             </TableBody>
           </Table>
         </div>

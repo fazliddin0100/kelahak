@@ -1,182 +1,214 @@
-import { format } from 'date-fns';
-import { uz } from 'date-fns/locale';
-import DOMPurify from 'dompurify';
 import QrCode from '@/helpers/qr-code';
-import { DocumentType, ObjectIdLike, DateLike } from '@/types/document';
+import { DocumentType } from '@/types/document';
+import DOMPurify from 'dompurify';
 import React from 'react';
+import {
+  ApproversKelishildi,
+  DocumentRegistrationBlock,
+  DocumentTopHeader,
+  formatShortName,
+  ForwardedReviewersNote,
+  getCommanderCommentMeta,
+  hasPartyData,
+  resolveBosSignedParty,
+  resolveSenderParty,
+  sanitizeDocumentHtml,
+  SignerBlock,
+} from './documentViewShared';
 
-interface MalumotnomaProps {
+import { DocumentPageShell } from './documentPageShell';
+
+interface BildirgiProps {
   document: DocumentType;
   province?: string;
-  data?: unknown;
+  embedded?: boolean;
 }
 
-export const Bildirgi: React.FC<MalumotnomaProps> = ({
+export const Bildirgi: React.FC<BildirgiProps> = ({
   document,
   province,
+  embedded,
 }) => {
-  const getFormattedName = (fullName?: string): string => {
-    if (!fullName) return "Noma'lum";
-    const parts = fullName.trim().split(/\s+/);
-    const [sName = '', name = '', fName = ''] = parts;
-    return `${sName.charAt(0).toUpperCase()}${
-      name ? `.${name.charAt(0).toUpperCase()}.` : ''
-    } ${fName}`;
+  const sender = resolveSenderParty(document);
+
+  type PartyRecipient = {
+    position?: string;
+    militaryRank?: string;
+    fullName?: string;
+    hasSigned?: boolean;
+    order?: number;
   };
 
-  const formatGrif = (grif?: string): string =>
-    grif ? grif.charAt(0).toUpperCase() + grif.slice(1).toLowerCase() : '';
+  const isPartyItem = (item: unknown): item is PartyRecipient =>
+    typeof item === 'object' && item !== null && !Array.isArray(item);
 
-  const parseDate = (date?: DateLike): Date => {
-    if (!date) return new Date();
-    if (date instanceof Date) return date;
-    if (typeof date === 'string') return new Date(date);
-    if (typeof date === 'object' && '$date' in date)
-      return new Date(date.$date);
-    return new Date();
-  };
-
-  const formatDate = (date?: DateLike): string => {
-    try {
-      const parsed = parseDate(date);
-      return `${format(parsed, 'yyyy')} yil "${format(parsed, 'dd')}" ${format(
-        parsed,
-        'MMMM',
-        { locale: uz }
-      )}`;
-    } catch {
-      return "Sana noma'lum";
+  const forwardedList = ((document.forwardedTo ?? []) as unknown[]).filter(
+    (r) => {
+      if (!isPartyItem(r)) return false;
+      return hasPartyData({
+        position: r.position,
+        militaryRank: r.militaryRank,
+        fullName: r.fullName,
+        hasSigned: !!r.hasSigned,
+      });
     }
+  ) as PartyRecipient[];
+
+  const baseList = ((document.receiver ?? []) as unknown[]).filter((r) => {
+    if (!isPartyItem(r)) return false;
+    return hasPartyData({
+      position: r.position,
+      militaryRank: r.militaryRank,
+      fullName: r.fullName,
+      hasSigned: false,
+    });
+  }) as PartyRecipient[];
+
+  const forwardQueue = [...forwardedList].sort(
+    (a, b) => (a.order ?? 0) - (b.order ?? 0)
+  );
+  const commander = getCommanderCommentMeta(document);
+  const commanderParty =
+    document.forwardedSigner ?
+      {
+        position: document.forwardedSigner.position ?? '',
+        militaryRank: document.forwardedSigner.militaryRank ?? '',
+        fullName: document.forwardedSigner.fullName ?? '',
+        hasSigned: !!document.forwardedSigner.hasSigned,
+      }
+    : resolveBosSignedParty(document);
+
+  const renderReceiverBlock = () => {
+    const list = baseList.length > 0 ? baseList : forwardQueue;
+    if (list.length === 0) return null;
+    if (list.length > 1) {
+      return <p>Viloyat komandirlariga</p>;
+    }
+    const single = list[0];
+    return (
+      <>
+        {single.position ?
+          <p>{single.position}</p>
+        : null}
+        <span className="mt-2 flex items-center gap-4">
+          {single.militaryRank ? <span>{single.militaryRank}</span> : null}
+          {single.fullName ?
+            <span>
+              {formatShortName(single.fullName) || single.fullName}ga
+            </span>
+          : null}
+        </span>
+      </>
+    );
   };
 
-  const getIdString = (id?: ObjectIdLike): string => {
-    if (!id) return 'unknown';
-    return typeof id === 'string' ? id : id.$oid;
+  const commanderSignerName =
+    commander.signerName?.trim() || commanderParty?.fullName?.trim() || '';
+
+  const renderCommanderLeft = () => {
+    const showQr =
+      (commander.showQr || commanderParty?.hasSigned) && !!commanderSignerName;
+
+    if (commander.text) {
+      return (
+        <div>
+          <p className="whitespace-pre-wrap commander-comment-hand">
+            {commander.text}
+          </p>
+          <div
+            className="mt-1.5 max-w-[min(100%,280px)] border-b-[2.5px] border-slate-800"
+            aria-hidden
+          />
+          {forwardQueue.length > 0 ?
+            <ol className="mt-2 space-y-2 text-base font-bold">
+              {forwardQueue.map((item, i) => {
+                const shortName =
+                  item.fullName ?
+                    formatShortName(item.fullName) || item.fullName
+                  : '—';
+                return (
+                  <li
+                    key={`fwd-q-${i}`}
+                    className="flex items-center gap-2 leading-snug">
+                    <span className="shrink-0">{i + 1}.</span>
+                    <span className="inline-flex items-center gap-2">
+                      {item.hasSigned && item.fullName ?
+                        <QrCode
+                          fullNames={item.fullName}
+                          size={30}
+                          logoSize={10}
+                        />
+                      : null}
+                      <span>{shortName}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          : null}
+          {showQr ?
+            <div className="mt-2 inline-flex items-center gap-2">
+              <QrCode fullNames={commanderSignerName} size={30} logoSize={10} />
+              <span>{formatShortName(commanderSignerName)}</span>
+            </div>
+          : null}
+        </div>
+      );
+    }
+    if (!hasPartyData(commanderParty)) return null;
+    return (
+      <span className="inline-flex items-center gap-2">
+        {commanderParty?.hasSigned && commanderParty.fullName ?
+          <QrCode fullNames={commanderParty.fullName} size={30} logoSize={10} />
+        : null}
+        {commanderParty?.fullName ?
+          <span>{formatShortName(commanderParty.fullName)}</span>
+        : null}
+      </span>
+    );
   };
 
-  const isSigned = document.sender?.hasSigned ?? false;
+  const nusxa =
+    document.copyNumber?.length === 0 ? 1 : (document.copyNumber?.length ?? 1);
 
   return (
-    <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 pt-[75px] pb-[30px] overflow-x-hidden">
-      <div className="w-[210mm] max-w-[210mm] min-h-[297mm] bg-white shadow-lg pl-[80px] pt-[30px] pr-[30px] pb-[30px] text-lg box-border mb-4">
-        {/* Grif va nusxa */}
-        <div className="flex flex-col justify-end items-end mb-1">
-          <p>{formatGrif(document.grif)}</p>
-          <p>
-            {document.copyNumber?.length === 0
-              ? 1
-              : document.copyNumber?.length}{' '}
-            -Nusxa
-          </p>
-        </div>
+    <DocumentPageShell embedded={embedded}>
+      <div className="w-[210mm] max-w-[210mm] min-h-[297mm] bg-white shadow-lg pl-20 pt-[30px] pr-[30px] pb-[30px] text-lg box-border">
+        <DocumentTopHeader
+          document={document}
+          copyCount={nusxa}
+          showCommanderLeft={false}
+        />
 
-        {/* Receiver */}
-        <div className="grid grid-cols-[45%_55%] grid-rows-3 gap-4 mt-4 font-bold">
-          <div className="row-span-2" />
-          {document.receiver?.map((rec, index) => (
-            <div
-              key={getIdString(rec._id) || `receiver-${index}`}
-              className="col-span-1">
-              {rec.position || "Lavozim noma'lum"}
-              <br />
-              <span>
-                {rec.militaryRank || "Unvon noma'lum"}{' '}
-                {rec.fullName ? ` ${rec.fullName}ga` : ''}
+        {(renderCommanderLeft() || renderReceiverBlock()) && (
+          <div className="mt-4 flex flex-row items-start justify-between gap-4 font-bold">
+            <span className="max-w-[55%]">{renderCommanderLeft()}</span>
+            <span className="max-w-[55%] text-right">
+              <span className="inline-block text-left">
+                {renderReceiverBlock()}
               </span>
-            </div>
-          ))}
-        </div>
-        {/* Title */}
-        <div className="mt-[10rem]">
-          <strong>
-            {document.title
-              ? document.title.charAt(0).toUpperCase() + document.title.slice(1)
-              : ''}
-          </strong>
-        </div>
+            </span>
+          </div>
+        )}
 
-        {/* Kontent */}
         <div
-          className="mt-4"
-          style={{
-            width: '100%',
-            wordBreak: 'break-word',
-            overflowWrap: 'break-word',
-          }}
+          className="mt-4 w-full wrap-break-words document-html-content"
           dangerouslySetInnerHTML={{
-            __html: DOMPurify.sanitize(
-              typeof document.content === 'string'
-                ? document.content
-                : 'Kontent mavjud emas'
-            ),
+            __html: DOMPurify.sanitize(sanitizeDocumentHtml(document.content)),
           }}
         />
 
-        {/* Sender */}
-        <div className="mt-2 mb-2 w-full text-lg">
-          <span className="min-w-[40%]">
-            <span className="inline-block align-top font-bold w-[400px] overflow-hidden text-ellipsis whitespace-normal">
-              {document.sender?.position || "Lavozim noma'lum"}
-            </span>
-            <br />
-            <span className="flex items-center gap-4 font-bold">
-              <span>{document.sender?.militaryRank || "Unvon noma'lum"}</span>
-              {isSigned && document.sender?.fullName && (
-                <span>
-                  <QrCode fullNames={document.sender.fullName} />
-                </span>
-              )}
-              <span>{getFormattedName(document.sender?.fullName)}</span>
-            </span>
-            <i>{formatDate(document.createdAt)}</i>
-          </span>
-        </div>
+        <SignerBlock
+          party={sender}
+          showQr={sender.hasSigned}
+          date={document.createdAt}
+        />
 
-        {/* Approvers */}
-        {(document.approvers?.length ?? 0) > 0 && (
-          <div className="mt-10">
-            <h3 className="font-bold">&#34;KELISHILDI&#34;</h3>
-            {document.approvers?.map((approver, index) => (
-              <div
-                key={getIdString(approver._id) || `approver-${index}`}
-                className="mb-2 w-full text-lg">
-                <span className="min-w-[40%]">
-                  <span className="inline-block align-top font-bold w-[400px] overflow-hidden text-ellipsis whitespace-normal">
-                    {approver.position || "Lavozim noma'lum"}
-                  </span>
-                  <br />
-                  <span className="flex items-center gap-4 font-bold">
-                    <span>{approver.militaryRank || "Unvon noma'lum"}</span>
-                    {approver.hasSigned && (
-                      <span>
-                        <QrCode fullNames={approver.fullName ?? "Noma'lum"} />
-                      </span>
-                    )}
-                    <span>{getFormattedName(approver.fullName)}</span>
-                  </span>
-                  <i>{formatDate(document.createdAt)}</i>
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        <DocumentRegistrationBlock document={document} province={province} />
 
-        {/* Registratsiya */}
-        {document.registrationIndex && province && (
-          <div className="max-w-[300px] flex flex-col text-justify mt-3">
-            <span>
-              <i>Reg: </i>
-              <i>
-                31/{province} - {document.registrationIndex}{' '}
-                {formatGrif(document.grif)}
-              </i>
-            </span>
-            <p>
-              <i>{formatDate(document.createdAt)}</i>
-            </p>
-          </div>
-        )}
+        <ApproversKelishildi document={document} />
+        <ForwardedReviewersNote document={document} />
       </div>
-    </div>
+    </DocumentPageShell>
   );
 };

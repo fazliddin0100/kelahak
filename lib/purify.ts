@@ -7,7 +7,6 @@ const purify = DOMPurify(window);
 
 export const purifyConfig = {
   ALLOWED_TAGS: [
-    // Matn formatlash
     'p',
     'br',
     'hr',
@@ -23,45 +22,50 @@ export const purifyConfig = {
     'pre',
     'span',
     'div',
-    // Sarlavhalar
     'h1',
     'h2',
     'h3',
     'h4',
     'h5',
     'h6',
-    // Ro‘yxatlar
     'ul',
     'ol',
     'li',
-    // Jadval
     'table',
     'thead',
     'tbody',
+    'tfoot',
+    'caption',
     'tr',
     'th',
     'td',
     'colgroup',
     'col',
-    // Media
     'img',
     'a',
   ],
   ALLOWED_ATTR: [
-    // Umumiy
     'style',
     'class',
     'title',
-    // Jadval
     'colspan',
     'rowspan',
-    // Media
+    'span',
+    'border',
+    'cellpadding',
+    'cellspacing',
+    'align',
+    'valign',
+    'scope',
+    'width',
+    'height',
     'src',
     'href',
     'alt',
-    'width',
-    'height',
     'target',
+    'data-mce-style',
+    'data-mce-selected',
+    'data-mce-placeholder',
   ],
   FORBID_TAGS: [
     'script',

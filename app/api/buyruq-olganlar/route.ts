@@ -1,7 +1,11 @@
 // app/api/buyruq-olganlar/route.ts
-import { NextResponse } from 'next/server';
+import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireApiAuth(request);
+  if (isAuthError(auth)) return auth;
+
   const users = [
     {
       id: 1,

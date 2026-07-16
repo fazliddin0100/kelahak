@@ -1,25 +1,14 @@
 // app/api/users/user-role/route.ts
+import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserId } from '@/lib/userid';
-import User from '@/models/User';
-import Job from '@/models/Job';
-import Role from '@/models/Role';
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = getUserId(request);
+    const auth = await requireApiAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { userId, role, user, department } = auth;
 
-    // Foydalanuvchini bazadan olish
-    const user = await User.findById(userId);
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Foydalanuvchi topilmadi' },
-        { status: 404 }
-      );
-    }
-
-    // Jobni olish
-    const job = await Job.findById(user.job);
+    const job = user.job;
     if (!job) {
       return NextResponse.json(
         { error: "Shaxsga doir ma'lumot topilmadi" },
@@ -27,16 +16,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // user roleni aniqlaymiz
-    const role = await Role.findById(job.role);
-    if (!role) {
+    const roleRecord = job.role;
+    if (!roleRecord) {
       return NextResponse.json(
         { error: "Shaxsga doir ma'lumot topilmadi" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ role: role.role }, { status: 200 });
+    return NextResponse.json(
+      {
+        role: roleRecord.role,
+        userId: user.id,
+        province: user.personal?.province ?? '',
+      },
+      { status: 200 }
+    );
   } catch (err) {
     console.log(err);
     return NextResponse.json(

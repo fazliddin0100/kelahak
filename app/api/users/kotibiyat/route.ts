@@ -1,55 +1,43 @@
-// app/api/users/kotibiyat/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import User from '@/models/User';
-import { getUserId } from '@/lib/userid';
-import Personal from '@/models/Personal';
+import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
+import {
+  findUserById,
+  findUsersByIds,
+} from '@/lib/db/user';
+import { findKotibiyatStaffUserIds } from '@/lib/kotibiyatStaff';
+import { type NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = getUserId(request);
+    const auth = await requireApiAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { userId, role, user, department } = auth;
 
-    // Foydalanuvchini bazadan olish
-    const user = await User.findById(userId);
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Foydalanuvchi topilmadi' },
-        { status: 404 }
-      );
-    }
 
-    // Personalni olish
-    const person = await Personal.findById(user.personal);
-    if (!person) {
+    if (!user.personal?.province) {
       return NextResponse.json(
         { error: 'Personal topilmadi' },
         { status: 404 }
       );
     }
 
-    // Shu province ga tegishli barcha Personal hujjatlarini olish
-    const personsInSameProvince = await Personal.find({
-      province: person.province,
-    });
+    const staffIds = await findKotibiyatStaffUserIds(user.personal.province);
+    if (staffIds.length === 0) {
+      return NextResponse.json({ users: [] }, { status: 200 });
+    }
 
-    // Shu Personallarga tegishli barcha foydalanuvchilarni olish
-    const usersInSameProvince = await User.find({
-      personal: { $in: personsInSameProvince.map((p) => p._id) },
-    })
-      .populate({
-        path: 'job',
-        match: { department: 'kotibiyat' }, // faqat kotibiyat bo'lgan job'lar
-        select: '-role -isUserTrue', // keraksiz maydonlarni umuman chaqirmaymiz
-      })
-      .populate('personal');
+    const usersInSameProvince = await findUsersByIds(staffIds);
 
-    // Natijani tuzish: userId, personal, job
-    const result = usersInSameProvince
-      .filter((u) => u.job) // match bo'lmagan job null bo'ladi
-      .map((u) => ({
-        userId: u._id,
-        personal: u.personal,
-        job: u.job,
-      }));
+    const result = usersInSameProvince.map((u) => ({
+      userId: u.id,
+      personal:
+        u.personal ?
+          { ...u.personal, _id: u.personal.id }
+        : null,
+      job:
+        u.job ?
+          { ...u.job, _id: u.job.id }
+        : null,
+    }));
 
     return NextResponse.json({ users: result }, { status: 200 });
   } catch (err) {

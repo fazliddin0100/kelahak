@@ -1,37 +1,23 @@
-// app/api/nameklatura/get-nomeklatura/route.ts
+import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
+import connectToDatabase, { prisma } from '@/lib/prisma';
 import { type NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
-import User from '@/models/User';
-import Personal from '@/models/Personal';
-import { getUserId } from '@/lib/userid';
-import { NomeklaturaModel } from '@/models/nomeklatura';
-import { BolinmaModel } from '@/models/bolinma';
 
 export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
 
-    // 1. Current userni olish
-    const userId = getUserId(request);
-    const user = await User.findById(userId);
-    if (!user) {
-      return NextResponse.json(
-        { message: 'Foydalanuvchi topilmadi' },
-        { status: 404 }
-      );
-    }
+    const auth = await requireApiAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { userId, role, user, department } = auth;
 
-    // 2. Personal check
-    const personal = await Personal.findById(user.personal);
-    if (!personal) {
+    if (!user.personal) {
       return NextResponse.json(
         { message: "Foydalanuvchining ma'lumoti topilmadi" },
         { status: 400 }
       );
     }
 
-    // 3. Barcha bo‘linmalarni olish
-    const bolinmalar = await BolinmaModel.find();
+    const bolinmalar = await prisma.bolinma.findMany();
     if (!bolinmalar || bolinmalar.length === 0) {
       return NextResponse.json(
         { message: 'Bo‘linma topilmadi' },
@@ -39,19 +25,42 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 4. Har bir bo‘linmaga tegishli nomeklaturalarni topish
     const results = await Promise.all(
       bolinmalar.map(async (bolinma) => {
-        const nomeklaturalar = await NomeklaturaModel.find({
-          bolinma: bolinma._id,
-        }).select(
-          'registrationIndex title grif status author status saqlashMuddati qonunTuri owner createdAt'
-        );
+        const nomeklaturalar = await prisma.nomeklatura.findMany({
+          where: {
+            ownerRegion: user.personal!.province,
+            bolinmaLinks: { some: { bolinmaId: bolinma.id } },
+          },
+          select: {
+            id: true,
+            registrationIndex: true,
+            title: true,
+            grif: true,
+            status: true,
+            author: true,
+            saqlashMuddati: true,
+            qonunTuri: true,
+            ownerId: true,
+            createdAt: true,
+          },
+        });
 
         return {
-          _id: bolinma._id,
-          bolinma: bolinma.bolinma, // bo‘linma nomi
-          nomeklaturalar,
+          _id: bolinma.id,
+          bolinma: bolinma.bolinma,
+          nomeklaturalar: nomeklaturalar.map((n) => ({
+            registrationIndex: n.registrationIndex,
+            title: n.title,
+            grif: n.grif,
+            status: n.status,
+            author: n.author,
+            saqlashMuddati: n.saqlashMuddati,
+            qonunTuri: n.qonunTuri,
+            owner: n.ownerId,
+            createdAt: n.createdAt,
+            _id: n.id,
+          })),
         };
       })
     );
@@ -60,10 +69,10 @@ export async function GET(request: NextRequest) {
       { message: 'Bo‘linmalar muvaffaqiyatli olindi', results },
       { status: 200 }
     );
-  } catch (error: any) {
-    // console.error('Bo‘linmalarni olishda xato:', error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { message: 'Serverda xatolik', error: error.message },
+      { message: 'Serverda xatolik', error: message },
       { status: 500 }
     );
   }

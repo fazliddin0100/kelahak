@@ -3,40 +3,52 @@ import ReactQrCode from 'react-qr-code';
 import Image from 'next/image';
 import logo from '@/public/dxxLogo.png';
 
-interface QrCodeWithLogoProps {
+interface QrCodeJurnalProps {
   fullNames?: string;
+  /** QR o‘lchami (px), jurnal ustuni uchun kichik */
+  size?: number;
+  logoSize?: number;
 }
 
-const QrCodeJurnal = ({ fullNames }: QrCodeWithLogoProps): JSX.Element => {
-  // Convert array to string safely
+const QrCodeJurnal = ({
+  fullNames,
+  size = 36,
+  logoSize,
+}: QrCodeJurnalProps): JSX.Element => {
   const qrValue = fullNames || "Noma'lum";
+  const centerLogo = logoSize ?? Math.max(10, Math.round(size * 0.32));
 
   return (
-    <div className="relative w-full h-full">
+    <span
+      className="relative inline-block shrink-0"
+      style={{ width: size, height: size }}
+      title={qrValue}>
       <ReactQrCode
         value={qrValue}
-        size={50}
-        level="H" // Yuqori xato tuzatish darajasi
+        size={size}
+        level="H"
+        style={{ display: 'block', width: size, height: size }}
       />
-      {logo && (
-        <Image
-          src={logo}
-          alt={qrValue}
+      {logo ?
+        <span
+          className="pointer-events-none absolute left-1/2 top-1/2 flex items-center justify-center rounded bg-white p-px shadow-sm"
           style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            width: 10,
-            height: 10,
+            width: centerLogo + 4,
+            height: centerLogo + 4,
             transform: 'translate(-50%, -50%)',
-            borderRadius: '6px',
-            backgroundColor: 'white',
-            padding: '1px',
-            zIndex: 10,
-          }}
-        />
-      )}
-    </div>
+            zIndex: 1,
+          }}>
+          <Image
+            src={logo}
+            alt=""
+            width={centerLogo}
+            height={centerLogo}
+            className="object-contain"
+            style={{ width: centerLogo, height: centerLogo }}
+          />
+        </span>
+      : null}
+    </span>
   );
 };
 

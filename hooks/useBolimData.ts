@@ -1,6 +1,6 @@
 // hooks/useBuxoroOrgans.ts
-import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
 
 interface Bolim {
   _id: string;
@@ -25,7 +25,8 @@ export const useBolimlar = () => {
       });
 
       const data = (await response.json()) as BolimlarResponse;
-      return data.bolimlar ?? [];
+      const bolimlar = data.bolimlar ?? [];
+      return bolimlar;
     },
     staleTime: 0,
     refetchOnMount: true,

@@ -1,13 +1,21 @@
 'use client';
 
-// hooks/useNomeklatura.ts
-'use client';
-
-import { useEffect, useState } from 'react';
+import { Author, DateLike, DocumentType, ObjectIdLike } from '@/types/document';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { ObjectIdLike, DateLike, Author, DocumentType } from '@/types/document';
 
-// Har bir nomeklatura elementini DocumentType asosida aniqlaymiz
+function getAuthHeaders(): HeadersInit {
+  const token =
+    typeof window !== 'undefined' ?
+      localStorage.getItem('ref_token') || localStorage.getItem('token')
+    : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+import type { UserNomeklaturaRelation } from '@/lib/userNomeklaturaLabels';
+
+export type { UserNomeklaturaRelation };
+
 export interface NomeklaturaItem extends Omit<DocumentType, '_id'> {
   _id: ObjectIdLike | string;
   registrationIndex: string | number;
@@ -19,37 +27,46 @@ export interface NomeklaturaItem extends Omit<DocumentType, '_id'> {
   author?: Author;
   saqlashMuddati?: string | number;
   qonunTuri?: string;
+  relation?: UserNomeklaturaRelation;
+  owner?: ObjectIdLike | string;
+  canAccept?: boolean;
 }
 
-// Bo‘linma va unga tegishli nomeklaturalar
 export interface BolinmaWithNomeklatura {
   _id: ObjectIdLike | string;
   bolinma: string;
   nomeklaturalar: NomeklaturaItem[];
 }
 
+/** Joriy foydalanuvchiga tegishli nomeklatura (owner, author, creator, hujjat bog‘liqligi). */
 export const useNomeklatura = () => {
   const [nomeklatura, setNomeklatura] = useState<BolinmaWithNomeklatura[]>([]);
   const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/nameklatura/get-nomeklatura');
-        if (!res.ok) throw new Error(`Failed: ${res.status}`);
-        const data = await res.json();
-        setNomeklatura(data.results || []);
-      } catch {
-        // console.error(err);
-        toast.error('Sizda hozircha nomeklatura mavjud emas!');
-        setNomeklatura([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/nameklatura/get-users-nomeklatura', {
+        credentials: 'include',
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+      const data = await res.json();
+      setNomeklatura(data.results || []);
+      setTotal(data.total ?? 0);
+    } catch {
+      toast.error('Nomeklatura yuklanmadi yoki sizga biriktirilmagan');
+      setNomeklatura([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { nomeklatura, loading };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { nomeklatura, loading, total, refetch: fetchData };
 };

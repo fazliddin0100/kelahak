@@ -12,7 +12,7 @@ import {
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
 import {Input} from "@/components/ui/input";
 import {Button} from "@/components/ui/button";
-import {useSessionsUsers} from "@/hooks/useSessionsUsers";
+import { useDocumentFormUsers } from '@/hooks/useDocumentFormUsers';
 
 // Approver tip
 interface Approver {
@@ -61,7 +61,7 @@ export default function ImzoQoshishModal({
     const [mainApprover, setMainApprover] = useState<Approver | null>(null);
     const [approverCount, setApproverCount] = useState<number>(0);
     const [additionalApprovers, setAdditionalApprovers] = useState<Approver[]>([]);
-    const {users} = useSessionsUsers();
+    const { users, loading } = useDocumentFormUsers(open, 'organ');
 
     // Modal ochilib-yopilganda state reset qilish
     const handleOpenChange = (isOpen: boolean) => {
@@ -131,8 +131,13 @@ export default function ImzoQoshishModal({
                     </DialogDescription>
                 </DialogHeader>
 
-                {!users.length ? (
-                    <p>Foydalanuvchilar topilmadi.</p>
+                {loading ? (
+                    <p className="text-sm text-muted-foreground">Yuklanmoqda...</p>
+                ) : !users.length ? (
+                    <p>
+                        Foydalanuvchilar topilmadi. Sizning viloyat va organingizdagi boshqa
+                        xodimlar ro‘yxatdan o‘tgan va ruxsat olgan bo‘lishi kerak.
+                    </p>
                 ) : (
                     <div className="flex flex-col gap-4">
                         {/* Asosiy tasdiqlovchi */}

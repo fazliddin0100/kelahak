@@ -1,113 +1,173 @@
 // app/api/documents/[id]/register/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { DocumentStatus } from '@/types/document-status.enum';
-import { DocumentModel } from '@/models/DocumentModal';
-import { getRegistrationIndex } from '@/utils/registrationIndex';
-import connectToDatabase from '@/lib/mongodb';
-import { getUserId } from '@/lib/userid';
-import User from '@/models/User';
-import Role from '@/models/Role';
-import Job from '@/models/Job';
-import Personal from '@/models/Personal';
-import mongoose from 'mongoose';
+//
+// Hujjatni ro'yxatga olish va belgilangan viloyatlarga nusxalarni tarqatish.'
+// Faqat admin / superAdmin / register_document huquqi bor foydalanuvchilar chaqira oladi.
 
-// POST /api/documents/[id]/register
+import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
+import connectToDatabase from '@/lib/mongodb';
+import {
+  isKotibiyatRegistrationEligible,
+  regionsMatch,
+} from '@/lib/documentWorkflow';
+import {
+  distributeRegionalCopies,
+  resolveSourceCopyMeta,
+} from '@/lib/distributeRegionalCopies';
+import { isKotibiyatStaffRole } from '@/lib/roles';
+import {
+  findDocumentById,
+  isValidDbId,
+  serializeDocumentForApi,
+  updateDocument,
+} from '@/lib/db/document';
+import { DocumentType } from '@/types/document';
+import { DocumentStatus } from '@/types/document-status.enum';
+import { getRegistrationIndex } from '@/utils/registrationIndex';
+import { NextRequest, NextResponse } from 'next/server';
+
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectToDatabase();
 
     const { id } = await params;
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ message: 'Noto‘g‘ri ID' }, { status: 400 });
-    }
-    const userId = getUserId(request);
-    if (!userId) {
+    if (!id || !isValidDbId(id)) {
       return NextResponse.json(
-        { message: 'Foydalanuvchi yo‘q' },
-        { status: 401 }
+        { message: "Noto'g'ri hujjat ID" },
+        { status: 400 }
       );
     }
 
-    // userni topish
-    const user = await User.findById(userId);
-    if (!user) {
+    const auth = await requireApiAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { userId, role, user, department } = auth;
+
+    const roleRecord = user.job!.role!;
+
+    const canRegister =
+      roleRecord.role === 'admin' ||
+      roleRecord.role === 'superAdmin' ||
+      (Array.isArray(roleRecord.permissions) &&
+        roleRecord.permissions.includes('register_document'));
+
+    if (!canRegister) {
       return NextResponse.json(
-        { message: 'Foydalanuvchi mavjud emas' },
-        { status: 400 }
+        { message: "Ro'yxatga olish huquqi yo'q" },
+        { status: 403 }
       );
     }
-    // person aniqlash
-    const person = await Personal.findById(user.personal);
-    if (!person) {
-      return NextResponse.json(
-        { message: 'Foydalanuvchi ma`lumotlari mavjud emas!' },
-        { status: 400 }
-      );
-    }
-    // job aniqlash
-    const job = await Job.findById(user.job);
-    if (!job) {
-      return NextResponse.json(
-        { message: 'Foydalanuvchi ma`lumotlari mavjud emas!' },
-        { status: 400 }
-      );
-    }
-    // roleni olish
-    const role = await Role.findById(job.role);
-    if (!role && role.permission !== 'register_document') {
-      return NextResponse.json(
-        { message: 'Foydalanuvchi roli mavjud emas!' },
-        { status: 400 }
-      );
-    }
-    // find user document
-    const document = await DocumentModel.findOne({ owner: user._id });
+
+    const document = await findDocumentById(id, {
+      includeContent: true,
+      includeAttachments: true,
+    });
     if (!document) {
       return NextResponse.json(
-        { message: 'Hujjat mavjud emas!' },
-        { status: 400 }
+        { message: 'Hujjat topilmadi' },
+        { status: 404 }
       );
     }
-    // hujjatni royxatga olishdan oldin tekshirish
+
     if (document.status === DocumentStatus.REGISTERED) {
       return NextResponse.json(
-        { message: "Hujjat ro'yxatga olingan!" },
+        { message: "Hujjat allaqachon ro'yxatga olingan" },
         { status: 400 }
       );
     }
-    // register document
-    if (document.ownerRegion !== person.province) {
-      return NextResponse.json(
-        { message: 'Hujjat bu viloyatga tegishli emas!' },
-        { status: 400 }
-      );
-    }
-    //create data
-    const year = new Date().getFullYear();
-    document.registrationIndex = await getRegistrationIndex(
-      person.province,
-      year,
-      document._id
-    );
-    document.status = DocumentStatus.REGISTERED;
-    document.allowedUsers = [document.owner];
-    document.updatedAt = new Date();
-    document.sharedWithAdmin = false;
-    await document.save();
 
-    return NextResponse.json(
-      {
-        message: 'Hujjat muvaffaqiyatli ro‘yxatga olindi',
-      },
-      { status: 200 }
+    if (!regionsMatch(document.ownerRegion ?? undefined, user.personal.province)) {
+      return NextResponse.json(
+        { message: 'Hujjat sizning viloyatingizga tegishli emas' },
+        { status: 403 }
+      );
+    }
+
+    const docView = serializeDocumentForApi(document, {
+      includeContent: true,
+      populateAttachments: false,
+    }) as DocumentType;
+
+    const kotibiyatStaff = isKotibiyatStaffRole(roleRecord.role);
+    if (
+      !kotibiyatStaff &&
+      !isKotibiyatRegistrationEligible(docView, user.personal.province)
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Hujjat ro'yxatga olishga tayyor emas (imzo yoki tasdiqlash jarayoni tugallanmagan)",
+        },
+        { status: 400 }
+      );
+    }
+
+    const year = new Date().getFullYear();
+    const registrationIndex = await getRegistrationIndex(
+      user.personal.province,
+      year,
+      document.id
     );
-  } catch (error: any) {
-    console.error('Xatolik:', error);
+
+    const { copyIndex, copyTotal } = resolveSourceCopyMeta(document.copyNumber);
+
+    await updateDocument(id, {
+      registrationIndex,
+      year,
+      ownerRegion: user.personal.province,
+      status: DocumentStatus.REGISTERED,
+      copyIndex,
+      copyTotal,
+      allowedUserIds: [document.ownerId],
+      sharedWithAdmin: false,
+      submittedToKotibiyat: false,
+    });
+
+    const sourceForCopy: Parameters<typeof distributeRegionalCopies>[0] = {
+      _id: document.id,
+      title: document.title ?? undefined,
+      content: document.content?.content,
+      grif: document.grif ?? undefined,
+      author: (document.author ?? undefined) as Record<string, unknown> | undefined,
+      sender: (document.sender ?? undefined) as Record<string, unknown> | undefined,
+      receiver: (document.receiver ?? []) as unknown[],
+      approvers: (document.approvers ?? []) as unknown[],
+      attachmentText: (document.attachments ?? []).map((a) => a.attachmentId),
+      copyNumber: document.copyNumber,
+      owner: document.ownerId,
+      ownerRegion: user.personal.province,
+      year,
+      registrationIndex,
+    };
+
+    const distributeResult =
+      document.isCopy === true ?
+        { created: 0, regions: [], missing: [], skipped: [] }
+      : await distributeRegionalCopies(sourceForCopy, user.personal.province);
+
+    const response: Record<string, unknown> = {
+      message: "Hujjat muvaffaqiyatli ro'yxatga olindi",
+      registrationIndex,
+      year,
+      regionalCopies: distributeResult.created,
+      targetRegions: distributeResult.regions,
+    };
+
+    if (distributeResult.missing.length > 0) {
+      response.warning =
+        `Quyidagi viloyatlarda foydalanuvchi topilmadi, nusxa yuborilmadi: ` +
+        distributeResult.missing.join(', ');
+      response.missingRegions = distributeResult.missing;
+    }
+
+    return NextResponse.json(response, { status: 200 });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Noma'lum xato";
+    console.error('[register/route] Xatolik:', error);
     return NextResponse.json(
-      { message: 'Ichki server xatosi', error: error.message },
+      { message: 'Ichki server xatosi', error: message },
       { status: 500 }
     );
   }

@@ -1,34 +1,47 @@
 // app/api/file/[id]/route.ts
-import { NextResponse } from 'next/server';
+import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
+import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
-import FileModel from '@/models/File';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase, { prisma } from '@/lib/prisma';
+import { isValidDbId } from '@/lib/db/nomeklatura';
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> } // ← Promise tipini belgilash muhim!
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireApiAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { userId, role, user } = auth;
+
     await connectToDatabase();
 
-    // ← Bu yerda await qilish shart!
     const { id } = await params;
 
-    if (!id || id.length !== 24) {
+    if (!id || !isValidDbId(id)) {
       return NextResponse.json({ error: 'Noto‘g‘ri ID' }, { status: 400 });
     }
 
-    const fileDoc = await FileModel.findById(id); // ← { _id: id } emas, to‘g‘ridan id beriladi
+    const fileDoc = await prisma.file.findUnique({ where: { id } });
 
     if (!fileDoc) {
       return NextResponse.json({ error: 'Fayl topilmadi' }, { status: 404 });
     }
 
+    const isOwner = fileDoc.userUploadId === userId;
+    const isAdminInRegion =
+      role === 'admin' && user.personal?.province === fileDoc.ownerRegion;
+    const isSuperAdmin = role === 'superAdmin';
+
+    if (!isOwner && !isAdminInRegion && !isSuperAdmin) {
+      return NextResponse.json({ error: 'Ruxsat yo‘q' }, { status: 403 });
+    }
+
     const filePath = path.resolve(
       'public',
       fileDoc.filePath.replace(/^\/+/, '')
-    ); // "/public/uploads/..." bo‘lsa tozalaymiz
+    );
     const buffer = await fs.readFile(filePath);
 
     return new NextResponse(buffer, {
@@ -40,10 +53,11 @@ export async function GET(
         'Cache-Control': 'no-cache',
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('File download error:', error);
     return NextResponse.json(
-      { error: 'Server xatosi: ' + error.message },
+      { error: 'Server xatosi: ' + message },
       { status: 500 }
     );
   }

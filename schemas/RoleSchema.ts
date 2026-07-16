@@ -1,3 +1,4 @@
+import { DB_ROLES } from "@/lib/roles";
 import {Schema} from "mongoose";
 import {RoleInterface} from "@/interfaces/Role";
 
@@ -5,7 +6,7 @@ export const RoleSchema = new Schema<RoleInterface>(
     {
         role: {
             type: String,
-            enum: ["admin", "superAdmin", "user", "commander", "deputyCommander"],
+            enum: [...DB_ROLES],
             default: "user",
             required: true,
         },

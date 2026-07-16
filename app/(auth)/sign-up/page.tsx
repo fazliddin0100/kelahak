@@ -1,14 +1,22 @@
 // app/register/page.tsx
 'use client';
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -18,19 +26,25 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/components/ui/sonner';
 
 import gerb from '../../../public/gerb.png';
 
+// ────────────────────────────────────────────────
+// Debounce hook (o'z ichida yozilgan – qo'shimcha paket kerak emas)
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// ────────────────────────────────────────────────
 const provinces = [
   'Andijon',
   'Buxoro',
@@ -70,28 +84,42 @@ const formSchema = z.object({
   department: z.string().min(1, "Bo'lim majburiy"),
   position: z.string().min(1, 'Lavozim majburiy'),
   militaryRank: z.string().min(1, 'Unvon majburiy'),
-  login: z.string().min(1, 'Login majburiy'),
+  login: z.string().min(3, 'Login kamida 3 belgidan iborat bo‘lishi kerak'),
   password: z.string().min(6, 'Parol kamida 6 belgidan iborat bo‘lishi kerak'),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
+// ────────────────────────────────────────────────
 const useCheckUser = (login: string) => {
+  const debouncedLogin = useDebounce(login.trim(), 500);
+
   return useQuery({
-    queryKey: ['checkUser', login],
+    queryKey: ['check-login', debouncedLogin],
     queryFn: async () => {
-      if (!login) return { exists: false };
+      if (!debouncedLogin || debouncedLogin.length < 3) {
+        return { exists: false, message: 'Kam belgi' };
+      }
+
       const res = await fetch(
-        `/api/auth/check-user?login=${encodeURIComponent(login)}`
+        `/api/auth/check-user?login=${encodeURIComponent(debouncedLogin)}`
       );
-      if (!res.ok) return { exists: false };
+
+      if (!res.ok) {
+        return { exists: false, message: 'Server xatosi' };
+      }
+
       return res.json();
     },
-    enabled: !!login && login.length >= 1,
-    staleTime: 2000,
+    enabled: !!debouncedLogin && debouncedLogin.length >= 3,
+    staleTime: 0,
+    gcTime: 1000 * 30, // 30 soniya ichida qayta so‘ramasa cache tozalanadi
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 };
 
+// ────────────────────────────────────────────────
 export default function RegistrationPage() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -112,11 +140,29 @@ export default function RegistrationPage() {
     },
   });
 
-  const loginValue = form.watch('login');
-  const { data: loginCheck, isLoading: checkingLogin } =
-    useCheckUser(loginValue);
+  const loginValue = form.watch('login') || '';
+  const { data: loginCheck, isLoading, isFetching } = useCheckUser(loginValue);
+
+  const passwordValue = form.watch('password') || '';
+
+  // Parol kuchliligi (0-3)
+  const getPasswordStrength = (pwd: string) => {
+    if (!pwd) return 0;
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (/[A-Z]/.test(pwd) && /[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+    return Math.min(score, 3);
+  };
+
+  const strength = getPasswordStrength(passwordValue);
 
   const onSubmit = async (values: FormData) => {
+    if (loginCheck?.exists) {
+      toast.error('Bu login allaqachon band');
+      return;
+    }
+
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
@@ -138,27 +184,32 @@ export default function RegistrationPage() {
     }
   };
 
+  const isLoginChecking = isLoading || isFetching;
+  const isLoginTaken = !!loginCheck?.exists;
+  const canSubmit =
+    !form.formState.isSubmitting && !isLoginChecking && !isLoginTaken;
+
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gray-100 p-4">
-      <div className="w-full max-w-xl bg-white rounded-xl p-6 shadow-md">
-        <div className="w-20 h-20 mx-auto mb-6">
+    <div className="min-h-screen flex justify-center items-center bg-gray-50 p-4">
+      <div className="w-full max-w-xl bg-white rounded-2xl p-8 shadow-xl border border-gray-100">
+        <div className="flex justify-center mb-6">
           <Image
             src={gerb}
-            alt="DXX Logo"
-            width={120}
-            height={120}
-            className="rounded-full object-cover w-20 h-auto"
+            alt="Gerb"
+            width={80}
+            height={80}
+            className="rounded-full object-cover shadow-md"
           />
         </div>
 
-        <h2 className="text-2xl font-bold mb-6 text-center">
+        <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">
           Ro‘yxatdan o‘tish
         </h2>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* 1. Ism */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Familiya, Ism, Otasining ismi */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {['fName', 'name', 'sName'].map((field) => (
                 <FormField
                   key={field}
@@ -177,25 +228,24 @@ export default function RegistrationPage() {
               ))}
             </div>
 
-            {/* 2. Viloyat, Organ, Bo'lim */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Viloyat + Organ + Bo'lim */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <FormField
                 control={form.control}
                 name="province"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{fieldLabels.province}</FormLabel>
+                    <FormLabel>Viloyat</FormLabel>
                     <FormControl>
                       <Dialog open={open} onOpenChange={setOpen}>
                         <DialogTrigger asChild>
                           <Button
                             variant="outline"
-                            className="w-full justify-between">
-                            {field.value || 'Viloyatni tanlang'}{' '}
-                            <span className="ml-2">▼</span>
+                            className="w-full justify-between text-left">
+                            {field.value || 'Viloyatni tanlang'} <span>▼</span>
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[400px]">
+                        <DialogContent className="sm:max-w-md">
                           <DialogHeader>
                             <DialogTitle>Viloyatni tanlang</DialogTitle>
                           </DialogHeader>
@@ -205,11 +255,11 @@ export default function RegistrationPage() {
                               field.onChange(v);
                               setOpen(false);
                             }}
-                            className="flex flex-col gap-2 mt-4 max-h-96 overflow-y-auto">
+                            className="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto pr-2">
                             {provinces.map((p) => (
                               <div
                                 key={p}
-                                className="flex items-center gap-2 hover:bg-gray-50 p-2 rounded">
+                                className="flex items-center space-x-3 hover:bg-gray-50 p-2 rounded cursor-pointer">
                                 <RadioGroupItem value={p} id={p} />
                                 <label
                                   htmlFor={p}
@@ -245,8 +295,8 @@ export default function RegistrationPage() {
               ))}
             </div>
 
-            {/* 3. Lavozim va Unvon */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Lavozim + Unvon */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {['position', 'militaryRank'].map((field) => (
                 <FormField
                   key={field}
@@ -265,64 +315,115 @@ export default function RegistrationPage() {
               ))}
             </div>
 
-            {/* 4. Login va Parol */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {['login', 'password'].map((field) => (
-                <FormField
-                  key={field}
-                  control={form.control}
-                  name={field as keyof FormData}
-                  render={({ field: f }) => (
-                    <FormItem>
-                      <FormLabel>{fieldLabels[field]}</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...f}
-                          type={field === 'password' ? 'password' : 'text'}
-                          placeholder={fieldLabels[field]}
-                          autoComplete={
-                            field === 'password' ? 'new-password' : 'off'
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                      {field === 'login' && (
-                        <div className="h-5">
-                          {checkingLogin ? (
-                            <p className="text-xs text-gray-500">
-                              Tekshirilmoqda...
-                            </p>
-                          ) : loginCheck?.exists ? (
-                            <p className="text-xs text-red-600">
-                              Bu login band
-                            </p>
-                          ) : loginValue.length > 0 ? (
-                            <p className="text-xs text-green-600">
-                              Foydalanish mumkin
-                            </p>
-                          ) : null}
+            {/* Login + Parol */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Login */}
+              <FormField
+                control={form.control}
+                name="login"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col space-y-1.5">
+                    <FormLabel>Login</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Login kiriting"
+                        autoComplete="off"
+                        onChange={(e) => field.onChange(e.target.value.trim())}
+                      />
+                    </FormControl>
+                    <div className="min-h-6 text-xs">
+                      {isLoginChecking ?
+                        <span className="text-gray-500 animate-pulse">
+                          Tekshirilmoqda...
+                        </span>
+                      : loginValue.length === 0 ?
+                        <span className="text-gray-400">Login kiriting</span>
+                      : loginValue.length < 3 ?
+                        <span className="text-amber-600">
+                          Kamida 3 belgi bo‘lishi kerak
+                        </span>
+                      : isLoginTaken ?
+                        <span className="text-red-600 font-medium">
+                          Bu login band
+                        </span>
+                      : <span className="text-green-600 font-medium">
+                          Foydalanish mumkin ✓
+                        </span>
+                      }
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Parol */}
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col space-y-1.5">
+                    <FormLabel>Parol</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="password"
+                        placeholder="Parol kiriting"
+                        autoComplete="new-password"
+                      />
+                    </FormControl>
+
+                    {passwordValue && (
+                      <div className="space-y-1.5 mt-1">
+                        <div className="flex gap-1.5">
+                          {[1, 2, 3].map((level) => (
+                            <div
+                              key={level}
+                              className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                                strength >= level ?
+                                  strength === 1 ? 'bg-red-400'
+                                  : strength === 2 ? 'bg-amber-400'
+                                  : 'bg-emerald-500'
+                                : 'bg-gray-200'
+                              }`}
+                            />
+                          ))}
                         </div>
-                      )}
-                    </FormItem>
-                  )}
-                />
-              ))}
+                        <p className="text-[10px] font-semibold uppercase tracking-wide">
+                          {strength === 0 && (
+                            <span className="text-gray-500">Juda zaif</span>
+                          )}
+                          {strength === 1 && (
+                            <span className="text-red-600">Zaif</span>
+                          )}
+                          {strength === 2 && (
+                            <span className="text-amber-600">O‘rta</span>
+                          )}
+                          {strength === 3 && (
+                            <span className="text-emerald-600">Kuchli</span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
-            {/* Submit */}
+            {/* Submit tugmasi */}
             <Button
               type="submit"
-              className="w-full bg-black text-white hover:bg-gray-800"
-              disabled={
-                form.formState.isSubmitting ||
-                loginCheck?.exists ||
-                checkingLogin
-              }>
-              {form.formState.isSubmitting
-                ? 'Yuborilmoqda...'
-                : loginCheck?.exists
-                ? 'Login band'
-                : 'Ro‘yxatdan o‘tish'}
+              className="w-full h-12 text-base font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 mt-4"
+              disabled={!canSubmit}>
+              {form.formState.isSubmitting ?
+                'Ro‘yxatdan o‘tkazilmoqda...'
+              : isLoginTaken ?
+                'Login band – boshqa tanlang'
+              : isLoginChecking ?
+                'Tekshirilmoqda...'
+              : 'Ro‘yxatdan o‘tish'}
             </Button>
           </form>
         </Form>

@@ -6,7 +6,7 @@ export const useCheckUser = (login: string) => {
         queryFn: async () => {
             const res = await fetch("/api/auth/check-user?login=" + login);
             if (!res.ok) throw new Error("Xato tekshiruvda");
-            return res.json(); // { exists: true/false }
+            return res.json(); 
         },
         enabled: !!login,
     });

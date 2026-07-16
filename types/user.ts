@@ -17,6 +17,7 @@ export interface IJob {
   department: string;
   militaryRank: string;
   role: string;
+  roleName?: string;
   isUserTrue: boolean;
   createdAt: string;
   updatedAt: string;

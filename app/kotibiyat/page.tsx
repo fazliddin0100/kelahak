@@ -12,21 +12,20 @@ interface Props {
   page: string;
 }
 
-const KotibiyatPage = ({ page }: Props) => {
+export function KotibiyatPage({ page }: Props) {
   return (
-    <>
-      {/* Content */}
-      <div className="w-full">
-        {page === 'file' && <File />}
-        {page === 'kel' && <KelDocument />}
-        {page === 'jurnal' && <Jurnal />}
-        {page === 'nomeklatura' && <Nomeklatura />}
-        {page === 'controlni' && <Controlni />}
-        {page === 'buyruq' && <Buyruq />}
-        {page === 'chat' && <Chat />}
-      </div>
-    </>
+    <div className="w-full">
+      {page === 'file' && <File />}
+      {page === 'kel' && <KelDocument />}
+      {page === 'jurnal' && <Jurnal />}
+      {page === 'nomeklatura' && <Nomeklatura />}
+      {page === 'controlni' && <Controlni />}
+      {page === 'buyruq' && <Buyruq />}
+      {page === 'chat' && <Chat />}
+    </div>
   );
-};
+}
 
-export default KotibiyatPage;
+export default function KotibiyatRoutePage() {
+  return null;
+}

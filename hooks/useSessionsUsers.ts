@@ -1,30 +1,42 @@
-import { useEffect, useState } from 'react';
 import { IUserPopulated } from '@/types/user';
+import { useCallback, useEffect, useState } from 'react';
+
+function getAdminAuthHeaders(): HeadersInit {
+  const token =
+    typeof window !== 'undefined' ?
+      localStorage.getItem('ref_token') || localStorage.getItem('token')
+    : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 export const useSessionsUsers = () => {
   const [users, setUsers] = useState<IUserPopulated[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const token = localStorage.getItem('token');
-      try {
-        const res = await fetch('/api/users', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const json = await res.json();
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/users', {
+        headers: getAdminAuthHeaders(),
+        credentials: 'include',
+      });
+      const json = await res.json();
+      if (res.ok) {
         setUsers(json.users || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+      } else {
+        setUsers([]);
       }
-    };
-
-    fetchData();
+    } catch (err) {
+      console.error(err);
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { users, loading };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { users, loading, refetch: fetchData };
 };

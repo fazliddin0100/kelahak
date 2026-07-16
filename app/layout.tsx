@@ -1,7 +1,8 @@
-import React from 'react';
+import { ToasterComponent as Toaster } from '@/components/ui/sonner';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
-import { ToasterComponent as Toaster } from '@/components/ui/sonner';
+import { headers } from 'next/headers';
+import React from 'react';
 import Providers from '../providers/providers';
 // @ts-expect-error: import of global CSS file (side-effect) — add a .d.ts declaration if you prefer a stricter fix
 import './globals.css';
@@ -22,17 +23,39 @@ export const metadata: Metadata = {
   icons: {
     icon: '/dxxLogo.png',
   },
+  other: {
+    google: 'notranslate',
+  },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+
   return (
-    <html lang="en">
+    <html
+      lang="uz"
+      translate="no"
+      className="notranslate"
+      suppressHydrationWarning
+      nonce={nonce}>
+      <head suppressHydrationWarning>
+        <meta name="google" content="notranslate" />
+        <meta httpEquiv="Content-Language" content="uz" />
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{
+            __html: `document.documentElement.setAttribute('translate','no');document.documentElement.classList.add('notranslate');`,
+          }}
+        />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        translate="no"
+        className={`notranslate ${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning>
         <Toaster
           richColors
           position="top-right"

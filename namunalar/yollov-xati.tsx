@@ -1,17 +1,41 @@
+import QrCode from '@/helpers/qr-code';
+import { isAttachmentRef } from '@/lib/attachmentDocuments';
+import logo from '@/public/dxxLogo.png';
 import { DocumentType } from '@/types/document';
 import { format } from 'date-fns';
-import QrCode from '@/helpers/qr-code';
-import logo from '@/public/dxxLogo.png';
 import Image from 'next/image';
-import { Separator } from '@radix-ui/react-separator';
+import {
+  ApproversKelishildi,
+  DocumentTopHeader,
+  ForwardedReviewersNote,
+  formatIlovaAttachmentLabel,
+  formatRegistrationLineSlash,
+  formatShortName,
+  hasPartyData,
+  parseDocDate,
+  resolveBosSignedParty,
+  resolveSenderParty,
+  sanitizeDocumentHtml,
+} from './documentViewShared';
+
+import { DocumentPageShell } from './documentPageShell';
 
 interface YollovXatiProps {
   document: DocumentType;
   data?: DocumentType | null;
+  embedded?: boolean;
 }
 
-export const YollovXati = ({ document }: YollovXatiProps) => {
-  // O‘zbekcha oy nomlari
+export const YollovXati = ({ document, embedded }: YollovXatiProps) => {
+  const sender = resolveSenderParty(document);
+  const createdDate = parseDocDate(document.createdAt);
+  const registrationLine = formatRegistrationLineSlash(
+    document.ownerRegion,
+    document.registrationIndex,
+    document.grif
+  );
+  const isSigned = sender.hasSigned || !document.canSign;
+
   const getMonthUz = (monthIndex: number): string => {
     const months = [
       'yanvar',
@@ -30,224 +54,194 @@ export const YollovXati = ({ document }: YollovXatiProps) => {
     return months[monthIndex];
   };
 
-  const formatGrif = (grif: string | undefined): string => {
-    if (!grif) {
-      return '';
-    }
-    return grif.charAt(0).toUpperCase() + grif.slice(1).toLowerCase();
-  };
-
-  // Hujjatning imzolanganligini tekshirish
-  const isSigned = !document.canSign;
-
-  // mainApprover ma'lumotlari
-  const mainApprover = {
-    fullName: document.fullName || '',
-    militaryRank: document.militaryRank || '',
-    position: document.position || '',
-  };
-
-  // Receiver ma'lumotlarini formatlash
   const renderReceiverInfo = () => {
-    if (!document.receiver || document.receiver.length === 0) {
-      return (
-        <span className="max-w-[55%] font-bold">
-          <p>Lavozim yo‘q</p>
-          <span className="flex justify-start items-center gap-4 mt-2">
-            <span>Unvon yo‘q</span>
-            <span className="ml-2">Noma`lum</span>
-          </span>
-        </span>
-      );
+    interface PartyItem {
+      position?: string;
+      militaryRank?: string;
+      fullName?: string;
+      hasSigned?: boolean;
     }
 
-    if (document.receiver.length > 1) {
-      return (
-        <span className="max-w-[55%] font-bold">
-          <p>Viloyat komandirlariga</p>
-        </span>
-      );
+    const isPartyItem = (item: unknown): item is PartyItem =>
+      typeof item === 'object' && item !== null && !Array.isArray(item);
+
+    const forwardedList = ((document.forwardedTo ?? []) as unknown[]).filter(
+      (r) => {
+        if (!isPartyItem(r)) return false;
+        return hasPartyData({
+          position: r.position,
+          militaryRank: r.militaryRank,
+          fullName: r.fullName,
+          hasSigned: !!r.hasSigned,
+        });
+      }
+    ) as PartyItem[];
+    const baseList = ((document.receiver ?? []) as unknown[]).filter((r) => {
+      if (!isPartyItem(r)) return false;
+      return hasPartyData({
+        position: r.position,
+        militaryRank: r.militaryRank,
+        fullName: r.fullName,
+        hasSigned: false,
+      });
+    }) as PartyItem[];
+    const list = forwardedList.length > 0 ? forwardedList : baseList;
+
+    if (list.length === 0) return null;
+    if (list.length > 1) {
+      return <p>Viloyat komandirlariga</p>;
     }
 
-    const singleReceiver = document.receiver[0];
+    const single = list[0];
     return (
-      <span className="max-w-[55%] font-bold">
-        <p>{singleReceiver.position || 'Lavozim yo‘q'}</p>
+      <>
+        {single.position ?
+          <p>{single.position}</p>
+        : null}
         <span className="flex justify-start items-center gap-4 mt-2">
-          <span>{singleReceiver.militaryRank || 'Unvon yo‘q'}</span>
-          <span className="ml-2">
-            {singleReceiver.fullName || "Noma'lum"}ga
-          </span>
+          {single.militaryRank ?
+            <span>{single.militaryRank}</span>
+          : null}
+          {single.fullName ?
+            <span className="ml-2">
+              {formatShortName(single.fullName) || single.fullName}ga
+            </span>
+          : null}
         </span>
-      </span>
+      </>
+    );
+  };
+
+  const commanderParty =
+    document.forwardedSigner ?
+      {
+        position: document.forwardedSigner.position ?? '',
+        militaryRank: document.forwardedSigner.militaryRank ?? '',
+        fullName: document.forwardedSigner.fullName ?? '',
+        hasSigned: !!document.forwardedSigner.hasSigned,
+      }
+    : resolveBosSignedParty(document);
+
+  const renderCommanderHeaderInfo = () => {
+    if (!commanderParty || !hasPartyData(commanderParty)) return null;
+    return (
+      <div className="font-bold">
+        <span className="mt-2 flex items-center gap-2">
+          {commanderParty.hasSigned && commanderParty.fullName ?
+            <span className="shrink-0">
+              <QrCode
+                fullNames={commanderParty.fullName}
+                size={30}
+                logoSize={10}
+              />
+            </span>
+          : null}
+          {commanderParty.fullName ?
+            <span>
+              {formatShortName(commanderParty.fullName) ||
+                commanderParty.fullName}
+            </span>
+          : null}
+        </span>
+      </div>
     );
   };
 
   return (
-    <div
-      className="flex justify-center items-center min-h-screen bg-gray-100 pt-[75px] pb-[30px] text-[18.66px]"
-      // style={{ fontFamily: '"Times New Roman", Times, serif' }}
-    >
+    <DocumentPageShell
+      embedded={embedded}
+      outerClassName="flex justify-center items-center min-h-screen bg-gray-100 pt-[75px] pb-[30px] text-[18.66px]">
       <div className="w-[210mm] max-w-[210mm] min-h-[297mm] bg-white shadow-lg pl-20 pt-[30px] pr-[30px] pb-[30px] text-[16px] box-border">
-        {/* Grif */}
-        <div className="flex flex-col justify-end items-end text-[18.66px]">
-          <p>{formatGrif(document.grif)}</p>
-          <p>{document.copyNumber?.length} -Nusxada</p>
-        </div>
+        <DocumentTopHeader document={document} showCommanderLeft={false} />
 
-        {/* Sarlavha va logo */}
         <div className="flex flex-col justify-center items-center text-center">
           <Image src={logo} alt="logo" width={100} height={100} />
           <p className="font-bold mt-1">BUXORO VILOYATI HOKIMIYATI</p>
-          <div className="h-[4px] bg-black mb-0.5 w-full" />
-          <div className="h-[1px] bg-black mb-0.5 w-full" />
+          <div className="h-1 bg-black mb-0.5 w-full" />
+          <div className="h-1 bg-black mb-0.5 w-full" />
 
-          {/* Sana va raqam */}
-          <div className="flex justify-between items-center mt-2 w-full text-[16px]">
-            <span>
-              {format(
-                new Date(
-                  typeof document.createdAt === 'object' &&
-                  document.createdAt &&
-                  '$date' in document.createdAt
-                    ? document.createdAt.$date
-                    : document.createdAt || new Date()
-                ),
-                'yyyy'
-              )}{' '}
-              yil &#34;
-              <span style={{ textDecoration: 'underline' }}>
-                {format(
-                  new Date(
-                    typeof document.createdAt === 'object' &&
-                    document.createdAt &&
-                    '$date' in document.createdAt
-                      ? document.createdAt.$date
-                      : document.createdAt || new Date()
-                  ),
-                  'dd'
-                )}
+          <div className="mt-2 flex w-full items-center justify-between gap-4 text-[18px]">
+            {createdDate ?
+              <span className="text-left" suppressHydrationWarning>
+                {format(createdDate, 'yyyy')} yil &#34;
+                <span style={{ textDecoration: 'underline' }}>
+                  {format(createdDate, 'dd')}
+                </span>
+                &#34; {getMonthUz(createdDate.getMonth())}
               </span>
-              &#34;{' '}
-              {getMonthUz(
-                new Date(
-                  typeof document.createdAt === 'object' &&
-                  document.createdAt &&
-                  '$date' in document.createdAt
-                    ? document.createdAt.$date
-                    : document.createdAt || new Date()
-                ).getMonth()
-              )}
-            </span>
-            <span>
-              31/{document?.ownerRegion?.charAt(0)}-
-              <u>
-                {document.registrationIndex} {formatGrif(document.grif)}
-              </u>
-            </span>
-          </div>
-        </div>
-        {/* Qabul qiluvchi (Receiver) */}
-        <div className="flex flex-row justify-between items-center mt-1rem">
-          <span className="max-w-[55%]"></span>
-          <span className="max-w-[55%] font-bold">{renderReceiverInfo()}</span>
-        </div>
-
-        {/* Kontent */}
-        <div>
-          <div className="mt-40 wrap-break-word">
-            <div
-              dangerouslySetInnerHTML={{
-                __html:
-                  typeof document.content === 'string' ? document.content : '',
-              }}
-            />
+            : <span />}
+            {registrationLine ?
+              <span className="shrink-0 text-right">
+                <u>{registrationLine}</u>
+              </span>
+            : <span />}
           </div>
         </div>
 
-        {/* ilova matni */}
+        {(renderCommanderHeaderInfo() || renderReceiverInfo()) && (
+          <div className="flex flex-row justify-between items-center mt-4">
+            <span className="max-w-[55%]">{renderCommanderHeaderInfo()}</span>
+            <span className="max-w-[55%] font-bold text-right">
+              <span className="inline-block text-left">
+                {renderReceiverInfo()}
+              </span>
+            </span>
+          </div>
+        )}
+
+        <div className="mt-10 document-html-content wrap-break-word text-[18px]">
+          <div
+            dangerouslySetInnerHTML={{
+              __html: sanitizeDocumentHtml(document.content),
+            }}
+          />
+        </div>
+
         {document.attachmentText && document.attachmentText.length > 0 && (
-          <div className="mt-6">
-            <Separator className="h-px bg-black w-full my-4 flex flex-row justify-center items-center" />
-            <p className="font-bold text-[16px]">Ilova:</p>
-            <div className="mt-2 ml-8">
+          <div className="mt-6 flex w-full flex-row items-start gap-3">
+            <p className="shrink-0 px-10 font-bold text-[18px]">Ilova:</p>
+            <div className="min-w-0 flex-1">
               {document.attachmentText.map((item, index) => (
-                <p key={index}>
-                  {index + 1}. {item}
+                <p key={index} className="text-[18px] leading-snug">
+                  {index + 1}.{' '}
+                  {isAttachmentRef(item) ?
+                    formatIlovaAttachmentLabel(item)
+                  : 'Ilova hujjati'}
                 </p>
               ))}
             </div>
           </div>
         )}
 
-        {/* Asosiy tasdiqlovchi (mainApprover) */}
-        {mainApprover.fullName && (
-          <div className="mt-4 w-full text-[16px] font-bold">
-            <h2 className="text-lg">Asosiy tasdiqlovchi (TASDIQLAYMAN)</h2>
-            <p>
-              <strong>Lavozim:</strong>{' '}
-              {mainApprover.position || 'Lavozim yo‘q'}
-            </p>
-            <p>
-              <strong>Unvon:</strong>{' '}
-              {mainApprover.militaryRank || 'Unvon yo‘q'}
-            </p>
-            <p>
-              <strong>Ism:</strong> {mainApprover.fullName || "Noma'lum"}
-            </p>
+        {hasPartyData(sender) && (
+          <div className="mt-4 w-full text-[18px] font-bold">
+            <span className="min-w-[40%]">
+              {sender.position ?
+                <span className="inline-block align-top w-[400px] overflow-hidden text-ellipsis whitespace-normal">
+                  {sender.position}
+                </span>
+              : null}
+              <br />
+              <span className="flex items-center gap-4">
+                {sender.militaryRank ?
+                  <span>{sender.militaryRank}</span>
+                : null}
+                {isSigned && sender.fullName ?
+                  <span>
+                    <QrCode fullNames={sender.fullName} />
+                  </span>
+                : null}
+                {sender.fullName ?
+                  <span>{sender.fullName}</span>
+                : null}
+              </span>
+            </span>
           </div>
         )}
 
-        {/* Yuboruvchi (Sender) */}
-        <div className="mt-4 w-full text-[16px] font-bold">
-          <span className="min-w-[40%]">
-            <span
-              className="inline-block align-top"
-              style={{
-                width: '400px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'normal',
-              }}>
-              {document.sender?.position || 'Lavozim yo‘q'}
-            </span>
-            <br />
-            <span className="flex items-center justify-self-start gap-4">
-              <span className="self-center">
-                {document.sender?.militaryRank || 'Unvon yo‘q'}
-              </span>
-              <span className="self-center">
-                {isSigned && <QrCode fullNames={document?.fullName} />}
-              </span>
-              <span className="self-center">
-                {document.sender?.fullName || ''}
-              </span>
-            </span>
-          </span>
-        </div>
-
-        {/* Qo‘shimcha tasdiqlovchilar (Agar mavjud bo‘lsa) */}
-        {document.approvers && document.approvers.length > 0 && (
-          <div className="mt-4 w-full text-[16px] font-bold">
-            <h2 className="text-lg">Qo‘shimcha tasdiqlovchilar (KELISHILDI)</h2>
-            {document.approvers.map((approver, index) => (
-              <div key={index} className="mt-2">
-                <p>
-                  <strong>Lavozim:</strong>{' '}
-                  {approver.position || 'Lavozim yo‘q'}
-                </p>
-                <p>
-                  <strong>Unvon:</strong>{' '}
-                  {approver.militaryRank || 'Unvon yo‘q'}
-                </p>
-                <p>
-                  <strong>Ism:</strong> {approver.fullName || "Noma'lum"}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
+        <ApproversKelishildi document={document} />
+        <ForwardedReviewersNote document={document} />
       </div>
-    </div>
+    </DocumentPageShell>
   );
 };
