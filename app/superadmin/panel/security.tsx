@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import LoadingState from '@/components/LoadingState';
 import {
   Table,
   TableBody,
@@ -14,7 +15,6 @@ import {
   AlertTriangle,
   Ban,
   Globe,
-  Loader2,
   ShieldAlert,
   ShieldBan,
   ShieldCheck,
@@ -152,7 +152,7 @@ export default function SuperAdminSecurity() {
     cn(
       'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
       tab === id
-        ? 'bg-violet-600 text-white'
+        ? 'bg-[#102c50] text-white'
         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
     );
 
@@ -174,9 +174,7 @@ export default function SuperAdminSecurity() {
           </div>
         }>
         {statsLoading ?
-          <div className="flex h-24 items-center justify-center p-6">
-            <Loader2 className="size-6 animate-spin text-violet-500" />
-          </div>
+          <LoadingState message="Statistika yuklanmoqda..." className="h-24" />
         : <div className="grid grid-cols-2 gap-3 border-b border-slate-100 p-5 sm:grid-cols-5">
             {statCards.map((c) => (
               <div
@@ -204,7 +202,7 @@ export default function SuperAdminSecurity() {
                     className={cn(
                       'rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset',
                       filterType === t
-                        ? 'bg-violet-600 text-white ring-violet-600'
+                        ? 'bg-[#102c50] text-white ring-[#102c50]'
                         : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
                     )}>
                     {t ? TYPE_LABELS[t] ?? t : 'Hammasi'}
@@ -284,9 +282,7 @@ export default function SuperAdminSecurity() {
             )}
 
             {logsLoading ?
-              <div className="flex h-48 items-center justify-center">
-                <Loader2 className="size-8 animate-spin text-violet-500" />
-              </div>
+              <LoadingState message="Jurnal yozuvlari yuklanmoqda..." className="h-48" />
             : logs.length === 0 ?
               <p className="py-16 text-center text-sm text-slate-500">
                 {activeFilter
@@ -386,9 +382,7 @@ export default function SuperAdminSecurity() {
             </div>
 
             {wafLoading ?
-              <div className="flex h-48 items-center justify-center">
-                <Loader2 className="size-8 animate-spin text-violet-500" />
-              </div>
+              <LoadingState message="Xavfsizlik qoidalari yuklanmoqda..." className="h-48" />
             : allManagedIps.length === 0 ?
               <div className="flex flex-col items-center gap-2 py-16 text-slate-500">
                 <ShieldCheck className="size-10 text-slate-300" />
@@ -454,7 +448,7 @@ export default function SuperAdminSecurity() {
 
             <p className="mt-4 flex items-start gap-2 text-xs text-slate-600">
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
-              Bloklangan IP lar MongoDB da saqlanadi. Blokdan chiqarish — «Ochish» /
+              Bloklangan IP lar PostgreSQL da saqlanadi. Blokdan chiqarish — «Ochish» /
               «Blokdan chiqarish» tugmasi; middleware ~4 soniyada yangilanadi.
             </p>
           </div>

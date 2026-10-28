@@ -3,7 +3,7 @@ import {
   isCommanderReviewStatus,
   isForwardQueueComplete,
 } from '@/lib/documentWorkflow';
-import { resolveMongoId } from '@/lib/resolveMongoId';
+import { resolveIdReference } from '@/lib/resolveIdReference';
 import { DocumentType } from '@/types/document';
 import { DocumentStatus } from '@/types/document-status.enum';
 
@@ -29,7 +29,7 @@ export async function applyCommanderDocumentSign(
   document: DocumentDoc,
   userId: string
 ): Promise<{ ok: true } | { ok: false; message: string; status: number }> {
-  const forwarderId = resolveMongoId(document.forwardedById);
+  const forwarderId = resolveIdReference(document.forwardedById);
   const isForwarder = forwarderId === userId;
   const directReview =
     document.sentToCommander === true &&
@@ -64,7 +64,7 @@ export async function applyCommanderDocumentSign(
     };
   }
 
-  const bosUserId = resolveMongoId(document.bosSigned?.userId);
+  const bosUserId = resolveIdReference(document.bosSigned?.userId);
   if (document.bosSigned?.hasSigned && bosUserId === userId) {
     return {
       ok: false,

@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import LoadingState from '@/components/LoadingState';
 import { toast } from '@/components/ui/sonner';
 import { useDepartmentPeers } from '@/hooks/useDepartmentPeers';
 import { Loader2, X } from 'lucide-react';
@@ -94,9 +95,7 @@ export default function ShareUserModal({
           Foydalanuvchi
         </label>
         {loading ?
-          <div className="flex justify-center py-8">
-            <Loader2 className="size-6 animate-spin text-sky-500" />
-          </div>
+          <LoadingState message="Foydalanuvchilar yuklanmoqda..." className="py-4" />
         : <select
             id="share-user-select"
             className="w-full rounded-lg border border-slate-200 p-2.5 text-sm"

@@ -1,7 +1,7 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { applyCommanderCommentSignature } from '@/lib/documentForwardedSigner';
 import { buildPersonalFullName } from '@/lib/forwardQueue';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase from '@/lib/prisma';
 import { isSameUnitAsCommander } from '@/lib/unitPeerMatch';
 import {
   findDocumentById,

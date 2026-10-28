@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { FaUserTie } from 'react-icons/fa';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -12,6 +11,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import CustomersUserOrder from './CustomersUserOrder';
+import { UsersRound } from 'lucide-react';
 
 type Customer = {
   id: number;
@@ -53,7 +53,7 @@ const ModalCountUserOrder = () => {
             variant="outline"
             size="sm"
             className="relative h-8 gap-1 border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100">
-            <FaUserTie className="text-sm" />
+            <UsersRound className="size-4" />
             So&#39;ralgan buyruqlar
             <Badge
               className="absolute -top-2 -right-2 size-5 justify-center rounded-full p-0 text-[10px]"

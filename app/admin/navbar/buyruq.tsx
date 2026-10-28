@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import LoadingState from '@/components/LoadingState';
 import {
   Table,
   TableBody,
@@ -9,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { BookMarked, ExternalLink, FileText, Loader2 } from 'lucide-react';
+import { BookMarked, ExternalLink, FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import ModalCountOrder from './(buyruq)/ModalCountUser';
 import ModalCountUserOrder from './(buyruq)/ModalCountUserOrder';
@@ -60,9 +61,7 @@ const Buyruq = () => {
         </p>
 
         {loading ?
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="size-8 animate-spin text-sky-500" />
-          </div>
+          <LoadingState fullScreen message="Buyruqlar yuklanmoqda..." />
         : files.length === 0 ?
           <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-16">
             <FileText className="size-10 text-slate-300" />

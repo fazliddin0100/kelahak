@@ -15,6 +15,7 @@ import {
   setSuperAdminCookie,
   signSuperAdminToken,
 } from '@/lib/superadminAuth';
+import { createUserSession } from '@/lib/sessionFiles';
 
 const rateLimiter = new RateLimiterMemory({
   points: 5,
@@ -34,6 +35,7 @@ interface JWTPayload {
   department: string;
   role: string;
   accessApproved: true;
+  sessionId: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -167,11 +169,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const sessionId = await createUserSession(user.id, 8 * 60 * 60 * 1000);
     const payload: JWTPayload = {
       userId: user.id,
       department: job.department,
       role: role.role,
       accessApproved: true,
+      sessionId,
     };
 
     const ref_token = jwt.sign(payload, JWT_SECRET_REFRESH, {
@@ -179,7 +183,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (role.role === 'superAdmin') {
-      const saToken = signSuperAdminToken(user.id);
+      const saToken = signSuperAdminToken(user.id, sessionId);
       const response = NextResponse.json(
         { ref_token, token: saToken, role: role.role },
         { status: 200 }

@@ -15,14 +15,14 @@ import {
   isKotibiyatDirectFlow,
   isUserAuthorSigned,
 } from '@/lib/documentWorkflow';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase from '@/lib/prisma';
 import {
   findDocumentById,
   isValidDbId,
   serializeDocumentForApi,
   updateDocument,
 } from '@/lib/db/document';
-import { resolveMongoId } from '@/lib/resolveMongoId';
+import { resolveIdReference } from '@/lib/resolveIdReference';
 import { DocumentStatus } from '@/types/document-status.enum';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -39,13 +39,13 @@ function signField(field: SignerJson | SignerJson[] | null | undefined, userId: 
 
   if (Array.isArray(field)) {
     return field.map((item) =>
-      resolveMongoId(item.userId) === userId ?
+      resolveIdReference(item.userId) === userId ?
         { ...item, hasSigned: true }
       : item
     );
   }
 
-  if (resolveMongoId(field.userId) === userId) {
+  if (resolveIdReference(field.userId) === userId) {
     return { ...field, hasSigned: true };
   }
 
@@ -185,7 +185,7 @@ export async function POST(
     if (Array.isArray(forwardedTo)) {
       let markedForward = false;
       forwardedTo = forwardedTo.map((item) => {
-        if (resolveMongoId(item.userId) === userId) {
+        if (resolveIdReference(item.userId) === userId) {
           markedForward = true;
           return {
             ...item,

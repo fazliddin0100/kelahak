@@ -9,6 +9,7 @@ const SA_EXPIRES = (process.env.SUPERADMIN_JWT_EXPIRES_IN ||
 
 export interface SuperAdminTokenPayload {
   userId: string;
+  sessionId: string;
   role: 'superAdmin';
   accessApproved: true;
 }
@@ -32,10 +33,11 @@ export async function countSuperAdmins(): Promise<number> {
   });
 }
 
-export function signSuperAdminToken(userId: string): string {
+export function signSuperAdminToken(userId: string, sessionId: string): string {
   if (!JWT_SECRET) throw new Error('JWT_SECRET yo‘q');
   const payload: SuperAdminTokenPayload = {
     userId,
+    sessionId,
     role: 'superAdmin',
     accessApproved: true,
   };

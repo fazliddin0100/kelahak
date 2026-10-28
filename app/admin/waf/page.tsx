@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import LoadingState from '@/components/LoadingState';
 import {
   Table,
   TableBody,
@@ -10,7 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { Ban, Loader2, ShieldBan, ShieldCheck } from 'lucide-react';
+import { Ban, ShieldBan, ShieldCheck } from 'lucide-react';
 import useSWR from 'swr';
 import {
   SectionShell,
@@ -65,9 +66,7 @@ export default function WafAdminPage() {
         </div>
 
         {isLoading || !data ?
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="size-8 animate-spin text-sky-500" />
-          </div>
+          <LoadingState fullScreen message="Xavfsizlik ma’lumotlari yuklanmoqda..." />
         : seen.length === 0 ?
           <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 py-16 text-center">
             <ShieldCheck className="size-10 text-slate-300" />

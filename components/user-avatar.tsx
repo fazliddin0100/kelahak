@@ -3,6 +3,7 @@
 import {useEffect, useState} from "react";
 import {useRouter} from "next/navigation";
 import axios from "axios";
+import LoadingState from "@/components/LoadingState";
 
 import {
     DropdownMenu,
@@ -30,13 +31,17 @@ export default function UserAvatar() {
         fetchUser();
     }, [router]);
 
-    const logout = () => {
-        localStorage.removeItem("token");
-        document.cookie = "token=; Max-Age=0; path=/;";
-        router.push("/login");
+    const logout = async () => {
+        try {
+            await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+        } finally {
+            localStorage.removeItem("token");
+            sessionStorage.removeItem("token");
+            router.push("/sign-in");
+        }
     };
 
-    if (!data) return <div>Loading...</div>;
+    if (!data) return <LoadingState compact message="Profil yuklanmoqda..." className="p-2" />;
 
     return (
         <DropdownMenu>

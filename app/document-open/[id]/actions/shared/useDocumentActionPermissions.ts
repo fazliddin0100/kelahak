@@ -18,7 +18,7 @@ import {
 } from '@/lib/documentWorkflow';
 import { isCommanderApproved } from '@/lib/documentLifecycle';
 import { DocumentActionRoleGroup } from '@/lib/documentActionRole';
-import { resolveMongoId } from '@/lib/resolveMongoId';
+import { resolveIdReference } from '@/lib/resolveIdReference';
 import { DocumentType } from '@/types/document';
 import { DocumentStatus } from '@/types/document-status.enum';
 import { useMemo } from 'react';
@@ -39,12 +39,12 @@ export function useDocumentActionPermissions({
     const linked =
       isDocumentLinkedToNomeklatura(document) || inWorkFile;
 
-    const forwarderId = resolveMongoId(document.forwardedBy);
+    const forwarderId = resolveIdReference(document.forwardedBy);
     const isForwarder =
       !!currentUserId && !!forwarderId && forwarderId === currentUserId;
     const commanderBosSigned =
       document.bosSigned?.hasSigned === true &&
-      resolveMongoId(
+      resolveIdReference(
         (document.bosSigned as { userId?: unknown; user?: { userId?: unknown } })
           ?.userId ?? document.bosSigned?.user?.userId
       ) === currentUserId;
@@ -53,6 +53,32 @@ export function useDocumentActionPermissions({
       currentUserId ?
         findQueueEntryForUser(document, currentUserId)
       : undefined;
+
+    const hasSignedPartyForCurrentUser = (value: unknown): boolean => {
+      if (!currentUserId || !value) return false;
+      if (Array.isArray(value)) {
+        return value.some(hasSignedPartyForCurrentUser);
+      }
+      if (typeof value !== 'object') return false;
+      const signer = value as {
+        userId?: unknown;
+        user?: { userId?: unknown };
+        hasSigned?: boolean;
+      };
+      return (
+        signer.hasSigned === true &&
+        resolveIdReference(signer.userId ?? signer.user?.userId) === currentUserId
+      );
+    };
+    const currentUserHasSigned =
+      !!forwardQueueEntry?.hasSigned ||
+      hasSignedPartyForCurrentUser(document.author) ||
+      hasSignedPartyForCurrentUser(document.sender) ||
+      hasSignedPartyForCurrentUser(document.approvers) ||
+      hasSignedPartyForCurrentUser(document.receiver) ||
+      (roleGroup === 'kotibiyat' && commanderBosSigned);
+    const signCompleted =
+      roleGroup === 'commander' ? commanderBosSigned : currentUserHasSigned;
 
     const canForwardReviewSign =
       !!currentUserId &&
@@ -64,6 +90,7 @@ export function useDocumentActionPermissions({
       return {
         canEdit: false,
         canSign: false,
+        signCompleted: false,
         canSignLabel: 'Imzolash',
         canRegister: false,
         canBack: false,
@@ -80,6 +107,7 @@ export function useDocumentActionPermissions({
       return {
         canEdit: false,
         canSign: true,
+        signCompleted: false,
         canSignLabel: 'Ijroga tasdiqlash',
         canRegister: false,
         canBack: false,
@@ -93,7 +121,7 @@ export function useDocumentActionPermissions({
     }
 
     const canEditOwn = canUserEditOwnDocument(document, currentUserId);
-    const ownerId = resolveMongoId(document.owner);
+    const ownerId = resolveIdReference(document.owner);
     const isOwner = !!currentUserId && ownerId === currentUserId;
     const canSubmitKotibiyat =
       isOwner && canOwnerSubmitToKotibiyat(document);
@@ -103,7 +131,8 @@ export function useDocumentActionPermissions({
     if (roleGroup === 'kotibiyat') {
       return {
         canEdit: canEditOwn,
-        canSign: !terminal,
+        canSign: !terminal && !currentUserHasSigned,
+        signCompleted: currentUserHasSigned,
         canSignLabel: 'Imzolash',
         canRegister:
           status !== DocumentStatus.REGISTERED &&
@@ -143,6 +172,7 @@ export function useDocumentActionPermissions({
     return {
       canEdit: canEditOwn || commanderCanEdit,
       canSign: commanderSign || defaultSign,
+      signCompleted: signCompleted,
       canSignLabel: roleGroup === 'commander' ? 'Imzolash (tasdiq)' : 'Imzolash',
       canRegister: false,
       canBack: roleGroup === 'commander' && !terminal && !commanderBosSigned,

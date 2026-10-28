@@ -10,6 +10,7 @@ import {
   syncAllowedUsers,
 } from '@/lib/db/document';
 import { DocumentStatus } from '@/types/document-status.enum';
+import { encryptDocumentContent } from '@/lib/documentContentEncryption';
 import { regionsMatch } from './documentWorkflow';
 import { findKotibiyatStaffUserIds } from './kotibiyatStaff';
 
@@ -130,7 +131,7 @@ export async function distributeRegionalCopies(
         await tx.documentContent.create({
           data: {
             documentId: copyId,
-            content: (typeof source.content === 'object' ?
+            content: encryptDocumentContent(typeof source.content === 'object' ?
               source.content
             : {}) as object,
           },

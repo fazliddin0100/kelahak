@@ -2,14 +2,16 @@
 
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
+import LoadingState from '@/components/LoadingState';
 import { useTashkilot } from '@/hooks/useTashkilot';
-import dxxlogo from '@/public/dxxLogo.png';
+import mexonLogo from '@/public/mexon-mark.png';
 import { DocumentFormValues } from '@/types/user';
 import { FilePenLine, Loader2, Save } from 'lucide-react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import TnyEditor, { type TinyEditorHandle } from '@/editor/tnyEditor';
 import { canUserEditOwnDocument } from '@/lib/documentEditRules';
+import { normalizeDocumentContent } from '@/lib/normalizeDocumentContent';
 import { useRoleHook } from '@/hooks/useRoleHook';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { attachmentTextToFormIds } from '@/lib/parseAttachmentTextIds';
@@ -116,7 +118,7 @@ const DocumentPage = () => {
         const senderForm =
           doc.sender?.userId ? doc.sender : authorToFormSender(doc.author);
         setFormValues({
-          editorContent: doc.content || '',
+          editorContent: normalizeDocumentContent(doc.content),
           grifi: doc.grif || '',
           nomi: doc.title || '',
           selectedRegions: doc.copyNumber || [],
@@ -258,40 +260,36 @@ const DocumentPage = () => {
 
   if (isFetching) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="rounded-2xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
-          <Loader2 className="mx-auto mb-4 size-10 animate-spin text-sky-500" />
-          <p className="text-sm font-medium text-slate-600">
-            Hujjat yuklanmoqda...
-          </p>
-        </div>
-      </div>
+      <LoadingState
+        fullScreen
+        message="Hujjat yuklanmoqda..."
+      />
     );
   }
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <header className="sticky top-0 z-50 border-b border-slate-700/60 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 shadow-lg shadow-black/20">
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
         <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/5 ring-1 ring-white/10">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#102c50] p-1.5">
               <Image
-                src={dxxlogo}
-                alt="DXX Logo"
-                width={36}
+                src={mexonLogo}
+                alt="Mezon"
+                width={56}
                 height={36}
                 loading="eager"
                 className="object-contain image_navbar360 rounded-sm"
               />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white sm:text-base">
+              <p className="truncate text-sm font-semibold text-slate-900 sm:text-base">
                 {tashkilotData?.organ ?
                   tashkilotData.organ.charAt(0).toUpperCase() +
                   tashkilotData.organ.slice(1)
-                : 'DXX'}
+                : 'Mezon'}
               </p>
-              <p className="flex items-center gap-1.5 truncate text-xs text-slate-400">
+              <p className="flex items-center gap-1.5 truncate text-xs text-slate-500">
                 <FilePenLine className="size-3.5 shrink-0" />
                 {formValues.nomi || 'Hujjat tahriri'}
               </p>
@@ -301,7 +299,7 @@ const DocumentPage = () => {
           <Button
             onClick={handleSave}
             disabled={isLoading || !canEdit}
-            className="shrink-0 gap-2 bg-sky-600 px-5 text-white shadow-md hover:bg-sky-500 disabled:opacity-60">
+            className="shrink-0 gap-2 bg-[#102c50] px-5 text-white shadow-sm transition-colors duration-150 hover:bg-[#173c68] disabled:opacity-60">
             {isLoading ?
               <Loader2 className="size-4 animate-spin" />
             : <Save className="size-4" />}
@@ -313,7 +311,7 @@ const DocumentPage = () => {
           </Button>
         </div>
 
-        <div className="border-t border-slate-700/50 bg-slate-800/60 px-4 py-2.5 sm:px-6">
+        <div className="border-t border-slate-200 bg-[#f4f6fa] px-4 py-2.5 sm:px-6">
           <Inputs formValues={formValues} setFormValues={setFormValues} />
         </div>
       </header>

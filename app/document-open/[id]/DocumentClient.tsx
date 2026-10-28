@@ -1,18 +1,18 @@
 'use client';
 
 import DocumentViewStack from '@/components/DocumentViewStack';
+import LoadingState from '@/components/LoadingState';
 import { useDocumentById } from '@/hooks/useDocumentById';
 import { useRoleHook } from '@/hooks/useRoleHook';
 import { useTashkilot } from '@/hooks/useTashkilot';
 import { cn } from '@/lib/utils';
-import dxxlogo from '@/public/dxxLogo.png';
+import mexonLogo from '@/public/mexon-mark.png';
 import { DocumentStatus } from '@/types/document-status.enum';
 import {
   AlertCircle,
   ArrowLeft,
   Eye,
   FileText,
-  Loader2,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -59,12 +59,10 @@ export default function DocumentClient({ documentId }: { documentId: string }) {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <div className="rounded-2xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
-          <Loader2 className="mx-auto mb-4 size-10 animate-spin text-sky-500" />
-          <p className="text-sm font-medium text-slate-600">Yuklanmoqda...</p>
-        </div>
-      </div>
+      <LoadingState
+        fullScreen
+        message="Hujjat yuklanmoqda..."
+      />
     );
   }
 
@@ -76,7 +74,7 @@ export default function DocumentClient({ documentId }: { documentId: string }) {
           <p className="text-base font-semibold text-red-600">{error}</p>
           <Link
             href={getHomeRoute(currentRole)}
-            className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm text-white hover:bg-sky-500">
+            className="inline-flex items-center gap-2 rounded-md bg-[#102c50] px-4 py-2 text-sm text-white transition-colors duration-150 hover:bg-[#173c68]">
             <ArrowLeft className="size-4" />
             Bosh sahifa
           </Link>
@@ -98,27 +96,27 @@ export default function DocumentClient({ documentId }: { documentId: string }) {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-white">
-      <header className="shrink-0 border-b border-slate-700/60 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 shadow-lg">
+      <header className="shrink-0 border-b border-slate-200 bg-white">
         <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/5 ring-1 ring-white/10">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#102c50] p-1.5">
               <Image
-                src={dxxlogo}
-                alt="logo"
-                width={36}
+                src={mexonLogo}
+                alt="Mezon"
+                width={56}
                 height={36}
                 className="image_navbar360 rounded-sm object-contain"
               />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">
+              <p className="truncate text-sm font-semibold text-slate-900">
                 {tashkilotData?.organ ?
                   tashkilotData.organ.charAt(0).toUpperCase() +
                   tashkilotData.organ.slice(1)
                 : 'Hujjat ko‘rish'}
               </p>
               <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                <p className="flex items-center gap-1.5 truncate text-xs text-slate-400">
+                <p className="flex items-center gap-1.5 truncate text-xs text-slate-500">
                   <Eye className="size-3.5 shrink-0" />
                   {document.title || 'Hujjat'}
                 </p>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import LoadingState from '@/components/LoadingState';
 import {
   Table,
   TableBody,
@@ -13,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { useKelganDocuments } from '@/hooks/useKelganDocuments';
 import NotData from '@/utils/not-data';
 import dayjs from 'dayjs';
-import { Inbox, Loader2, Search } from 'lucide-react';
+import { Inbox, Search } from 'lucide-react';
 import AmallarButtons from './amallar';
 import { DocumentType } from '@/types/document';
 import { SectionShell } from './section-shell';
@@ -54,9 +55,7 @@ const KelDocument = () => {
         </div>
 
         {loading ?
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="size-8 animate-spin text-sky-500" />
-          </div>
+          <LoadingState fullScreen message="Kiruvchi hujjatlar yuklanmoqda..." />
         : error ?
           <div className="flex h-64 items-center justify-center text-red-500">
             {error}

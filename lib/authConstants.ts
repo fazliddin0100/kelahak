@@ -1,4 +1,4 @@
-/** Client/server — MongoDB talab qilmaydi */
+/** Client/server authentication constants */
 
 import { isKotibiyatStaffRole } from '@/lib/roles';
 

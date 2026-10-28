@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import LoadingState from '@/components/LoadingState';
 import {
   Select,
   SelectContent,
@@ -40,15 +41,20 @@ export default function XatYuboruvchiModal({
 }: XatYuboruvchiModalProps) {
   const [sender, setSender] = useState<IUserPopulated | null>(null);
   const [receivers, setReceivers] = useState<IUserPopulated[]>([]);
-  const { users, loading } = useDocumentFormUsers(open, 'organ');
+  const { users: senderUsers, loading: senderLoading } =
+    useDocumentFormUsers(open, 'organ');
+  const { users: receiverUsers, loading: receiverLoading } =
+    useDocumentFormUsers(open, 'letter-recipients');
+  const loading = senderLoading || receiverLoading;
 
   const handleSenderChange = (userId: string) => {
-    const user = users.find((u) => u.userId === userId);
+    const user = senderUsers.find((u) => u.userId === userId);
     setSender(user ?? null);
+    setReceivers((prev) => prev.filter((receiver) => receiver.userId !== userId));
   };
 
   const handleReceiverChange = (userId: string) => {
-    const user = users.find((u) => u.userId === userId);
+    const user = receiverUsers.find((u) => u.userId === userId);
     if (!user) return;
 
     // Agar allaqachon tanlangan bo‘lsa, olib tashlash
@@ -84,11 +90,12 @@ export default function XatYuboruvchiModal({
         </DialogHeader>
 
         {loading ?
-          <p className="text-sm text-muted-foreground">Yuklanmoqda...</p>
-        : !users.length ?
+          <LoadingState message="Foydalanuvchilar yuklanmoqda..." className="py-2" />
+        : !senderUsers.length && !receiverUsers.length ?
           <p>
-            Foydalanuvchilar topilmadi. Sizning viloyat va organingizdagi boshqa
-            xodimlar ro‘yxatdan o‘tgan va ruxsat olgan bo‘lishi kerak.
+            Joriy viloyatdagi xodimlar yoki boshqa viloyatlardagi komandirlar
+            topilmadi. Foydalanuvchilar tizimga kirish uchun tasdiqlangan
+            bo‘lishi kerak.
           </p>
         : <div className="flex flex-col gap-4">
             {/* Yuboruvchi */}
@@ -101,7 +108,7 @@ export default function XatYuboruvchiModal({
                   <SelectValue placeholder="Tanlang" />
                 </SelectTrigger>
                 <SelectContent>
-                  {users.map((user) => (
+                  {senderUsers.map((user) => (
                     <SelectItem key={user.userId} value={user.userId}>
                       {user.job.militaryRank} {user.personal.fName}{' '}
                       {user.personal.name} {user.personal.sName} (
@@ -120,13 +127,13 @@ export default function XatYuboruvchiModal({
                   <SelectValue placeholder="Qabul qiluvchi qo‘shish" />
                 </SelectTrigger>
                 <SelectContent>
-                  {users
+                  {receiverUsers
                     .filter((u) => u.userId !== sender?.userId)
                     .map((user) => (
                       <SelectItem key={user.userId} value={user.userId}>
                         {user.job.militaryRank} {user.personal.fName}{' '}
                         {user.personal.name} {user.personal.sName} (
-                        {user.job.position})
+                        {user.job.position}) — {user.personal.province}
                       </SelectItem>
                     ))}
                 </SelectContent>

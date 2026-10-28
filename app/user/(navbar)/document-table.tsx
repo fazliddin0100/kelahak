@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import LoadingState from '@/components/LoadingState';
 import { useDocuments } from '@/hooks/useDocuments';
 import { cn } from '@/lib/utils';
 import NotData from '@/utils/not-data';
@@ -16,7 +17,6 @@ import {
   Calendar,
   FileText,
   Hash,
-  Loader2,
   Search,
   Tag,
 } from 'lucide-react';
@@ -50,11 +50,7 @@ const DocumentTable = ({ userId }: { userId?: string }) => {
   );
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="size-8 animate-spin text-sky-500" />
-      </div>
-    );
+    return <LoadingState fullScreen message="Hujjatlar yuklanmoqda..." />;
   }
 
   if (error) {

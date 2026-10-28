@@ -1,5 +1,5 @@
-// PostgreSQL + Prisma — MongoDB o‘rniga
-// ID: migratsiya paytida Mongo ObjectId string sifatida saqlanadi
+// PostgreSQL is the application's only database; Prisma manages its schema.
+// IDs are stored as text in PostgreSQL.
 
 generator client {
   provider = "prisma-client-js"
@@ -47,6 +47,8 @@ model User {
   auth     Auth?
   job      Job?
   devices  UserDevice[]
+  sessions UserSession[]
+  pendingUploads PendingUpload[]
 
   ownedDocuments       Document[]           @relation("DocumentOwner")
   forwardedDocuments   Document[]           @relation("DocumentForwardedBy")
@@ -143,6 +145,22 @@ model UserDevice {
 
   @@id([userId, deviceId])
   @@map("user_devices")
+}
+
+model UserSession {
+  id             String    @id
+  userId         String
+  createdAt      DateTime  @default(now())
+  lastActivityAt DateTime  @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pendingUploads PendingUpload[]
+
+  @@index([userId, revokedAt])
+  @@index([revokedAt, lastActivityAt])
+  @@map("user_sessions")
 }
 
 // ─── Hujjatlar (metadata + alohida content — katta hajm uchun) ───────────────
@@ -351,15 +369,35 @@ model File {
   sanasi         String
   ownerRegion    String
   userUploadId   String
-  filePath       String
+  filePath       String?
+  mimeType       String?
+  encryptedContent Bytes?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  uploader User @relation(fields: [userUploadId], references: [id])
+  uploader      User           @relation(fields: [userUploadId], references: [id])
+  pendingUpload PendingUpload?
 
   @@index([userUploadId])
   @@index([ownerRegion])
   @@map("files")
+}
+
+model PendingUpload {
+  id          String   @id
+  sessionId   String
+  userId      String
+  fileId      String   @unique
+  storagePath String
+  createdAt   DateTime @default(now())
+
+  session UserSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  file    File        @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@index([userId])
+  @@map("pending_uploads")
 }
 
 // ─── Ro‘yxatga olish ─────────────────────────────────────────────────────────

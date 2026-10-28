@@ -81,7 +81,7 @@ export default function DocumentOpenButtons({ document }: AmallarButtonsProps) {
             '/komandir'
           : '/'
         }>
-        <Button className="flex items-center gap-2 bg-linear-to-r from-blue-600 to-indigo-600 text-white px-5 py-2 rounded-lg shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-300">
+        <Button className="flex items-center gap-2 rounded-md bg-[#102c50] px-5 py-2 text-white shadow-sm transition-colors duration-150 hover:bg-[#173c68]">
           <House className="w-4 h-4" />
           Bosh sahifa
         </Button>

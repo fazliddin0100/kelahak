@@ -1,6 +1,6 @@
 // app/api/documents/[id]/route.ts
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase from '@/lib/prisma';
 import { parseAttachmentTextIds } from '@/lib/parseAttachmentTextIds';
 import {
   canUserEditDocument,

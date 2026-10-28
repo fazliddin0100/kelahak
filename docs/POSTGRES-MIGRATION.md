@@ -1,42 +1,19 @@
-# PostgreSQL + Prisma migratsiyasi
+# PostgreSQL deployment
 
-## Holat: TUGALLANDI
+Mezon uses PostgreSQL as its only database. Prisma owns the schema and data access.
 
-Barcha API route'lar Prisma (PostgreSQL) ga o'tkazildi.
+## Local development
 
-## Ishga tushirish
+Stop any existing development server, then run:
 
 ```bash
-cp .env.example .env.local
-# DATABASE_URL=postgresql://mysayt:mysayt_secret@127.0.0.1:5432/mysayt
-
-npm run docker:up
-npm run db:push
-npm run db:migrate-data    # MongoDB dan ma'lumot ko'chirish
-npm run db:optimize        # performance indekslar
 npm run dev
 ```
 
-## Arxitektura
+The command generates Prisma Client, checks the PostgreSQL connection and baseline, backs up existing data before pending migrations, applies migrations and encryption, then starts Next.js. Set `DATABASE_URL` in `.env` and keep `secrets/app-encryption-key` available.
 
-| Xizmat | Vazifa |
-|--------|--------|
-| PostgreSQL 16 | Asosiy DB |
-| PgBouncer | Connection pooling |
-| Redis | Rate limit / kesh |
-| `document_contents` | Og'ir JSON alohida jadval |
+## Ubuntu production behind Nginx
 
-## Helper modullar
+Use `npm run docker:prod` after configuring `.env.production.local`, Docker secrets, and the mounted backup destination. Compose runs the backup and migration services before the application container. Configure Nginx to proxy to the published application port.
 
-| Fayl | Vazifa |
-|------|--------|
-| `lib/prisma.ts` | Prisma client |
-| `lib/db/user.ts` | Foydalanuvchi so'rovlari |
-| `lib/db/document.ts` | Hujjat CRUD + serializatsiya |
-| `lib/db/nomeklatura.ts` | Nomeklatura |
-| `lib/db/file.ts` | Fayllar |
-
-## Eski Mongoose modellari
-
-`models/` papkasi hali mavjud (tip/reference uchun), lekin API route'lar uni ishlatmaydi.
-Keyingi bosqichda o'chirish mumkin.
+See [offline-deployment.md](offline-deployment.md) for LAN backup, restore, secret handling, and offline image transfer instructions.

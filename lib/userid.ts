@@ -9,12 +9,14 @@ export interface IUserDocument {
   department?: string;
   role?: string;
   accessApproved?: boolean;
+  sessionId?: string;
 }
 
 export type RequestIdentity = {
   userId: string;
   role: string;
   accessApproved: boolean;
+  sessionId: string | null;
 };
 
 function readBearerOrCookie(request: NextRequest): string | null {
@@ -59,7 +61,7 @@ export function readMiddlewareIdentity(
     request.headers.get('x-access-approved') === 'true' ||
     role === 'superAdmin';
 
-  return { userId, role, accessApproved };
+  return { userId, role, accessApproved, sessionId: request.headers.get('x-session-id')?.trim() || null };
 }
 
 export function readRequestIdentity(
@@ -79,6 +81,7 @@ export function readRequestIdentity(
     role: String(payload.role),
     accessApproved:
       payload.role === 'superAdmin' || payload.accessApproved === true,
+    sessionId: typeof payload.sessionId === 'string' ? payload.sessionId : null,
   };
 }
 
@@ -95,6 +98,7 @@ export const getAuthPayload = (
       userId: identity.userId,
       role: identity.role,
       accessApproved: identity.accessApproved,
+      sessionId: identity.sessionId ?? undefined,
     };
   }
   return null;

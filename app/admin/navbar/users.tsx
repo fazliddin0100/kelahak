@@ -1,12 +1,12 @@
 'use client';
 
 import useGrantUser from '@/hooks/useGrantUserHook';
+import LoadingState from '@/components/LoadingState';
 import useRevokeUser from '@/hooks/useRevokUserHook';
 import { useSessionsUsers } from '@/hooks/useSessionsUsers';
 import { cn } from '@/lib/utils';
 import {
   CircleUserRound,
-  Loader2,
   Search,
   UserRoundCheck,
   UserRoundX,
@@ -74,9 +74,7 @@ const UsersPage = () => {
         </div>
 
         {loading ?
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="size-8 animate-spin text-sky-500" />
-          </div>
+          <LoadingState fullScreen message="Foydalanuvchilar yuklanmoqda..." />
         : <div className="overflow-hidden rounded-xl border border-slate-200">
             <div className="max-h-[calc(100vh-300px)] overflow-auto">
               <div className="grid grid-cols-10 gap-0 border-b border-slate-200 bg-slate-50/90 text-xs font-semibold uppercase tracking-wide text-slate-500">

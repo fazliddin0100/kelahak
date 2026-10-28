@@ -11,6 +11,7 @@ import {
   PENDING_ACCESS_MESSAGE,
 } from '@/lib/userAccess';
 import { logSecurityEvent, getClientIp } from '@/lib/securityLog';
+import { createUserSession } from '@/lib/sessionFiles';
 
 const rateLimiter = new RateLimiterMemory({
   points: process.env.NODE_ENV === 'development' ? 30 : 8,
@@ -30,6 +31,7 @@ interface JWTPayload {
   department: string;
   role: string;
   accessApproved: boolean;
+  sessionId: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -143,11 +145,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const sessionId = await createUserSession(user.id, 5 * 60 * 60 * 1000);
     const payload: JWTPayload = {
       userId: user.id,
       department: job.department,
       role: role.role,
       accessApproved: true,
+      sessionId,
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });

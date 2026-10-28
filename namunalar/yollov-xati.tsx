@@ -34,7 +34,7 @@ export const YollovXati = ({ document, embedded }: YollovXatiProps) => {
     document.registrationIndex,
     document.grif
   );
-  const isSigned = sender.hasSigned || !document.canSign;
+  const isSigned = sender.hasSigned;
 
   const getMonthUz = (monthIndex: number): string => {
     const months = [

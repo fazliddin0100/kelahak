@@ -1,6 +1,6 @@
 // app/api/documents/get-documents-user/route.ts
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase from '@/lib/prisma';
 import {
   countDocuments,
   findDocuments,

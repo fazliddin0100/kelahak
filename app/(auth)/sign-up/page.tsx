@@ -29,7 +29,7 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/components/ui/sonner';
 
-import gerb from '../../../public/gerb.png';
+import mexonLogo from '../../../public/mexon-mark.png';
 
 // ────────────────────────────────────────────────
 // Debounce hook (o'z ichida yozilgan – qo'shimcha paket kerak emas)
@@ -192,13 +192,13 @@ export default function RegistrationPage() {
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-50 p-4">
       <div className="w-full max-w-xl bg-white rounded-2xl p-8 shadow-xl border border-gray-100">
-        <div className="flex justify-center mb-6">
+        <div className="mx-auto mb-6 flex h-20 w-24 items-center justify-center rounded-xl bg-[#0b1524] p-2 shadow-md">
           <Image
-            src={gerb}
-            alt="Gerb"
-            width={80}
-            height={80}
-            className="rounded-full object-cover shadow-md"
+            src={mexonLogo}
+            alt="Mezon"
+            width={512}
+            height={324}
+            className="h-14 w-[5.5rem] object-contain"
           />
         </div>
 
@@ -334,7 +334,7 @@ export default function RegistrationPage() {
                     </FormControl>
                     <div className="min-h-6 text-xs">
                       {isLoginChecking ?
-                        <span className="text-gray-500 animate-pulse">
+                        <span className="text-gray-500">
                           Tekshirilmoqda...
                         </span>
                       : loginValue.length === 0 ?
@@ -415,7 +415,7 @@ export default function RegistrationPage() {
             {/* Submit tugmasi */}
             <Button
               type="submit"
-              className="w-full h-12 text-base font-medium bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 mt-4"
+              className="mt-4 h-12 w-full bg-[#102c50] text-base font-medium text-white transition-colors duration-150 hover:bg-[#173c68]"
               disabled={!canSubmit}>
               {form.formState.isSubmitting ?
                 'Ro‘yxatdan o‘tkazilmoqda...'

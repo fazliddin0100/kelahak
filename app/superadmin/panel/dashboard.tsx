@@ -1,10 +1,10 @@
 'use client';
 
 import { useSuperAdminStats } from '@/hooks/useSuperAdminStats';
+import LoadingState from '@/components/LoadingState';
 import {
   CheckCircle2,
   Clock,
-  Loader2,
   MapPin,
   Shield,
   Users,
@@ -16,9 +16,7 @@ export default function SuperAdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="size-8 animate-spin text-violet-500" />
-      </div>
+      <LoadingState fullScreen message="Statistika yuklanmoqda..." />
     );
   }
 
@@ -30,15 +28,15 @@ export default function SuperAdminDashboard() {
         </p>
         <p className="max-w-md text-xs text-slate-500">
           SuperAdmin sifatida{' '}
-          <a href="/superadmin/login" className="text-violet-600 underline">
+          <a href="/superadmin/login" className="text-[#102c50] underline">
             /superadmin/login
           </a>{' '}
-          orqali kiring. MongoDB (MONGOURL) ishlayotganini tekshiring.
+          orqali kiring. PostgreSQL ulanishi va server holatini tekshiring.
         </p>
         <button
           type="button"
           onClick={() => refetch()}
-          className="rounded-lg bg-violet-600 px-4 py-2 text-sm text-white hover:bg-violet-500">
+          className="rounded-md bg-[#102c50] px-4 py-2 text-sm text-white hover:bg-[#173c68]">
           Qayta yuklash
         </button>
       </div>
@@ -50,7 +48,7 @@ export default function SuperAdminDashboard() {
       label: 'Jami foydalanuvchilar',
       value: stats.totalUsers,
       icon: Users,
-      className: 'from-sky-500/10 to-sky-50 border-sky-200 text-sky-700',
+      className: 'from-slate-100 to-white border-slate-200 text-[#102c50]',
     },
     {
       label: 'Tasdiqlanmagan',
@@ -70,7 +68,7 @@ export default function SuperAdminDashboard() {
       value: stats.superAdminCount,
       icon: Shield,
       className:
-        'from-violet-500/10 to-violet-50 border-violet-200 text-violet-700',
+        'from-slate-100 to-white border-slate-200 text-[#102c50]',
     },
   ];
 
@@ -92,14 +90,14 @@ export default function SuperAdminDashboard() {
         title="Viloyatlar bo‘yicha"
         description="Ro‘yxatdan o‘tgan foydalanuvchilar"
         icon={MapPin}
-        iconClassName="bg-sky-500/10 text-sky-600">
+        iconClassName="bg-slate-100 text-[#102c50]">
         <div className="grid gap-2 p-5 sm:grid-cols-2 lg:grid-cols-3">
           {Object.entries(stats.byProvince).map(([prov, count]) => (
             <div
               key={prov}
               className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3">
               <span className="text-sm font-medium text-slate-700">{prov}</span>
-              <span className="text-sm font-bold text-violet-600">{count}</span>
+              <span className="text-sm font-bold text-[#102c50]">{count}</span>
             </div>
           ))}
         </div>
@@ -108,14 +106,14 @@ export default function SuperAdminDashboard() {
       <SaSectionShell
         title="Rollar bo‘yicha"
         icon={Users}
-        iconClassName="bg-violet-500/10 text-violet-600">
+        iconClassName="bg-slate-100 text-[#102c50]">
         <div className="flex flex-wrap gap-2 p-5">
           {Object.entries(stats.byRole).map(([role, count]) => (
             <span
               key={role}
-              className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-800">
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
               {role}
-              <span className="rounded-full bg-violet-600 px-1.5 py-0.5 text-[10px] text-white">
+              <span className="rounded-full bg-[#102c50] px-1.5 py-0.5 text-[10px] text-white">
                 {count}
               </span>
             </span>

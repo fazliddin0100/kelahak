@@ -1,9 +1,8 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import connectToDatabase, { prisma } from '@/lib/prisma';
 import { createDbId } from '@/lib/db/document';
-import { promises as fs } from 'fs';
 import { NextRequest, NextResponse } from 'next/server';
-import path from 'path';
+import { stageEncryptedUpload } from '@/lib/sessionFiles';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +10,7 @@ export async function POST(request: NextRequest) {
 
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
+    const { userId, sessionId, user } = auth;
 
         if (!user.personal) {
       return NextResponse.json(
@@ -23,39 +22,44 @@ export async function POST(request: NextRequest) {
     const province = user.personal.province;
 
     const formData = await request.formData();
-    const file = formData.get('file') as Blob;
-    const nomi = formData.get('nomi') as string;
-    const raqami = formData.get('raqami') as string;
-    const maxfiylik = formData.get('maxfiylik') as string;
-    const sanasi = formData.get('sanasi') as string;
-    const customName = formData.get('customName') as string;
+    const file = formData.get('file');
+    const nomi = String(formData.get('nomi') ?? '');
+    const raqami = String(formData.get('raqami') ?? '');
+    const maxfiylik = String(formData.get('maxfiylik') ?? '');
+    const sanasi = String(formData.get('sanasi') ?? '');
 
-    if (!file) {
+    if (!(file instanceof File)) {
       return NextResponse.json({ error: 'Fayl topilmadi' }, { status: 400 });
     }
+    if (!sessionId) return NextResponse.json({ error: 'Sessiya eskirgan, qayta kiring.' }, { status: 401 });
+    if (file.size <= 0 || file.size > 25 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Fayl hajmi 25 MB dan oshmasligi kerak.' }, { status: 413 });
+    }
+    const fileBytes = Buffer.from(await file.arrayBuffer());
+    if (!fileBytes.subarray(0, 5).equals(Buffer.from('%PDF-'))) {
+      return NextResponse.json({ error: 'Faqat haqiqiy PDF fayl yuklash mumkin.' }, { status: 415 });
+    }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-    await fs.mkdir(uploadDir, { recursive: true });
-
-    const safeName = customName || `file_${Date.now()}`;
-    const diskPath = path.join(uploadDir, safeName);
-    await fs.writeFile(diskPath, buffer);
-
-    const newFile = await prisma.file.create({
-      data: {
-        id: createDbId(),
-        nomi,
-        raqami,
-        maxfiylik,
-        sanasi,
-        ownerRegion: province,
-        userUploadId: user.id,
-        filePath: `/uploads/${safeName}`,
-      },
-    });
+    const fileId = createDbId();
+    const storagePath = await stageEncryptedUpload(sessionId, fileBytes);
+    let newFile;
+    try {
+      newFile = await prisma.$transaction(async (tx) => {
+        const created = await tx.file.create({
+          data: { id: fileId, nomi: nomi || file.name, raqami, maxfiylik, sanasi,
+            ownerRegion: province, userUploadId: userId, filePath: null,
+            mimeType: 'application/pdf' },
+        });
+        await tx.pendingUpload.create({
+          data: { id: createDbId(), sessionId, userId, fileId, storagePath },
+        });
+        return created;
+      });
+    } catch (error) {
+      const { unlink } = await import('node:fs/promises');
+      await unlink(storagePath).catch(() => undefined);
+      throw error;
+    }
 
     return NextResponse.json({
       message: 'Fayl muvaffaqiyatli yuklandi va saqlandi',

@@ -43,10 +43,10 @@ export default function SuperAdminLoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-violet-500/20 bg-white/95 p-8 shadow-2xl backdrop-blur">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-violet-600 shadow-lg shadow-violet-500/30">
+          <div className="mb-4 flex size-14 items-center justify-center rounded-xl bg-[#102c50]">
             <Shield className="size-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">SuperAdmin</h1>
@@ -82,7 +82,7 @@ export default function SuperAdminLoginPage() {
           <Button
             type="submit"
             disabled={loading}
-            className="h-11 w-full bg-violet-600 hover:bg-violet-500">
+            className="h-11 w-full bg-[#102c50] hover:bg-[#173c68]">
             {loading ? 'Kirish...' : 'Kirish'}
           </Button>
         </form>
@@ -91,7 +91,7 @@ export default function SuperAdminLoginPage() {
           Hisobingiz yo‘qmi?{' '}
           <Link
             href="/superadmin/register"
-            className="font-medium text-violet-600 hover:underline">
+            className="font-medium text-[#102c50] hover:underline">
             Ro‘yxatdan o‘tish
           </Link>
         </p>

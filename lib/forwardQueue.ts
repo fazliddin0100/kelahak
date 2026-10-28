@@ -1,6 +1,6 @@
 import { DocumentType } from '@/types/document';
 import { DocumentStatus } from '@/types/document-status.enum';
-import { resolveMongoId } from '@/lib/resolveMongoId';
+import { resolveIdReference } from '@/lib/resolveIdReference';
 
 export type ForwardQueueEntry = {
   userId: string;
@@ -45,7 +45,7 @@ export function normalizeForwardQueue(document: DocumentType): ForwardQueueEntry
         hasSigned?: boolean;
         signedAt?: Date | string;
       };
-      const uid = resolveMongoId(row.userId);
+      const uid = resolveIdReference(row.userId);
       return {
         userId: uid ?? '',
         fullName: row.fullName?.trim() || '',

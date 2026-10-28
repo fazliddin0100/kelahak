@@ -144,10 +144,10 @@ export default function SuperAdminRegisterPage() {
     !form.formState.isSubmitting && !isLoginChecking && !isLoginTaken;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 p-4 py-10">
-      <div className="w-full max-w-xl rounded-2xl border border-violet-500/20 bg-white/95 p-8 shadow-2xl">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 py-10">
+      <div className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-xl bg-violet-600">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-[#102c50]">
             <Shield className="size-6 text-white" />
           </div>
           <div>
@@ -336,7 +336,7 @@ export default function SuperAdminRegisterPage() {
             </div>
 
             <div className="relative">
-              <KeyRound className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-violet-500" />
+              <KeyRound className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#102c50]" />
               <Input
                 className="pl-10"
                 placeholder="Bootstrap kalit (SUPERADMIN_BOOTSTRAP_KEY)"
@@ -349,14 +349,14 @@ export default function SuperAdminRegisterPage() {
             <Button
               type="submit"
               disabled={!canSubmit}
-              className="w-full bg-violet-600 hover:bg-violet-500">
+              className="w-full bg-[#102c50] hover:bg-[#173c68]">
               {form.formState.isSubmitting ? 'Yaratilmoqda...' : 'SuperAdmin yaratish'}
             </Button>
           </form>
         </Form>
 
         <p className="mt-4 text-center text-sm text-slate-500">
-          <Link href="/superadmin/login" className="text-violet-600 hover:underline">
+          <Link href="/superadmin/login" className="text-[#102c50] hover:underline">
             Kirish sahifasiga
           </Link>
         </p>

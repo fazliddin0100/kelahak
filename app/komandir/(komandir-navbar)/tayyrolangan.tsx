@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import LoadingState from '@/components/LoadingState';
 import {
   Table,
   TableBody,
@@ -13,7 +14,6 @@ import { cn } from '@/lib/utils';
 import {
   CheckCircle2,
   ClipboardList,
-  Loader2,
   Search,
   XCircle,
 } from 'lucide-react';
@@ -59,9 +59,7 @@ export default function Tayyrolangan() {
         </div>
 
         {loading ?
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="size-8 animate-spin text-sky-500" />
-          </div>
+          <LoadingState fullScreen message="Hujjatlar yuklanmoqda..." />
         : error ?
           <div className="flex h-64 items-center justify-center text-red-500">
             {error}

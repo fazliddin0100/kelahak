@@ -1,6 +1,6 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { type NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase from '@/lib/prisma';
 import {
   createDocument,
   findDocuments,

@@ -1,6 +1,7 @@
 'use client';
 
 import EmptyState from '@/components/EmptyState';
+import LoadingState from '@/components/LoadingState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +22,7 @@ export const RegDocuments = () => {
 
   console.log('Kotibiyat hujjatlari:', documents);
 
-  if (loading) return <p>Yuklanmoqda...</p>;
+  if (loading) return <LoadingState fullScreen message="Hujjatlar yuklanmoqda..." />;
   if (error) return <p>Xato: {error}</p>;
 
   console.log('Documents array:', documents);

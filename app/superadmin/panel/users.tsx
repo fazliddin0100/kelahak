@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import LoadingState from '@/components/LoadingState';
 import { useSuperAdminUsers } from '@/hooks/useSuperAdminUsers';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/sonner';
@@ -87,7 +88,7 @@ export default function SuperAdminUsers() {
       title="Barcha foydalanuvchilar"
       description="Barcha viloyatlar — ruxsat berish / bekor qilish (SuperAdmin)"
       icon={Users}
-      iconClassName="bg-violet-500/10 text-violet-600">
+      iconClassName="bg-slate-100 text-[#102c50]">
       <div className="p-5">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative max-w-md flex-1">
@@ -96,7 +97,7 @@ export default function SuperAdminUsers() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Qidirish..."
-              className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20"
+              className="w-full rounded-lg border border-slate-200 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-[#c7a75b] focus:ring-2 focus:ring-[#c7a75b]/20"
             />
           </div>
           <p className="text-sm text-slate-500">
@@ -112,9 +113,7 @@ export default function SuperAdminUsers() {
         </div>
 
         {loading ?
-          <div className="flex h-48 items-center justify-center">
-            <Loader2 className="size-8 animate-spin text-violet-500" />
-          </div>
+          <LoadingState fullScreen message="Foydalanuvchilar yuklanmoqda..." />
         : <div className="overflow-hidden rounded-xl border border-slate-200">
             <div className="max-h-[calc(100vh-320px)] overflow-auto">
               <table className="w-full min-w-[900px] text-left text-sm">
@@ -134,7 +133,7 @@ export default function SuperAdminUsers() {
                     const ok = Boolean(u.job?.isUserTrue);
                     const isBusy = busy === u.userId;
                     return (
-                      <tr key={u.userId} className="hover:bg-violet-50/30">
+                      <tr key={u.userId} className="hover:bg-slate-50">
                         <td className="px-3 py-3 text-slate-500">{i + 1}</td>
                         <td className="px-3 py-3 font-medium">
                           <span className="flex items-center gap-2">

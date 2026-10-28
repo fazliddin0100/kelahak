@@ -16,12 +16,16 @@ import {
   serializeUser,
   type UserWithRelations,
 } from '@/lib/db/user';
-import { resolveMongoId } from '@/lib/resolveMongoId';
+import { resolveIdReference } from '@/lib/resolveIdReference';
 import { DocumentStatus } from '@/types/document-status.enum';
+import {
+  decryptDocumentContent,
+  encryptDocumentContent,
+} from '@/lib/documentContentEncryption';
 
 export { isValidDbId };
 
-/** Mongo ObjectId formatida yangi ID (24 hex) */
+/** Generate an application ID as a 24-character hexadecimal string. */
 export function createDbId(): string {
   return randomBytes(12).toString('hex');
 }
@@ -108,10 +112,16 @@ export async function findDocumentById(
   options: FindDocumentOptions = {}
 ): Promise<DocumentWithRelations | null> {
   await connectToDatabase();
-  return prisma.document.findUnique({
+  const document = await prisma.document.findUnique({
     where: { id },
     include: documentInclude(options),
-  }) as Promise<DocumentWithRelations | null>;
+  });
+  if (document?.content) {
+    document.content.content = decryptDocumentContent(
+      document.content.content
+    ) as Prisma.JsonValue;
+  }
+  return document as DocumentWithRelations | null;
 }
 
 export async function findDocuments(
@@ -124,13 +134,21 @@ export async function findDocuments(
 ): Promise<DocumentWithRelations[]> {
   await connectToDatabase();
   const { orderBy, skip, take, ...includeOpts } = options;
-  return prisma.document.findMany({
+  const documents = await prisma.document.findMany({
     where,
     include: documentInclude(includeOpts),
     orderBy,
     skip,
     take,
-  }) as Promise<DocumentWithRelations[]>;
+  });
+  for (const document of documents) {
+    if (document.content) {
+      document.content.content = decryptDocumentContent(
+        document.content.content
+      ) as Prisma.JsonValue;
+    }
+  }
+  return documents as DocumentWithRelations[];
 }
 
 export async function countDocuments(where: Prisma.DocumentWhereInput): Promise<number> {
@@ -182,7 +200,7 @@ function populateUserRef(
   userId: unknown,
   userMap?: Map<string, UserWithRelations>
 ): unknown {
-  const id = resolveMongoId(userId);
+  const id = resolveIdReference(userId);
   if (!id) return userId;
   const user = userMap?.get(id);
   if (!user) return id;
@@ -215,7 +233,7 @@ function normalizeSignerField(
 function collectJsonUserIdsFromDoc(doc: Document): string[] {
   const ids = new Set<string>();
   const add = (val: unknown) => {
-    const id = resolveMongoId(val);
+    const id = resolveIdReference(val);
     if (id) ids.add(id);
   };
 
@@ -250,7 +268,7 @@ export function collectJsonUserIds(docs: Document[]): string[] {
   return [...ids];
 }
 
-/** API javoblari uchun Mongoose `_id` / populate formatiga moslashtirish */
+/** Preserve the existing API `_id` and populated relation response shape. */
 export function serializeDocumentForApi(
   doc: DocumentWithRelations,
   options: SerializeDocumentOptions = {}
@@ -291,7 +309,7 @@ export function serializeDocumentForApi(
   };
 
   if (options.includeContent !== false) {
-    result.content = contentRow?.content ?? {};
+    result.content = contentRow ? decryptDocumentContent(contentRow.content) : {};
   }
 
   if (allowedUsers) {
@@ -491,7 +509,7 @@ export async function createDocument(
       await tx.documentContent.create({
         data: {
           documentId: id,
-          content: (typeof content === 'object' ? content : {}) as Prisma.InputJsonValue,
+          content: encryptDocumentContent(content) as Prisma.InputJsonValue,
         },
       });
     }
@@ -613,10 +631,10 @@ export async function updateDocument(
         where: { documentId: id },
         create: {
           documentId: id,
-          content: (typeof content === 'object' ? content : {}) as Prisma.InputJsonValue,
+          content: encryptDocumentContent(content) as Prisma.InputJsonValue,
         },
         update: {
-          content: (typeof content === 'object' ? content : {}) as Prisma.InputJsonValue,
+          content: encryptDocumentContent(content) as Prisma.InputJsonValue,
         },
       });
     }
@@ -753,7 +771,7 @@ export async function findPendingSignatureDocuments(
     if (Array.isArray(approvers)) {
       if (
         approvers.some(
-          (a) => resolveMongoId(a.userId) === userId && a.hasSigned === false
+          (a) => resolveIdReference(a.userId) === userId && a.hasSigned === false
         )
       ) {
         return true;

@@ -2,7 +2,7 @@ import { normalizeDocumentContent } from '@/lib/normalizeDocumentContent';
 import { attachmentTextToFormIds } from '@/lib/parseAttachmentTextIds';
 import type { DocumentAttachmentRef, DocumentType } from '@/types/document';
 
-/** MongoDB / JSON: string | { $oid } | { _id } | populate qilingan hujjat */
+/** API JSON reference shapes: string | { $oid } | { _id } | populated document */
 export function extractAttachmentIds(input: unknown): string[] {
   return attachmentTextToFormIds(
     Array.isArray(input) ? input : input ? [input] : []
@@ -55,6 +55,14 @@ export function getPopulatedAttachments(
   const out: DocumentType[] = [];
 
   for (const item of raw) {
+    if (
+      !item ||
+      typeof item !== 'object' ||
+      !Object.prototype.hasOwnProperty.call(item, 'content')
+    ) {
+      continue;
+    }
+
     const doc = toAttachmentDocument(item);
     if (doc) out.push(doc);
   }

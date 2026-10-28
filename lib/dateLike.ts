@@ -1,6 +1,6 @@
 import type { DateLike } from '@/types/document';
 
-/** Mongo `$date`, ISO string yoki Date → Date */
+/** Legacy JSON date, ISO string yoki Date → Date */
 export function toDate(value: DateLike | null | undefined): Date {
   if (value == null) return new Date(0);
   if (value instanceof Date) return value;

@@ -22,7 +22,7 @@ import { getPostLoginPath } from '@/lib/authRedirect';
 import * as z from 'zod';
 
 import backgroundImage from '../../../public/basgraund.webp';
-import dxxlogo from '../../../public/gerb.png';
+import mexonLogo from '../../../public/mexon-mark.png';
 
 const formSchema = z.object({
   login: z.string().min(1, 'Username majburiy'),
@@ -85,15 +85,13 @@ export default function LoginPage() {
       style={{ backgroundImage: `url(${backgroundImage.src})` }}>
       <div className="w-full max-w-md p-8 mx-auto rounded-2xl shadow-xl bg-white/90 backdrop-blur-sm border border-gray-200">
         {/* Logo */}
-        <div className="w-20 h-25 mx-auto mb-6 rounded-full overflow-hidden">
+        <div className="w-24 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl bg-[#0b1524] p-2 shadow-md">
           <Image
-            src={dxxlogo}
-            alt="DXX Logo"
-            style={{
-              width: 100,
-              height: 'auto',
-            }}
-            className="object-cover image_style360"
+            src={mexonLogo}
+            alt="Mezon"
+            width={512}
+            height={324}
+            className="h-14 w-[5.5rem] object-contain"
           />
         </div>
 
@@ -127,7 +125,7 @@ export default function LoginPage() {
                     <Input
                       placeholder="username kiriting"
                       {...field}
-                      className="h-12 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      className="h-12 text-base border-gray-300 focus:border-[#c7a75b] focus:ring-[#c7a75b]"
                     />
                   </FormControl>
                   <FormMessage />
@@ -146,7 +144,7 @@ export default function LoginPage() {
                       type="password"
                       placeholder="••••••••"
                       {...field}
-                      className="h-12 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      className="h-12 text-base border-gray-300 focus:border-[#c7a75b] focus:ring-[#c7a75b]"
                     />
                   </FormControl>
                   <FormMessage />
@@ -156,7 +154,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-12 text-lg font-semibold bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg transition-all duration-300">
+              className="w-full h-12 text-lg font-semibold bg-[#102c50] hover:bg-[#173c68] text-white shadow-sm transition-colors duration-150">
               Kirish
             </Button>
           </form>
@@ -167,11 +165,11 @@ export default function LoginPage() {
           <p className="text-sm text-gray-600 mb-3">Hisobingiz yo‘qmi?</p>
           <Link
             href="/sign-up"
-            className="group inline-flex items-center gap-2 text-base font-medium text-blue-600 hover:text-blue-700 transition-all duration-300">
+            className="group inline-flex items-center gap-2 text-base font-medium text-[#102c50] hover:text-[#173c68] transition-colors duration-150">
             <UserPlus className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span className="relative">
               Ro‘yxatdan o‘tish
-              <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
+              <span className="absolute -bottom-0.5 left-0 h-0.5 w-0 bg-[#c7a75b] transition-all duration-150 group-hover:w-full"></span>
             </span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>

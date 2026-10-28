@@ -1,6 +1,6 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { buildPersonalFullName } from '@/lib/forwardQueue';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase from '@/lib/prisma';
 import {
   findDocumentById,
   isValidDbId,

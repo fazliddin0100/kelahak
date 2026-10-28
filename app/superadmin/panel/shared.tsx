@@ -6,7 +6,7 @@ export function SaSectionShell({
   title,
   description,
   icon: Icon,
-  iconClassName = 'bg-violet-500/10 text-violet-600',
+  iconClassName = 'bg-slate-100 text-[#102c50]',
   children,
   actions,
 }: {
@@ -19,8 +19,8 @@ export function SaSectionShell({
 }) {
   return (
     <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
-      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-slate-100 bg-gradient-to-r from-violet-50/80 to-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div
               className={cn(

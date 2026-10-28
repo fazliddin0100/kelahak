@@ -10,12 +10,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/sonner';
-import { Upload } from 'lucide-react';
+import { CalendarDays, Hash, PencilLine, ShieldCheck, Upload } from 'lucide-react';
 import { useState } from 'react';
-import { AiOutlineFieldNumber } from 'react-icons/ai';
-import { BiRename } from 'react-icons/bi';
-import { CiCalendarDate } from 'react-icons/ci';
-import { VscGistSecret } from 'react-icons/vsc';
 
 const FileModal = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -90,7 +86,7 @@ const FileModal = () => {
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="flex items-center gap-2">
-              <BiRename size={18} className="shrink-0 text-slate-400" />
+              <PencilLine className="size-[18px] shrink-0 text-slate-400" />
               <Input
                 placeholder="Nomi"
                 value={nomi}
@@ -99,7 +95,7 @@ const FileModal = () => {
               />
             </div>
             <div className="flex items-center gap-2">
-              <AiOutlineFieldNumber size={18} className="shrink-0 text-slate-400" />
+              <Hash className="size-[18px] shrink-0 text-slate-400" />
               <Input
                 placeholder="Raqami"
                 value={raqami}
@@ -108,7 +104,7 @@ const FileModal = () => {
               />
             </div>
             <div className="flex items-center gap-2">
-              <VscGistSecret size={18} className="shrink-0 text-slate-400" />
+              <ShieldCheck className="size-[18px] shrink-0 text-slate-400" />
               <Input
                 placeholder="Maxfiylik darajasi"
                 value={maxfiylik}
@@ -117,7 +113,7 @@ const FileModal = () => {
               />
             </div>
             <div className="flex items-center gap-2">
-              <CiCalendarDate size={18} className="shrink-0 text-slate-400" />
+              <CalendarDays className="size-[18px] shrink-0 text-slate-400" />
               <Input
                 placeholder="Sanasi"
                 value={sanasi}

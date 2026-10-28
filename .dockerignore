@@ -1,0 +1,16 @@
+.git
+.idea
+.vscode
+node_modules
+.next
+out
+coverage
+/backups
+/secrets
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+public/uploads
+*.pem

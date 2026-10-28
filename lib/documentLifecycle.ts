@@ -1,5 +1,5 @@
 import { hasPendingForwardSignatures } from '@/lib/forwardQueue';
-import { resolveMongoId } from '@/lib/resolveMongoId';
+import { resolveIdReference } from '@/lib/resolveIdReference';
 import {
   canUserSubmitToKotibiyat,
   isCommanderSigned,
@@ -65,7 +65,7 @@ export function canCommanderReviewEdit(
   if (isCommanderApproved(doc)) return false;
   if (doc.sentToCommander !== true && !isUserAuthorSigned(doc)) return false;
 
-  const forwarderId = resolveMongoId(
+  const forwarderId = resolveIdReference(
     (doc as WorkflowDocument & { forwardedBy?: unknown }).forwardedBy
   );
   if (forwarderId && forwarderId === commanderUserId) return true;

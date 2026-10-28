@@ -11,7 +11,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { DocumentType } from '@/types/document';
-import { ExternalLink, FileText, Loader2, Search } from 'lucide-react';
+import { ExternalLink, FileText, Search } from 'lucide-react';
+import LoadingState from '@/components/LoadingState';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -97,9 +98,7 @@ const FileArxiv: React.FC<Props> = ({ nomeklaturaId }) => {
 
       <div className="overflow-hidden rounded-xl border border-slate-200">
         {loading ?
-          <div className="flex justify-center py-12">
-            <Loader2 className="size-7 animate-spin text-sky-500" />
-          </div>
+          <LoadingState message="Arxiv hujjatlari yuklanmoqda..." className="py-4" />
         : error ?
           <div className="py-12 text-center text-sm text-red-500">{error}</div>
         : filteredFiles.length === 0 ?

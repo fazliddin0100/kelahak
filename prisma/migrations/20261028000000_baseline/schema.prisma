@@ -1,0 +1,425 @@
+// PostgreSQL is the application's only database; Prisma manages its schema.
+// IDs are stored as text in PostgreSQL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DbRole {
+  admin
+  superAdmin
+  user
+  commander
+  deputyCommander
+  departmentCommander
+  departmentDeputy
+}
+
+enum NomeklaturaStatus {
+  CREATED
+  APPROVED
+  ARCHIVED
+}
+
+enum SecurityEventType {
+  visit
+  login_failed
+  login_success
+  rate_limit
+  suspicious
+  waf_block
+  ddos
+}
+
+// ─── Foydalanuvchi grafik ───────────────────────────────────────────────────
+
+model User {
+  id        String   @id
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  personal Personal?
+  auth     Auth?
+  job      Job?
+  devices  UserDevice[]
+
+  ownedDocuments       Document[]           @relation("DocumentOwner")
+  forwardedDocuments   Document[]           @relation("DocumentForwardedBy")
+  allowedOnDocuments   DocumentAllowedUser[]
+  uploadedFiles        File[]
+  ownedNomeklatura     Nomeklatura[]        @relation("NomeklaturaOwner")
+  createdNomeklatura   Nomeklatura[]        @relation("NomeklaturaCreator")
+
+  @@map("users")
+}
+
+model Personal {
+  id        String   @id
+  userId    String   @unique
+  name      String
+  fName     String
+  sName     String
+  province  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("personals")
+}
+
+model Auth {
+  id        String   @id
+  userId    String   @unique
+  login     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auths")
+}
+
+model Role {
+  id          String   @id
+  role        DbRole   @default(user)
+  province    String
+  permissions String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  jobs Job[]
+
+  @@map("roles")
+}
+
+model Job {
+  id           String   @id
+  userId       String   @unique
+  roleId       String
+  position     String
+  organ        String
+  department   String
+  militaryRank String
+  isUserTrue   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@index([roleId])
+  @@index([department])
+  @@map("jobs")
+}
+
+model Device {
+  id        String    @id
+  mac       String    @unique
+  ip        String
+  hostname  String?
+  note      String?
+  lastSeen  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  users UserDevice[]
+
+  @@map("devices")
+}
+
+model UserDevice {
+  userId   String
+  deviceId String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, deviceId])
+  @@map("user_devices")
+}
+
+// ─── Hujjatlar (metadata + alohida content — katta hajm uchun) ───────────────
+
+model Document {
+  id        String   @id
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title        String?
+  grif         String?
+  position     String?
+  militaryRank String?
+  fullName     String?
+
+  copyNumber String[] @default([])
+  copyIndex  Int?
+  copyTotal  Int?
+
+  // Imzolovchi / yo‘naltirish snapshotlari (JSONB — tez o‘qish)
+  approvers       Json @default("[]")
+  sender          Json?
+  receiver        Json @default("[]")
+  author          Json?
+  bosSigned       Json?
+  forwardedSigner Json?
+  forwardedTo     Json @default("[]")
+  ownerAcceptedBy Json?
+
+  ownerId String
+  owner   User   @relation("DocumentOwner", fields: [ownerId], references: [id])
+
+  status String @default("yangi")
+
+  sharedWithAdmin        Boolean @default(false)
+  sentToCommander        Boolean @default(false)
+  sentToCommanderAt      DateTime?
+  submittedToKotibiyat   Boolean @default(false)
+  submittedToKotibiyatAt DateTime?
+  createdByKotibiyat     Boolean @default(false)
+
+  nomenclatureId String?
+  nomenclature   Nomeklatura? @relation(fields: [nomenclatureId], references: [id])
+
+  registrationIndex Int?
+  year              Int?
+  ownerRegion       String?
+  sourceRegion      String?
+
+  parentId String?
+  parent   Document?  @relation("DocumentParent", fields: [parentId], references: [id])
+  children Document[] @relation("DocumentParent")
+
+  isCopy Boolean @default(false)
+
+  forwardedById String?
+  forwardedBy   User?     @relation("DocumentForwardedBy", fields: [forwardedById], references: [id])
+  forwardedAt   DateTime?
+  forwardedComment String?
+
+  currentViewIndex Int     @default(0)
+  replyToId        String?
+  replyTo          Document?  @relation("DocumentReply", fields: [replyToId], references: [id])
+  replies          Document[] @relation("DocumentReply")
+
+  resolvedAt      DateTime?
+  ownerAccepted   Boolean   @default(false)
+  ownerAcceptedAt DateTime?
+
+  content              DocumentContent?
+  allowedUsers         DocumentAllowedUser[]
+  attachments          DocumentAttachment[]  @relation("DocAttachments")
+  attachedTo           DocumentAttachment[]  @relation("DocAttachmentTarget")
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([ownerRegion])
+  @@index([ownerRegion, year])
+  @@index([nomenclatureId])
+  @@index([createdAt(sort: Desc)])
+  @@index([forwardedById])
+  @@index([parentId])
+  @@index([year, ownerRegion, status])
+  @@map("documents")
+}
+
+/// Katta hujjat matni alohida jadvalda — metadata so‘rovlari yengil qoladi
+model DocumentContent {
+  documentId String   @id
+  content    Json
+  updatedAt  DateTime @updatedAt
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_contents")
+}
+
+model DocumentAllowedUser {
+  documentId String
+  userId     String
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, userId])
+  @@index([userId])
+  @@map("document_allowed_users")
+}
+
+model DocumentAttachment {
+  documentId   String
+  attachmentId String
+
+  document   Document @relation("DocAttachments", fields: [documentId], references: [id], onDelete: Cascade)
+  attachment Document @relation("DocAttachmentTarget", fields: [attachmentId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, attachmentId])
+  @@map("document_attachments")
+}
+
+// ─── Nomeklatura ─────────────────────────────────────────────────────────────
+
+model Bolim {
+  id        String   @id
+  province  String
+  bolim     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  nomeklatura NomeklaturaBolim[]
+
+  @@index([province])
+  @@map("bolims")
+}
+
+model Bolinma {
+  id        String   @id
+  province  String
+  bolinma   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  nomeklatura NomeklaturaBolinma[]
+
+  @@index([province])
+  @@map("bolinmas")
+}
+
+model Nomeklatura {
+  id                String            @id
+  registrationIndex String
+  title             String
+  grif              String
+  saqlashMuddati    Json
+  qonunTuri         String
+  ownerId           String
+  creatorId         String
+  ownerRegion       String
+  author            Json
+  status            NomeklaturaStatus @default(CREATED)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  owner   User @relation("NomeklaturaOwner", fields: [ownerId], references: [id])
+  creator User @relation("NomeklaturaCreator", fields: [creatorId], references: [id])
+
+  bolimLinks   NomeklaturaBolim[]
+  bolinmaLinks NomeklaturaBolinma[]
+  documents    Document[]
+
+  @@index([ownerRegion])
+  @@index([ownerId])
+  @@index([status])
+  @@map("nomeklatura")
+}
+
+model NomeklaturaBolim {
+  nomeklaturaId String
+  bolimId       String
+
+  nomeklatura Nomeklatura @relation(fields: [nomeklaturaId], references: [id], onDelete: Cascade)
+  bolim       Bolim       @relation(fields: [bolimId], references: [id], onDelete: Cascade)
+
+  @@id([nomeklaturaId, bolimId])
+  @@map("nomeklatura_bolim")
+}
+
+model NomeklaturaBolinma {
+  nomeklaturaId String
+  bolinmaId     String
+
+  nomeklatura Nomeklatura @relation(fields: [nomeklaturaId], references: [id], onDelete: Cascade)
+  bolinma     Bolinma     @relation(fields: [bolinmaId], references: [id], onDelete: Cascade)
+
+  @@id([nomeklaturaId, bolinmaId])
+  @@map("nomeklatura_bolinma")
+}
+
+// ─── Fayllar ─────────────────────────────────────────────────────────────────
+
+model File {
+  id             String   @id
+  nomi           String
+  raqami         String
+  maxfiylik      String
+  sanasi         String
+  ownerRegion    String
+  userUploadId   String
+  filePath       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  uploader User @relation(fields: [userUploadId], references: [id])
+
+  @@index([userUploadId])
+  @@index([ownerRegion])
+  @@map("files")
+}
+
+// ─── Ro‘yxatga olish ─────────────────────────────────────────────────────────
+
+model Registration {
+  id                String   @id
+  registrationIndex Int
+  year              Int
+  ownerRegion       String
+  documentId        String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([ownerRegion, year, documentId])
+  @@index([ownerRegion, year])
+  @@map("registrations")
+}
+
+model RegistrationCounter {
+  id          String   @id
+  ownerRegion String
+  year        Int
+  seq         Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([ownerRegion, year])
+  @@map("registration_counters")
+}
+
+// ─── Xavfsizlik ──────────────────────────────────────────────────────────────
+
+model SecurityLog {
+  id         String            @id
+  type       SecurityEventType
+  ip         String
+  path       String
+  method     String            @default("GET")
+  userAgent  String?
+  loginHint  String?
+  message    String?
+  statusCode Int?
+  createdAt  DateTime          @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@index([type, createdAt(sort: Desc)])
+  @@index([ip, createdAt(sort: Desc)])
+  @@map("security_logs")
+}
+
+model BlockedIp {
+  id        String   @id
+  ip        String   @unique
+  reason    String   @default("")
+  blockedBy String   @default("")
+  source    String   @default("manual")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+  @@map("blocked_ips")
+}

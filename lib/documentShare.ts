@@ -1,4 +1,4 @@
-import { resolveMongoId } from '@/lib/resolveMongoId';
+import { resolveIdReference } from '@/lib/resolveIdReference';
 import { isCommanderRole, isKotibiyatStaffRole } from '@/lib/roles';
 
 type ShareableDocument = {
@@ -13,10 +13,10 @@ export function canGrantDocumentViewAccess(
   role?: string | null
 ): boolean {
   if (!userId) return false;
-  if (resolveMongoId(doc.owner) === userId) return true;
+  if (resolveIdReference(doc.owner) === userId) return true;
   if (
     Array.isArray(doc.allowedUsers) &&
-    doc.allowedUsers.some((u) => resolveMongoId(u) === userId)
+    doc.allowedUsers.some((u) => resolveIdReference(u) === userId)
   ) {
     return true;
   }

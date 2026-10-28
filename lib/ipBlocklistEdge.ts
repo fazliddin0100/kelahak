@@ -16,7 +16,7 @@ function getClientIp(req: NextRequest): string {
   );
 }
 
-/** Edge middleware — MongoDB siz, ichki API orqali ro‘yxat */
+/** Edge middleware — IP block list is loaded through the internal API */
 export async function isRequestIpBlocked(req: NextRequest): Promise<boolean> {
   if (process.env.NODE_ENV === 'development') {
     return false;

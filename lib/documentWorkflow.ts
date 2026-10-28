@@ -1,5 +1,5 @@
 import { hasPendingForwardSignatures } from '@/lib/forwardQueue';
-import { resolveMongoId } from '@/lib/resolveMongoId';
+import { resolveIdReference } from '@/lib/resolveIdReference';
 import { DocumentType } from '@/types/document';
 import { DocumentStatus } from '@/types/document-status.enum';
 
@@ -28,7 +28,7 @@ const TERMINAL_STATUSES: DocumentStatus[] = [
 export function isDocumentLinkedToNomeklatura(doc: {
   nomenclatureId?: unknown;
 }): boolean {
-  return !!resolveMongoId(doc.nomenclatureId);
+  return !!resolveIdReference(doc.nomenclatureId);
 }
 
 /** User kotibiyatga yuborgan (oddiy user oqimi) */
@@ -159,13 +159,13 @@ export function isKotibiyatAssignedInboxItem(
   if (isTerminalStatus(doc.status)) return false;
   if (isSubmittedToKotibiyatQueue(doc)) return true;
 
-  const ownerId = resolveMongoId(doc.owner);
+  const ownerId = resolveIdReference(doc.owner);
   if (ownerId && ownerId === kotibiyatUserId) return false;
   if (doc.status !== DocumentStatus.APPROVED) return false;
   if (!isUserAuthorSigned(doc) || !isCommanderSigned(doc)) return false;
 
   const allowed = (doc.allowedUsers ?? [])
-    .map((uid) => resolveMongoId(uid))
+    .map((uid) => resolveIdReference(uid))
     .filter((id): id is string => !!id);
 
   return allowed.includes(kotibiyatUserId);
@@ -247,7 +247,7 @@ export function kotibiyatRegionalCopyInboxFilter(province: string) {
 export function isKotibiyatRegionalCopyInboxItem(
   doc: WorkflowDocument & { isCopy?: boolean; parentId?: unknown }
 ): boolean {
-  return doc.isCopy === true && !!resolveMongoId(doc.parentId);
+  return doc.isCopy === true && !!resolveIdReference(doc.parentId);
 }
 
 /** Kotibiyatga yuborilgan, ro‘yxatga olish navbatidagi hujjat */
@@ -266,14 +266,14 @@ type ReceiverLike = {
 function collectReceiverUserIds(receivers?: ReceiverLike[] | null): string[] {
   if (!Array.isArray(receivers)) return [];
   return receivers
-    .map((r) => resolveMongoId(r.userId ?? r.user?.userId ?? r.user?._id))
+    .map((r) => resolveIdReference(r.userId ?? r.user?.userId ?? r.user?._id))
     .filter((id): id is string => !!id);
 }
 
 function collectAllowedUserIds(allowed?: unknown[] | null): string[] {
   if (!Array.isArray(allowed)) return [];
   return allowed
-    .map((u) => resolveMongoId(u))
+    .map((u) => resolveIdReference(u))
     .filter((id): id is string => !!id);
 }
 
@@ -314,7 +314,7 @@ export function isAddressedToCommander(
         typeof item === 'object' && item !== null ?
           (item as { userId?: unknown })
         : null;
-      if (entry && resolveMongoId(entry.userId) === uid) return true;
+      if (entry && resolveIdReference(entry.userId) === uid) return true;
     }
   }
 
@@ -344,7 +344,7 @@ export function commanderExternalInboxFilter(
   const escaped = commanderProvince
     .trim()
     .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const commanderObjectId = resolveMongoId(commanderUserId);
+  const commanderObjectId = resolveIdReference(commanderUserId);
 
   return {
     ownerRegion: { $not: new RegExp(`^${escaped}$`, 'i') },

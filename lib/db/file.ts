@@ -1,8 +1,8 @@
 import type { File } from '@prisma/client';
 
-/** API javoblari uchun Mongoose `_id` / `userUploadFile` formatiga moslashtirish */
+/** Preserve the existing API `_id` / `userUploadFile` response shape. */
 export function serializeFile(doc: File) {
-  const { id, userUploadId, ...rest } = doc;
+  const { id, userUploadId, encryptedContent: _encryptedContent, ...rest } = doc;
   return {
     ...rest,
     _id: id,

@@ -1,4 +1,5 @@
 import connectToDatabase, { prisma } from '@/lib/prisma';
+import { COMMANDER_ROLES } from '@/lib/roles';
 
 export type UserWithRelations = NonNullable<
   Awaited<ReturnType<typeof findUserById>>
@@ -6,7 +7,7 @@ export type UserWithRelations = NonNullable<
 
 const DB_ID_RE = /^[a-f0-9]{24}$/i;
 
-/** Mongo ObjectId formatidagi ID (24 hex) */
+/** Database IDs use a 24-character hexadecimal string format. */
 export function isValidDbId(id: string): boolean {
   return DB_ID_RE.test(id);
 }
@@ -49,6 +50,32 @@ export async function findUsersInProvinceCaseInsensitive(province: string) {
       personal: {
         province: { equals: trimmed, mode: 'insensitive' },
       },
+    },
+    include: {
+      personal: true,
+      job: { include: { role: true } },
+    },
+  });
+}
+
+/** Xat oluvchilari: joriy viloyatdagi xodimlar va barcha viloyatlardagi komandirlar */
+export async function findLetterRecipientCandidates(province: string) {
+  await connectToDatabase();
+  const trimmed = province.trim();
+  return prisma.user.findMany({
+    where: {
+      OR: [
+        {
+          personal: {
+            province: { equals: trimmed, mode: 'insensitive' },
+          },
+        },
+        {
+          job: {
+            role: { role: { in: [...COMMANDER_ROLES] } },
+          },
+        },
+      ],
     },
     include: {
       personal: true,
@@ -127,7 +154,7 @@ export async function findUserByLogin(login: string) {
   });
 }
 
-/** Mongoose populate o‘rniga */
+/** Load related user records with Prisma relations. */
 export function serializeUser(user: UserWithRelations) {
   return {
     _id: user.id,

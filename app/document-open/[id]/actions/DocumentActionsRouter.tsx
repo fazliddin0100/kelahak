@@ -2,7 +2,7 @@
 
 import { getDocumentActionRoleGroup } from '@/lib/documentActionRole';
 import { useRoleHook } from '@/hooks/useRoleHook';
-import { Loader2 } from 'lucide-react';
+import LoadingState from '@/components/LoadingState';
 import {
   CommanderDocumentSidebar,
   CommanderDocumentToolbar,
@@ -27,7 +27,7 @@ export function DocumentOpenToolbar(props: DocumentActionsProps) {
   if (loading) {
     return (
       <div className="flex h-9 items-center gap-2 px-2">
-        <Loader2 className="size-5 animate-spin text-slate-400" />
+        <LoadingState compact message="Hujjat amallari yuklanmoqda..." />
       </div>
     );
   }
@@ -50,7 +50,7 @@ export function DocumentOpenSidebar(props: DocumentActionsProps) {
   if (loading) {
     return (
       <aside className="flex h-full w-full items-center justify-center border-l border-slate-200 bg-white lg:w-96">
-        <Loader2 className="size-6 animate-spin text-sky-500" />
+        <LoadingState message="Amallar yuklanmoqda..." className="h-full" />
       </aside>
     );
   }

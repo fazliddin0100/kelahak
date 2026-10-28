@@ -10,7 +10,7 @@ const UserPanelLayout = () => {
   return (
     <div className="min-h-screen w-full bg-slate-50">
       <NavbarUser setPage={setPage} />
-      <main className="w-full">
+      <main className="institutional-content min-h-screen w-full">
         <UserPage page={page} />
       </main>
     </div>

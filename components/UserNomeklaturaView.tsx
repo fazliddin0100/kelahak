@@ -1,6 +1,7 @@
 'use client';
 
 import ModalArxiv from '@/components/modal-arxiv';
+import LoadingState from '@/components/LoadingState';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -121,9 +122,7 @@ export default function UserNomeklaturaView({
         </p>
 
         {loading ?
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="size-8 animate-spin text-sky-500" />
-          </div>
+          <LoadingState fullScreen message="Nomeklatura yuklanmoqda..." />
         : <div className="overflow-hidden rounded-xl border border-slate-200">
             <div className="max-h-[calc(100vh-280px)] min-h-[360px] overflow-auto">
               <Table className="min-w-max w-full">

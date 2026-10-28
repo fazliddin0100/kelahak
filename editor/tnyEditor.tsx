@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { normalizeDocumentContent } from '@/lib/normalizeDocumentContent';
 import {
   forwardRef,
   useImperativeHandle,
@@ -13,7 +14,7 @@ export type TinyEditorHandle = {
 
 interface TnyEditorProps {
   setEditorContent: (html: string) => void;
-  initialContent?: string;
+  initialContent?: unknown;
   editorKey?: string;
   readOnly?: boolean;
 }
@@ -45,7 +46,7 @@ const A4_CONTENT_STYLE = `
     direction: ltr !important;
   }
   html, body {
-    background: #909090 !important;
+    background: #edf1f6 !important;
     margin: 0 !important;
     box-sizing: border-box !important;
   }
@@ -56,7 +57,7 @@ const A4_CONTENT_STYLE = `
     margin: 0 auto !important;
     padding: 2cm !important;
     background: #ffffff !important;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2) !important;
+    box-shadow: 0 2px 8px rgba(16, 44, 80, 0.12) !important;
     font-family: 'Times New Roman', Times, serif !important;
     font-size: 14pt !important;
     line-height: 1.5 !important;
@@ -78,7 +79,8 @@ const A4_CONTENT_STYLE = `
 `;
 
 /** Yuklanadigan HTML dan RTL ni olib tashlash */
-function normalizeLtrHtml(html: string): string {
+function normalizeLtrHtml(value: unknown): string {
+  const html = normalizeDocumentContent(value);
   if (!html?.trim()) {
     return '<p dir="ltr" style="text-align: left; direction: ltr;">&nbsp;</p>';
   }
@@ -148,14 +150,14 @@ const TinyEditor = forwardRef<TinyEditorHandle, TnyEditorProps>(
 
     return (
       <div className="document-editor-fullscreen flex h-full min-h-0 w-full flex-col">
-        <div className="shrink-0 border-b border-slate-200 bg-slate-50 px-4 py-2">
-          <p className="text-xs font-medium text-slate-500">
-            {readOnly ?
-              'Hujjat ro‘yxatga olingan — faqat ko‘rish rejimi'
-            : 'Hujjat matni — A4 formatida tahrirlash (jadval: Insert → Table)'}
-          </p>
-        </div>
-        <div className="relative h-full min-h-0 flex-1 bg-[#909090] [&_.tox]:!h-full [&_.tox-tinymce]:!direction-ltr">
+        {readOnly && (
+          <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-2">
+            <p className="text-xs font-medium text-slate-600">
+              Hujjat ro‘yxatga olingan — faqat ko‘rish rejimi
+            </p>
+          </div>
+        )}
+        <div className="relative h-full min-h-0 flex-1 bg-[#edf1f6] [&_.tox]:!h-full [&_.tox-tinymce]:!direction-ltr">
           <Editor
             key={editorKey ?? 'tny-editor'}
             tinymceScriptSrc="/tinymce/js/tinymce/tinymce.min.js"
@@ -172,6 +174,7 @@ const TinyEditor = forwardRef<TinyEditorHandle, TnyEditorProps>(
               height: '100%',
               resize: false,
               statusbar: true,
+              toolbar_mode: 'sliding',
               branding: false,
               promotion: false,
               language: 'en',

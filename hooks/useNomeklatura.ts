@@ -1,6 +1,6 @@
 'use client';
 
-import { Author, DateLike, DocumentType, ObjectIdLike } from '@/types/document';
+import { Author, DateLike, DocumentType, IdReferenceLike } from '@/types/document';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -17,7 +17,7 @@ import type { UserNomeklaturaRelation } from '@/lib/userNomeklaturaLabels';
 export type { UserNomeklaturaRelation };
 
 export interface NomeklaturaItem extends Omit<DocumentType, '_id'> {
-  _id: ObjectIdLike | string;
+  _id: IdReferenceLike | string;
   registrationIndex: string | number;
   title: string;
   grif: string;
@@ -28,12 +28,12 @@ export interface NomeklaturaItem extends Omit<DocumentType, '_id'> {
   saqlashMuddati?: string | number;
   qonunTuri?: string;
   relation?: UserNomeklaturaRelation;
-  owner?: ObjectIdLike | string;
+  owner?: IdReferenceLike | string;
   canAccept?: boolean;
 }
 
 export interface BolinmaWithNomeklatura {
-  _id: ObjectIdLike | string;
+  _id: IdReferenceLike | string;
   bolinma: string;
   nomeklaturalar: NomeklaturaItem[];
 }

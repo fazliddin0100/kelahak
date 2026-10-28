@@ -1,7 +1,7 @@
 // app/api/documents/bos-sign/route.ts
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase from '@/lib/prisma';
 import {
   findPendingBosSignDocuments,
   serializeDocumentsForApi,

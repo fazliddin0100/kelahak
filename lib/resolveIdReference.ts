@@ -1,5 +1,5 @@
-/** MongoDB ObjectId / lean JSON dan string id */
-export function resolveMongoId(ref: unknown): string | null {
+/** Normalize a string ID or a legacy JSON reference shape. */
+export function resolveIdReference(ref: unknown): string | null {
   if (!ref) return null;
   if (typeof ref === 'string') return ref;
   if (typeof ref === 'object' && ref !== null) {

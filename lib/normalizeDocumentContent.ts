@@ -4,5 +4,6 @@ export function normalizeDocumentContent(content: unknown): string {
   const record = content as Record<string, unknown>;
   if (typeof record.html === 'string') return record.html;
   if (typeof record.body === 'string') return record.body;
+  if (typeof record.content === 'string') return record.content;
   return '';
 }

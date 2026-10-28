@@ -5,6 +5,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import connectToDatabase, { prisma } from '@/lib/prisma';
 import { isValidDbId } from '@/lib/db/nomeklatura';
+import { decryptDocumentFile } from '@/lib/documentContentEncryption';
 
 export async function GET(
   request: NextRequest,
@@ -23,7 +24,10 @@ export async function GET(
       return NextResponse.json({ error: 'Noto‘g‘ri ID' }, { status: 400 });
     }
 
-    const fileDoc = await prisma.file.findUnique({ where: { id } });
+    const fileDoc = await prisma.file.findUnique({
+      where: { id },
+      include: { pendingUpload: true },
+    });
 
     if (!fileDoc) {
       return NextResponse.json({ error: 'Fayl topilmadi' }, { status: 404 });
@@ -38,19 +42,33 @@ export async function GET(
       return NextResponse.json({ error: 'Ruxsat yo‘q' }, { status: 403 });
     }
 
-    const filePath = path.resolve(
-      'public',
-      fileDoc.filePath.replace(/^\/+/, '')
-    );
-    const buffer = await fs.readFile(filePath);
+    let encrypted: Buffer;
+    let fileName = fileDoc.nomi;
+    if (fileDoc.encryptedContent) {
+      encrypted = Buffer.from(fileDoc.encryptedContent);
+    } else if (fileDoc.pendingUpload) {
+      encrypted = await fs.readFile(fileDoc.pendingUpload.storagePath);
+    } else if (fileDoc.filePath) {
+      const filePath = path.resolve('public', fileDoc.filePath.replace(/^\/+/, ''));
+      fileName = path.basename(filePath);
+      const legacyBytes = await fs.readFile(filePath);
+      return new NextResponse(legacyBytes, {
+        headers: {
+          'Content-Type': fileDoc.mimeType || 'application/octet-stream',
+          'Content-Disposition': `inline; filename="${encodeURIComponent(fileName)}"`,
+          'Cache-Control': 'no-store',
+        },
+      });
+    } else {
+      return NextResponse.json({ error: 'Fayl tarkibi topilmadi' }, { status: 404 });
+    }
+    const buffer = decryptDocumentFile(encrypted);
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="${encodeURIComponent(
-          path.basename(filePath)
-        )}"`,
-        'Cache-Control': 'no-cache',
+        'Content-Type': fileDoc.mimeType || 'application/octet-stream',
+        'Content-Disposition': `inline; filename="${encodeURIComponent(fileName)}"`,
+        'Cache-Control': 'no-store',
       },
     });
   } catch (error: unknown) {

@@ -1,7 +1,7 @@
 // app/api/documents/[id]/back-doc/route.ts
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase from '@/lib/prisma';
 import { findDocuments, isValidDbId, updateDocument } from '@/lib/db/document';
 
 export async function POST(

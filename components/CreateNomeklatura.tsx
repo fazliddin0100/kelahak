@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import LoadingState from '@/components/LoadingState';
 import {
   Dialog,
   DialogContent,
@@ -271,7 +272,10 @@ export default function CreateNomeklatura({ onSuccess }: CreateNomeklaturaProps)
 
             <ModalField label="Javobgar shaxs">
               {loadingUsers ?
-                <p className="text-sm text-slate-500">Yuklanmoqda...</p>
+                <div className="flex items-center gap-2 text-xs text-slate-600">
+                  <LoadingState compact message="Javobgar shaxslar yuklanmoqda..." />
+                  <span>Yuklanmoqda...</span>
+                </div>
               : <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                   <SelectTrigger className={modalFieldClass}>
                     <SelectValue placeholder="Foydalanuvchini tanlang" />

@@ -9,6 +9,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import LoadingState from '@/components/LoadingState';
 import {Button} from "@/components/ui/button";
 import {
     Select,
@@ -75,9 +76,7 @@ const BuyruqniTasdiqlashModal = ({open, onClose, onSave}: Props) => {
                 </DialogHeader>
 
                 {loading ? (
-                    <p className="text-sm text-gray-500 mt-4 animate-pulse">
-                        Yuklanmoqda...
-                    </p>
+                    <LoadingState message="Foydalanuvchilar yuklanmoqda..." className="py-2" />
                 ) : userOptions.length === 0 ? (
                     <p className="text-sm text-red-600 mt-4">
                         Foydalanuvchilar topilmadi. Sizning viloyat va organingizdagi boshqa

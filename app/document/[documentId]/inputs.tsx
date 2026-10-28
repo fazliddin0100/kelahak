@@ -25,10 +25,10 @@ interface InputsProps {
 }
 
 const toolBtn =
-  'h-9 gap-2 rounded-lg border-slate-600/50 bg-slate-700/50 text-slate-200 shadow-sm hover:border-sky-500/50 hover:bg-slate-700 hover:text-white';
+  'h-9 gap-2 rounded-md border-slate-300 bg-white text-[#102c50] shadow-none transition-colors duration-150 hover:border-[#c7a75b] hover:bg-[#fbf8ef] hover:text-[#102c50] focus-visible:ring-[#c7a75b]/30';
 
 const fieldClass =
-  'h-9 border-slate-600/50 bg-slate-700/40 text-slate-100 placeholder:text-slate-400 focus-visible:border-sky-500 focus-visible:ring-sky-500/30';
+  'h-9 border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus-visible:border-[#c7a75b] focus-visible:ring-[#c7a75b]/30';
 
 const Inputs = ({ formValues, setFormValues }: InputsProps) => {
   const [isImzoModalOpen, setImzoModalOpen] = React.useState(false);
@@ -104,8 +104,8 @@ const Inputs = ({ formValues, setFormValues }: InputsProps) => {
           <span className="hidden sm:inline">Xat yuborish</span>
         </Button>
 
-        <div className="flex items-center gap-2 rounded-lg border border-slate-600/50 bg-slate-700/40 px-2 py-1">
-          <Paperclip className="size-4 shrink-0 text-slate-400" />
+        <div className="flex items-center gap-2 rounded-md border border-slate-300 bg-white px-2 py-1">
+          <Paperclip className="size-4 shrink-0 text-slate-500" />
           <IlovaModal
             value={formValues.attachmentText}
             onChange={(ids) =>
@@ -114,10 +114,10 @@ const Inputs = ({ formValues, setFormValues }: InputsProps) => {
           />
         </div>
 
-        <div className="mx-1 hidden h-6 w-px bg-slate-600 sm:block" />
+        <div className="mx-1 hidden h-6 w-px bg-slate-300 sm:block" />
 
         <div className="relative min-w-[120px] flex-1 sm:max-w-[140px]">
-          <Tag className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+          <Tag className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-500" />
           <Input
             className={cn(fieldClass, 'pl-8')}
             placeholder="Grifi..."
@@ -131,7 +131,7 @@ const Inputs = ({ formValues, setFormValues }: InputsProps) => {
         </div>
 
         <div className="relative min-w-[140px] flex-1 sm:max-w-[200px]">
-          <Type className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+          <Type className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-500" />
           <Input
             className={cn(fieldClass, 'pl-8')}
             placeholder="Nomi..."

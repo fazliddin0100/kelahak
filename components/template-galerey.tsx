@@ -76,20 +76,17 @@ export const TemplateGallery = ({ className }: TemplateGalleryProps) => {
 
   return (
     <div
-      className={cn(
-        'mt-[15px] bg-[#F1F3F4]',
-        className
-      )}>
-      <div className="mx-auto flex max-w-7xl flex-col gap-y-4 px-8 py-6 sm:px-12 lg:px-16">
+      className={cn('bg-transparent', className)}>
+      <div className="mx-auto max-w-7xl px-2 py-2 sm:px-3">
         <Carousel>
-          <CarouselContent className="ml-4">
+          <CarouselContent className="ml-0 gap-2">
             {templates.map((template) => (
               <CarouselItem
                 key={template.id}
-                className="basis-1/2 pl-4 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6 2xl:basis-[14.285714%]">
+                className="basis-[82px] pl-0 sm:basis-[88px]">
                 <div
                   className={cn(
-                    'flex aspect-3/4 flex-col gap-y-2.5',
+                    'flex flex-col items-center gap-1.5',
                     isCreating && 'pointer-events-none opacity-50'
                   )}>
                   <button
@@ -102,17 +99,17 @@ export const TemplateGallery = ({ className }: TemplateGalleryProps) => {
                       backgroundRepeat: 'no-repeat',
                     }}
                     className={cn(
-                      'group flex h-full w-full flex-col items-center justify-center gap-y-4 rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200',
-                      'hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md hover:shadow-sky-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+                      'relative flex h-[96px] w-[68px] items-center justify-center rounded-md border border-slate-200 bg-white transition-colors duration-150',
+                      'hover:border-[#102c50] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c7a75b]'
                     )}
                     aria-label={`Create new document from ${template.label} template`}>
                     {isCreating && (
-                      <span className="size-5 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
+                      <span className="size-4 animate-spin rounded-full border-2 border-[#102c50] border-t-transparent" />
                     )}
                   </button>
 
                   <p
-                    className="truncate text-center text-sm font-medium capitalize text-slate-700 sm:text-base"
+                    className="w-full truncate text-center text-[10px] font-medium capitalize text-slate-700"
                     title={template.label}>
                     {template.label}
                   </p>
@@ -120,8 +117,8 @@ export const TemplateGallery = ({ className }: TemplateGalleryProps) => {
               </CarouselItem>
             ))}
           </CarouselContent>
-          <CarouselPrevious className="-left-2 border-slate-200 bg-white shadow-md hover:bg-slate-50" />
-          <CarouselNext className="-right-2 border-slate-200 bg-white shadow-md hover:bg-slate-50" />
+          <CarouselPrevious className="-left-1 size-7 border-slate-200 bg-white shadow-none hover:bg-slate-50" />
+          <CarouselNext className="-right-1 size-7 border-slate-200 bg-white shadow-none hover:bg-slate-50" />
         </Carousel>
       </div>
     </div>

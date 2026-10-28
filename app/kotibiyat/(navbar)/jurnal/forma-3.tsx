@@ -8,10 +8,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import LoadingState from '@/components/LoadingState';
 import QrCodeJurnal from '@/helpers/qr-code-jurnal';
 import { useGetSharedDocuments } from '@/hooks/useShareKotibiyatDocumen';
 import NotData from '@/utils/not-data';
-import { FileEdit, Loader2 } from 'lucide-react';
+import { FileEdit } from 'lucide-react';
 import {
   JurnalSectionHeader,
   JurnalTableShell,
@@ -39,9 +40,7 @@ const Forma3 = () => {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="size-8 animate-spin text-sky-500" />
-      </div>
+      <LoadingState fullScreen message="Jurnal yuklanmoqda..." />
     );
   }
 

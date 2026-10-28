@@ -1,6 +1,6 @@
 import { canCommanderReviewEdit } from '@/lib/documentLifecycle';
 import type { WorkflowDocument } from '@/lib/documentWorkflow';
-import { resolveMongoId } from '@/lib/resolveMongoId';
+import { resolveIdReference } from '@/lib/resolveIdReference';
 import { DocumentStatus } from '@/types/document-status.enum';
 
 /** Ro‘yxatga olingandan keyin tahrirlash bloklanadi */
@@ -26,9 +26,9 @@ export function isDocumentCreator(
 ): boolean {
   if (!userId) return false;
   const uid = userId.toString();
-  const ownerId = resolveMongoId(doc.owner);
+  const ownerId = resolveIdReference(doc.owner);
   if (ownerId && ownerId === uid) return true;
-  const authorId = resolveMongoId(
+  const authorId = resolveIdReference(
     doc.author?.userId ?? doc.author?.user?.userId
   );
   if (authorId && authorId === uid) return true;

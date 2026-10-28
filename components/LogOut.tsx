@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import { CircleUser, Loader2, LogOut } from 'lucide-react';
+import { CircleUser, LogOut } from 'lucide-react';
+import LoadingState from '@/components/LoadingState';
 
 import {
   Popover,
@@ -57,11 +58,7 @@ export default function LogOutProfile() {
   };
 
   if (!data) {
-    return (
-      <p className="text-sm text-gray-600 animate-spin">
-        <Loader2 />
-      </p>
-    );
+    return <LoadingState compact message="Profil yuklanmoqda..." className="p-2" />;
   }
 
   return (

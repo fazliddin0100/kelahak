@@ -1,8 +1,9 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import {
-  findUserById,
+  findLetterRecipientCandidates,
   findUsersInProvinceCaseInsensitive,
 } from '@/lib/db/user';
+import { isCommanderRole } from '@/lib/roles';
 import {
   isRoleLikeDepartment,
   isSameOrganAndProvince,
@@ -22,17 +23,20 @@ const TOP_COMMANDER_ROLES = new Set([
   'komandir',
 ]);
 
-type PeerScope = 'unit' | 'organ';
+type PeerScope = 'unit' | 'organ' | 'letter-recipients';
 
 /** Hujjat tahriri / yuborish: joriy user viloyati va bo‘limidagi xodimlar */
 export async function GET(request: NextRequest) {
   try {
     const scopeParam = request.nextUrl.searchParams.get('scope');
-    const scope: PeerScope = scopeParam === 'organ' ? 'organ' : 'unit';
+    const scope: PeerScope =
+      scopeParam === 'organ' ? 'organ'
+      : scopeParam === 'letter-recipients' ? 'letter-recipients'
+      : 'unit';
 
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
+    const { user } = auth;
 
 
     const personal = user.personal;
@@ -44,7 +48,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const users = await findUsersInProvinceCaseInsensitive(personal.province);
+    const users =
+      scope === 'letter-recipients' ?
+        await findLetterRecipientCandidates(personal.province)
+      : await findUsersInProvinceCaseInsensitive(personal.province);
 
     const anchorPersonal = {
       province: personal.province ?? '',
@@ -61,6 +68,13 @@ export async function GET(request: NextRequest) {
 
         if (!p || !j) return false;
         if (j.isUserTrue === false) return false;
+
+        if (scope === 'letter-recipients') {
+          const isCurrentProvince =
+            normalizeUnitText(p.province) ===
+            normalizeUnitText(personal.province);
+          return isCurrentProvince || isCommanderRole(j.role?.role);
+        }
 
         if (scope === 'organ') {
           return isSameOrganAndProvince(

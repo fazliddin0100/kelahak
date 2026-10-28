@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import LoadingState from '@/components/LoadingState';
 import {
   Dialog,
   DialogContent,
@@ -157,9 +158,7 @@ export default function IshJildLinkModal({
 
         <div className="min-h-[200px] flex-1 overflow-y-auto px-5 py-3">
           {loading ?
-            <div className="flex justify-center py-12">
-              <Loader2 className="size-7 animate-spin text-sky-500" />
-            </div>
+            <LoadingState message="Ish jildlar yuklanmoqda..." className="py-4" />
           : totalCount === 0 ?
             <p className="py-8 text-center text-sm text-slate-500">
               Sizga tegishli ish jild topilmadi. Avval nomeklatura yarating.

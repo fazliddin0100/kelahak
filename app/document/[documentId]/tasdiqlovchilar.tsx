@@ -9,6 +9,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import LoadingState from '@/components/LoadingState';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
 import {Input} from "@/components/ui/input";
 import {Button} from "@/components/ui/button";
@@ -132,7 +133,7 @@ export default function ImzoQoshishModal({
                 </DialogHeader>
 
                 {loading ? (
-                    <p className="text-sm text-muted-foreground">Yuklanmoqda...</p>
+                    <LoadingState message="Tasdiqlovchilar yuklanmoqda..." className="py-2" />
                 ) : !users.length ? (
                     <p>
                         Foydalanuvchilar topilmadi. Sizning viloyat va organingizdagi boshqa

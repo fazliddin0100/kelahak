@@ -25,7 +25,7 @@ function peerToPopulated(peer: DepartmentPeer): IUserPopulated {
   };
 }
 
-export type DocumentFormUsersScope = 'unit' | 'organ';
+export type DocumentFormUsersScope = 'unit' | 'organ' | 'letter-recipients';
 
 /** Hujjat tahriri modallari: viloyat + bo‘lim/organ bo‘yicha xodimlar */
 export function useDocumentFormUsers(
@@ -46,8 +46,7 @@ export function useDocumentFormUsers(
           localStorage.getItem('token') ||
           localStorage.getItem('ref_token')
         : null;
-      const query =
-        scope === 'organ' ? '?scope=organ' : '';
+      const query = scope === 'unit' ? '' : `?scope=${scope}`;
       const res = await fetch(`/api/users/department-peers${query}`, {
         credentials: 'include',
         headers: token ? { Authorization: `Bearer ${token}` } : {},

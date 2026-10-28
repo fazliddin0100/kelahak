@@ -16,7 +16,7 @@ export function SectionShell({
   title,
   description,
   icon: Icon,
-  iconClassName = 'bg-sky-500/10 text-sky-600',
+  iconClassName = 'bg-slate-100 text-[#102c50]',
   children,
   actions,
   className,
@@ -27,8 +27,8 @@ export function SectionShell({
         'mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6',
         className
       )}>
-      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div
               className={cn(
@@ -38,7 +38,7 @@ export function SectionShell({
               <Icon className="size-5" strokeWidth={2} />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-slate-800">{title}</h2>
+              <h2 className="text-base font-semibold text-slate-900">{title}</h2>
               {description && (
                 <p className="text-xs text-slate-500">{description}</p>
               )}

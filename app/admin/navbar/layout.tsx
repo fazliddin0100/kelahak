@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import NavbarAdmin from './navbar';
-import { AdminPage } from './page';
+import { AdminPage } from './AdminPage';
 
 const AdminNavbarLayout = () => {
   const [page, setPage] = useState('nomeklatura');
@@ -10,7 +10,7 @@ const AdminNavbarLayout = () => {
   return (
     <div className="min-h-screen w-full bg-slate-50">
       <NavbarAdmin setPage={setPage} />
-      <main className="w-full">
+      <main className="institutional-content min-h-screen w-full">
         <AdminPage page={page} />
       </main>
     </div>

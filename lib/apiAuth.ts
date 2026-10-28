@@ -7,10 +7,12 @@ import connectToDatabase from '@/lib/prisma';
 import { readRequestIdentity } from '@/lib/userid';
 import type { DbRole } from '@/lib/roles';
 import { COMMANDER_ROLES } from '@/lib/roles';
+import { touchUserSession } from '@/lib/sessionFiles';
 import { NextRequest, NextResponse } from 'next/server';
 
 export type ApiAuthSession = {
   userId: string;
+  sessionId: string;
   role: DbRole | string;
   department: string;
   accessApproved: boolean;
@@ -54,6 +56,12 @@ export async function requireApiAuth(
       { status: 403 }
     );
   }
+  if (!identity.sessionId) {
+    return NextResponse.json(
+      { message: 'Sessiya eskirgan. Qayta tizimga kiring.', code: 'SESSION_REQUIRED' },
+      { status: 401 }
+    );
+  }
 
   await connectToDatabase();
   const user = await findUserById(identity.userId);
@@ -61,6 +69,13 @@ export async function requireApiAuth(
   if (!user?.job?.role) {
     return NextResponse.json(
       { message: 'Foydalanuvchi topilmadi yoki faol emas', code: 'USER_NOT_FOUND' },
+      { status: 401 }
+    );
+  }
+
+  if (!(await touchUserSession(identity.sessionId, identity.userId))) {
+    return NextResponse.json(
+      { message: 'Sessiya tugagan. Qayta tizimga kiring.', code: 'SESSION_EXPIRED' },
       { status: 401 }
     );
   }
@@ -104,6 +119,7 @@ export async function requireApiAuth(
 
   return {
     userId: user.id,
+    sessionId: identity.sessionId,
     role: dbRole,
     department,
     accessApproved: true,

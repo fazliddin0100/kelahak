@@ -4,7 +4,7 @@
 // Faqat admin / superAdmin / register_document huquqi bor foydalanuvchilar chaqira oladi.
 
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase from '@/lib/prisma';
 import {
   isKotibiyatRegistrationEligible,
   regionsMatch,

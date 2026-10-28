@@ -110,7 +110,7 @@ export function formatRegistrationLine(
   return parts.join(' ');
 }
 
-/** 31/V - registrationIndex / grif (xat sarlavhasi va ilova) */
+/** 31/V - registrationIndex + grif (xat sarlavhasi va ilova) */
 export function formatRegistrationLineSlash(
   region?: string,
   registrationIndex?: string | number | null,
@@ -127,11 +127,11 @@ export function formatRegistrationLineSlash(
 
   let line = letter ? `31/${letter}` : '31';
   if (reg) line += ` - ${reg}`;
-  if (grifPart) line += ` / ${grifPart}`;
+  if (grifPart) line += grifPart;
   return line;
 }
 
-/** Ilova qatori: sarlavha, 31/V - registrationIndex / grif */
+/** Ilova qatori: sarlavha, 31/V - registrationIndex + grif */
 export function formatIlovaAttachmentLabel(att: {
   title?: string;
   ownerRegion?: string;

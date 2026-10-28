@@ -10,7 +10,7 @@ const KomandirLayout = () => {
   return (
     <div className="min-h-screen w-full bg-slate-50">
       <NavbarKomandir setPage={setPage} />
-      <main className="w-full">
+      <main className="institutional-content min-h-screen w-full">
         <KomandirPage page={page} />
       </main>
     </div>

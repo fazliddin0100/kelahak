@@ -1,18 +1,18 @@
-# Katta hujjat aylanmasi uchun PostgreSQL optimizatsiyalari
-# Docker birinchi ishga tushganda avtomatik bajariladi
+-- Katta hujjat aylanmasi uchun PostgreSQL optimizatsiyalari
+-- Docker birinchi ishga tushganda avtomatik bajariladi
 
 -- JSONB imzolovchi maydonlari uchun GIN indeks (keyingi bosqichda qo‘llash mumkin)
 -- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_documents_approvers_gin ON documents USING gin (approvers jsonb_path_ops);
 
 -- Faol hujjatlar uchun partial indeks
 CREATE INDEX IF NOT EXISTS idx_documents_active_status
-  ON documents (owner_region, created_at DESC)
+  ON documents ("ownerRegion", "createdAt" DESC)
   WHERE status NOT IN ('deleted', 'arxivlangan');
 
 -- Ro‘yxatga olingan hujjatlar
 CREATE INDEX IF NOT EXISTS idx_documents_registered
-  ON documents (owner_region, year, registration_index)
-  WHERE registration_index IS NOT NULL;
+  ON documents ("ownerRegion", year, "registrationIndex")
+  WHERE "registrationIndex" IS NOT NULL;
 
 -- Full-text qidiruv (title) — kelajakda
 -- CREATE INDEX IF NOT EXISTS idx_documents_title_trgm ON documents USING gin (title gin_trgm_ops);

@@ -1,8 +1,8 @@
 // ===================== types/document.ts =====================
 import { IUserPopulated } from './user';
 
-// MongoDB extended JSON helper typelar
-export type ObjectIdLike = string | { $oid: string };
+// Legacy API JSON reference shapes; persisted records use PostgreSQL text IDs.
+export type IdReferenceLike = string | { $oid: string };
 export type DateLike = string | Date | { $date: string };
 
 // Umumiy signer type
@@ -18,7 +18,7 @@ export interface Approver extends BaseSigner {
   role?: string;
   hasSigned: boolean;
   signedAt?: DateLike;
-  _id?: ObjectIdLike;
+  _id?: IdReferenceLike;
 }
 
 // Sender (jo‘natuvchi) tip
@@ -29,7 +29,7 @@ export interface Sender extends BaseSigner {
 
 // Receiver (qabul qiluvchi) tip
 export interface Receiver extends BaseSigner {
-  _id?: ObjectIdLike;
+  _id?: IdReferenceLike;
 }
 
 // Author (muallif) tip
@@ -94,7 +94,7 @@ export interface DocumentType {
   ownerAccepted?: boolean;
   ownerAcceptedAt?: DateLike;
   ownerAcceptedBy?: {
-    userId?: ObjectIdLike;
+    userId?: IdReferenceLike;
     fullName?: string;
     militaryRank?: string;
     position?: string;
@@ -106,7 +106,7 @@ export interface DocumentType {
   receivedCopy?: string | number;
   createdAt?: DateLike;
   updatedAt?: DateLike;
-  owner?: IUserPopulated | ObjectIdLike;
+  owner?: IUserPopulated | IdReferenceLike;
   ownerRegion?: string;
   sourceRegion?: string[] | string;
   entryIndex: string;
@@ -123,12 +123,12 @@ export interface DocumentType {
   approvers?: Approver[];
   bosSigned?: Sender;
   nomenclatureId?: NomeklaturaDocument;
-  allowedUsers?: Array<IUserPopulated | ObjectIdLike>;
+  allowedUsers?: Array<IUserPopulated | IdReferenceLike>;
   forwardedTo?: Array<
     | IUserPopulated
-    | ObjectIdLike
+    | IdReferenceLike
     | {
-        userId?: string | ObjectIdLike;
+        userId?: string | IdReferenceLike;
         fullName?: string;
         militaryRank?: string;
         position?: string;
@@ -139,7 +139,7 @@ export interface DocumentType {
   forwardedComment?: string;
   forwardedAt?: DateLike;
   forwardedSigner?: {
-    userId?: ObjectIdLike;
+    userId?: IdReferenceLike;
     fullName?: string;
     militaryRank?: string;
     position?: string;
@@ -165,7 +165,7 @@ export interface DocumentType {
   };
 
   year?: string | number;
-  parentId?: ObjectIdLike;
+  parentId?: IdReferenceLike;
   __v?: number;
   data?: unknown;
 }

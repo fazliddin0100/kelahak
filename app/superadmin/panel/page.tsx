@@ -13,7 +13,7 @@ export default function SuperAdminPanelPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <SuperAdminNavbar page={page} setPage={setPage} />
-      <main>
+      <main className="institutional-content min-h-screen w-full">
         {page === 'dashboard' && <SuperAdminDashboard />}
         {page === 'security' && <SuperAdminSecurity />}
         {page === 'users' && <SuperAdminUsers />}

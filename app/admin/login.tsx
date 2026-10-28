@@ -18,7 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
-import dxxlogo from '@/public/dxxLogo.png';
+import mexonLogo from '@/public/mexon-mark.png';
 import { decodeToken } from '@/lib/jwt';
 import { PENDING_ACCESS_MESSAGE } from '@/lib/authConstants';
 
@@ -87,15 +87,13 @@ export default function Login() {
     <div className="min-h-screen flex justify-center items-center bg-linear-to-br from-gray-50 to-gray-100 p-4">
       <div className="w-full max-w-md p-8 mx-auto rounded-2xl shadow-xl bg-white/90 backdrop-blur-sm border border-gray-200">
         {/* Logo */}
-        <div className="w-20 h-20 mx-auto mb-6 rounded-full overflow-hidden">
+        <div className="w-24 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl bg-[#0b1524] p-2 shadow-md">
           <Image
-            src={dxxlogo}
-            alt="DXX Logo"
-            style={{
-              width: 100,
-              height: 'auto',
-            }}
-            className="object-cover image_style360"
+            src={mexonLogo}
+            alt="Mezon"
+            width={512}
+            height={324}
+            className="h-14 w-[5.5rem] object-contain"
           />
         </div>
 
@@ -135,7 +133,7 @@ export default function Login() {
                     <Input
                       placeholder="username kiriting"
                       {...field}
-                      className="h-12 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      className="h-12 text-base border-gray-300 focus:border-[#c7a75b] focus:ring-[#c7a75b]"
                     />
                   </FormControl>
                   <FormMessage />
@@ -154,7 +152,7 @@ export default function Login() {
                       type="password"
                       placeholder="••••••••"
                       {...field}
-                      className="h-12 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      className="h-12 text-base border-gray-300 focus:border-[#c7a75b] focus:ring-[#c7a75b]"
                     />
                   </FormControl>
                   <FormMessage />
@@ -164,7 +162,7 @@ export default function Login() {
 
             <Button
               type="submit"
-              className="w-full h-12 text-lg font-semibold bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg transition-all duration-300">
+              className="w-full h-12 text-lg font-semibold bg-[#102c50] hover:bg-[#173c68] text-white shadow-sm transition-colors duration-150">
               Kirish
             </Button>
           </form>

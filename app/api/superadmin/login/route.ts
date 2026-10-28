@@ -4,6 +4,7 @@ import { getClientIp, logSecurityEvent } from '@/lib/securityLog';
 import { setSuperAdminCookie, signSuperAdminToken } from '@/lib/superadminAuth';
 import { NextRequest, NextResponse } from 'next/server';
 import validator from 'validator';
+import { createUserSession } from '@/lib/sessionFiles';
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,7 +72,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const token = signSuperAdminToken(user.id);
+    const sessionId = await createUserSession(user.id, 8 * 60 * 60 * 1000);
+    const token = signSuperAdminToken(user.id, sessionId);
     const response = NextResponse.json(
       {
         token,

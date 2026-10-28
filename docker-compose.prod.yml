@@ -50,27 +50,63 @@ services:
     networks:
       - mysayt-prod
 
-  migrate:
-    image: node:20-alpine
-    container_name: mysayt-migrate-prod
-    working_dir: /app
+  backup-init:
+    image: mezon/backup:offline
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backup
+    container_name: mysayt-backup-init-prod
     env_file: .env.production.local
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      RESTIC_REPOSITORY: /backup/restic
+      RESTIC_PASSWORD_FILE: /run/secrets/backup_repository_password
+      TZ: Asia/Tashkent
+    secrets:
+      - backup_repository_password
     volumes:
-      - ./prisma:/app/prisma
-      - ./node_modules/.prisma:/app/node_modules/.prisma
-      - ./node_modules/@prisma:/app/node_modules/@prisma
-    command: sh -c "npx prisma migrate deploy && psql $$DATABASE_URL -f prisma/sql/init-performance.sql || true"
+      - uploads_data:/data/uploads:ro
+      - staging_data:/var/lib/mexon/staging:ro
+      - ${BACKUP_PATH:?Set BACKUP_PATH to the mounted external backup drive}:/backup
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - mysayt-prod
-    profiles:
-      - deploy
+    restart: 'no'
+
+  migrate:
+    image: mezon/migrator:offline
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+    container_name: mysayt-migrate-prod
+    working_dir: /app
+    env_file: .env.production.local
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      APP_ENCRYPTION_KEY_FILE: /run/secrets/app_encryption_key
+    secrets:
+      - app_encryption_key
+    volumes:
+      - uploads_data:/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backup-init:
+        condition: service_completed_successfully
+    networks:
+      - mysayt-prod
+    restart: 'no'
 
   app:
+    image: mezon/app:offline
     build:
       context: .
       dockerfile: Dockerfile
@@ -80,6 +116,9 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB}?pgbouncer=true&schema=public
+      APP_ENCRYPTION_KEY_FILE: /run/secrets/app_encryption_key
+    secrets:
+      - app_encryption_key
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,10 +126,12 @@ services:
         condition: service_started
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     ports:
       - '${APP_PORT:-3001}:3001'
     volumes:
-      - uploads_data:/app/public/uploads
+      - staging_data:/var/lib/mexon/staging
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3001/api/superadmin/setup-status']
       interval: 30s
@@ -100,10 +141,49 @@ services:
     networks:
       - mysayt-prod
 
+  backup:
+    image: mezon/backup:offline
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backup
+    container_name: mysayt-backup-prod
+    restart: unless-stopped
+    env_file: .env.production.local
+    environment:
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      RESTIC_REPOSITORY: /backup/restic
+      RESTIC_PASSWORD_FILE: /run/secrets/backup_repository_password
+      TZ: Asia/Tashkent
+    secrets:
+      - backup_repository_password
+    volumes:
+      - uploads_data:/data/uploads:ro
+      - staging_data:/var/lib/mexon/staging:ro
+      - ${BACKUP_PATH:?Set BACKUP_PATH to the mounted external backup drive}:/backup
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - mysayt-prod
+
 volumes:
   postgres_prod_data:
   redis_prod_data:
   uploads_data:
+  staging_data:
+
+secrets:
+  app_encryption_key:
+    file: ./secrets/app-encryption-key
+  backup_repository_password:
+    file: ./secrets/backup-repository-password
 
 networks:
   mysayt-prod:

@@ -148,15 +148,15 @@ export function ForwardQueueSidebar({
         </div>
 
         {existingQueue.length > 0 ?
-          <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-3">
-            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-violet-800">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-800">
               <ListOrdered className="size-3.5" />
               Navbat (yuborilgan)
             </p>
-            <ol className="space-y-1 text-xs text-violet-900">
+            <ol className="space-y-1 text-xs text-slate-700">
               {existingQueue.map((item, i) => (
                 <li key={i} className="flex gap-2">
-                  <span className="font-bold text-violet-600">{i + 1}.</span>
+                  <span className="font-bold text-[#102c50]">{i + 1}.</span>
                   <span>
                     {item.fullName}
                     {item.position ? ` — ${item.position}` : ''}
@@ -183,8 +183,11 @@ export function ForwardQueueSidebar({
           </div>
 
           {peersLoading ?
-            <div className="flex justify-center py-6">
-              <Loader2 className="size-6 animate-spin text-sky-500" />
+            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/70 px-3 py-3">
+              <p className="flex items-center gap-2 text-xs text-slate-500">
+                <Users className="size-4 shrink-0 text-slate-400" />
+                Foydalanuvchilar ro‘yxati tayyorlanmoqda
+              </p>
             </div>
           : users.length === 0 ?
             <p className="rounded-lg bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">
@@ -212,7 +215,7 @@ export function ForwardQueueSidebar({
                       className="min-w-0 flex-1 cursor-pointer text-xs leading-snug">
                       <span className="font-medium text-slate-800">
                         {checked ?
-                          <span className="mr-1.5 inline-flex size-4 items-center justify-center rounded-full bg-sky-600 text-[10px] font-bold text-white">
+                          <span className="mr-1.5 inline-flex size-4 items-center justify-center rounded-full bg-[#102c50] text-[10px] font-bold text-white">
                             {orderIndex + 1}
                           </span>
                         : null}
@@ -249,8 +252,8 @@ export function ForwardQueueSidebar({
         </div>
 
         {selectedIds.length > 0 ?
-          <div className="rounded-lg border border-sky-100 bg-sky-50/60 p-2">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+          <div className="rounded-lg border border-[#c7a75b]/30 bg-[#c7a75b]/10 p-2">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[#102c50]">
               Tanlangan navbat
             </p>
             <ol className="space-y-0.5 text-xs text-slate-700">
@@ -271,7 +274,7 @@ export function ForwardQueueSidebar({
         <Button
           disabled={submitting || selectedIds.length === 0}
           onClick={handleForward}
-          className="w-full gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-500">
+          className="w-full gap-2 rounded-md bg-[#102c50] text-white transition-colors duration-150 hover:bg-[#173c68]">
           {submitting ?
             <Loader2 className="size-4 animate-spin" />
           : <Send className="size-4" />}

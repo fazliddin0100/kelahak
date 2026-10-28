@@ -1,6 +1,6 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { applyCommanderCommentSignature } from '@/lib/documentForwardedSigner';
-import connectToDatabase from '@/lib/mongodb';
+import connectToDatabase from '@/lib/prisma';
 import { findDocumentById, isValidDbId, updateDocument } from '@/lib/db/document';
 import { type NextRequest, NextResponse } from 'next/server';
 

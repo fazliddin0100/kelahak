@@ -291,6 +291,9 @@ export async function middleware(req: NextRequest) {
           response.headers.set('X-User-Id', String(userId));
           response.headers.set('X-User-Role', role);
           response.headers.set('X-Access-Approved', 'true');
+          if (typeof verified.payload.sessionId === 'string') {
+            response.headers.set('X-Session-Id', verified.payload.sessionId);
+          }
           return response;
         }
       } catch {
@@ -395,6 +398,9 @@ export async function middleware(req: NextRequest) {
   response.headers.set('X-User-Id', String(userId));
   response.headers.set('X-User-Role', String(role));
   response.headers.set('X-Access-Approved', accessHeader);
+  if (typeof payload.sessionId === 'string') {
+    response.headers.set('X-Session-Id', payload.sessionId);
+  }
   return response;
 }
 

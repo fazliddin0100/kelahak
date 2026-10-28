@@ -2,7 +2,8 @@
 
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { CircleUser, Loader2, LogOut, ShieldUser } from 'lucide-react';
+import { CircleUser, LogOut, ShieldUser } from 'lucide-react';
+import LoadingState from '@/components/LoadingState';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -56,11 +57,7 @@ export default function UserProfile() {
   };
 
   if (!data) {
-    return (
-      <p className="text-sm text-gray-600 animate-spin">
-        <Loader2 />
-      </p>
-    );
+    return <LoadingState compact message="Profil yuklanmoqda..." className="p-2" />;
   }
 
   return (

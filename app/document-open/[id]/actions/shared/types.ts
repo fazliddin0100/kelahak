@@ -10,6 +10,7 @@ export interface DocumentActionsProps {
 export interface DocumentActionPermissions {
   canEdit: boolean;
   canSign: boolean;
+  signCompleted: boolean;
   canSignLabel: string;
   canRegister: boolean;
   canBack: boolean;

@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import LoadingState from '@/components/LoadingState';
 import {
   Dialog,
   DialogContent,
@@ -111,9 +112,7 @@ export default function KotibiyatSendModal({
         </DialogHeader>
 
         {loading ?
-          <div className="flex justify-center py-8">
-            <Loader2 className="size-6 animate-spin text-sky-500" />
-          </div>
+          <LoadingState message="Foydalanuvchilar yuklanmoqda..." className="py-4" />
         : users.length === 0 ?
           <p className="py-4 text-sm text-slate-500">
             Shu viloyatda kotibiyat xodimi topilmadi
