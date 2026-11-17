@@ -6,47 +6,25 @@ import { findArchivedNomeklaturaPopulated } from '@/lib/db/nomeklatura';
 
 import { NextRequest, NextResponse } from 'next/server';
 
-
-
 export async function GET(request: NextRequest) {
-
   try {
-
     const auth = await requireApiAuth(request);
-
     if (isAuthError(auth)) return auth;
 
+    const province = auth.user.personal?.province;
+    if (!province) {
+      return NextResponse.json(
+        { error: 'Foydalanuvchi viloyati topilmadi' },
+        { status: 400 }
+      );
+    }
 
-
-    const nomeklaturaArxiv = await findArchivedNomeklaturaPopulated();
-
-    return new NextResponse(JSON.stringify(nomeklaturaArxiv), {
-
-      status: 200,
-
-      headers: { 'Content-Type': 'application/json' },
-
-    });
-
+    return NextResponse.json(await findArchivedNomeklaturaPopulated(province));
   } catch (error) {
-
     console.error('Error fetching nomeklatura arxiv:', error);
-
-    return new NextResponse(
-
-      JSON.stringify({ error: 'Failed to fetch nomeklatura arxiv' }),
-
-      {
-
-        status: 500,
-
-        headers: { 'Content-Type': 'application/json' },
-
-      }
-
+    return NextResponse.json(
+      { error: 'Failed to fetch nomeklatura arxiv' },
+      { status: 500 }
     );
-
   }
-
 }
-

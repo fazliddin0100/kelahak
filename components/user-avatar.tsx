@@ -4,6 +4,7 @@ import {useEffect, useState} from "react";
 import {useRouter} from "next/navigation";
 import axios from "axios";
 import LoadingState from "@/components/LoadingState";
+import {clearLegacyAuthStorage} from "@/lib/clientAuthStorage";
 
 import {
     DropdownMenu,
@@ -35,8 +36,7 @@ export default function UserAvatar() {
         try {
             await fetch('/api/logout', { method: 'POST', credentials: 'include' });
         } finally {
-            localStorage.removeItem("token");
-            sessionStorage.removeItem("token");
+            clearLegacyAuthStorage();
             router.push("/sign-in");
         }
     };

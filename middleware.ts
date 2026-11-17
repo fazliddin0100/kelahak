@@ -1,6 +1,15 @@
+import {
+  AUTH_AUDIENCE,
+  AUTH_COOKIE,
+  AUTH_ISSUER,
+  AUTH_KIND_ORDER,
+  INTERNAL_IDENTITY_HEADERS,
+  roleAllowedForKind,
+} from '@/lib/authCookies';
+import { getClientIp } from '@/lib/clientIp';
 import { isRequestIpBlocked } from '@/lib/ipBlocklistEdge';
-import { readMainToken, readRefToken } from '@/lib/middlewareAuth';
 import { isBotUserAgent, queueSecurityLog } from '@/lib/middlewareSecurityLog';
+import { consumeRateLimit } from '@/lib/rateLimit';
 import {
   applySecurityHeaders,
   attachNonceToRequest,
@@ -58,37 +67,11 @@ const ROLE_HOME: Record<string, string> = {
   departmentDeputy: '/komandir',
 };
 
-// ================= RATE LIMITING =================
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-function checkRateLimit(
-  ip: string,
-  limit = 60,
-  windowMs = 60_000
-): { allowed: boolean; count: number } {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, count: 1 };
-  }
-
-  if (entry.count >= limit) {
-    return { allowed: false, count: entry.count };
-  }
-
-  entry.count++;
-  return { allowed: true, count: entry.count };
-}
-
-// Eski yozuvlarni tozalash (xotira to'lib ketmasligi uchun)
-function cleanupRateLimit() {
-  const now = Date.now();
-  for (const [key, val] of rateLimitMap.entries()) {
-    if (now > val.resetAt) rateLimitMap.delete(key);
-  }
-}
+/** Bitta IP dan keladigan umumiy oqim chegarasi (NAT ortidagi idora uchun keng) */
+const IP_CEILING_MULTIPLIER = 10;
+const PUBLIC_AUTH_API_LIMIT_PER_MINUTE = 60;
 
 // URL ichida xavfli belgilar bor-yo'qligini tekshirish
 const SUSPICIOUS_PATTERNS = [
@@ -99,6 +82,10 @@ const SUSPICIOUS_PATTERNS = [
   /%00/, // null byte
   /eval\s*\(/i, // eval injection
 ];
+
+function matchesRoute(pathname: string, route: string): boolean {
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
 
 function isSuspiciousRequest(
   pathname: string,
@@ -116,14 +103,69 @@ function secureResponse(
   return applySecurityHeaders(response, { nonce, pathname });
 }
 
+/** Mijoz yuborgan identifikatsiya headerlari ilovaga hech qachon o‘tmaydi */
+function sanitizedRequestHeaders(req: NextRequest): Headers {
+  const headers = new Headers(req.headers);
+  for (const name of INTERNAL_IDENTITY_HEADERS) headers.delete(name);
+  headers.delete('x-nonce');
+  return headers;
+}
+
 function continueWithNonce(
   req: NextRequest,
   pathname: string,
   nonce: string
 ): NextResponse {
-  const requestHeaders = attachNonceToRequest(req.headers, nonce);
+  const requestHeaders = attachNonceToRequest(
+    sanitizedRequestHeaders(req),
+    nonce
+  );
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   return secureResponse(response, pathname, nonce);
+}
+
+/**
+ * Cookie bilan autentifikatsiya qilingani uchun holatni o‘zgartiruvchi
+ * so‘rovlar faqat o‘z saytimizdan kelishi shart.
+ */
+function isCrossSiteRequest(req: NextRequest): boolean {
+  const fetchSite = req.headers.get('sec-fetch-site');
+  if (fetchSite) return fetchSite !== 'same-origin' && fetchSite !== 'none';
+
+  const origin = req.headers.get('origin');
+  if (!origin) return false;
+
+  const allowedOrigins = (process.env.APP_ORIGIN ?? '')
+    .split(',')
+    .map((value) => value.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+  if (allowedOrigins.includes(origin)) return false;
+
+  try {
+    const originHost = new URL(origin).host;
+    return ![
+      req.headers.get('host'),
+      req.headers.get('x-forwarded-host'),
+    ].includes(originHost);
+  } catch {
+    return true;
+  }
+}
+
+function tooManyRequests(
+  isApi: boolean,
+  retryAfterSeconds: number
+): NextResponse {
+  const retryAfter = String(retryAfterSeconds || 60);
+  return isApi ?
+      NextResponse.json(
+        { message: 'Juda ko‘p so‘rov. Keyinroq urinib ko‘ring.' },
+        { status: 429, headers: { 'Retry-After': retryAfter } }
+      )
+    : new NextResponse('Too Many Requests', {
+        status: 429,
+        headers: { 'Retry-After': retryAfter, 'Content-Type': 'text/plain' },
+      });
 }
 
 if (!process.env.JWT_SECRET) {
@@ -136,11 +178,62 @@ if (!process.env.JWT_SECRET_REFRESH) {
 const SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 const REFRESH_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_REFRESH);
 
+type Identity = {
+  userId: string;
+  role: string;
+  accessApproved: boolean;
+};
+
+/** Imzolangan HttpOnly cookie — yagona ishonchli identifikatsiya manbai */
+async function resolveIdentity(req: NextRequest): Promise<Identity | null> {
+  for (const kind of AUTH_KIND_ORDER) {
+    const raw = req.cookies.get(AUTH_COOKIE[kind])?.value;
+    if (!raw) continue;
+
+    try {
+      const { payload } = await jwtVerify(
+        raw,
+        kind === 'admin' ? REFRESH_SECRET : SECRET,
+        {
+          algorithms: ['HS256'],
+          issuer: AUTH_ISSUER,
+          audience: AUTH_AUDIENCE[kind],
+        }
+      );
+      const { userId, role, sessionId } = payload;
+      if (
+        typeof userId !== 'string' ||
+        typeof role !== 'string' ||
+        typeof sessionId !== 'string' ||
+        !userId ||
+        !sessionId ||
+        !roleAllowedForKind(kind, role)
+      ) {
+        continue;
+      }
+      return {
+        userId,
+        role,
+        accessApproved: role === 'superAdmin' || payload.accessApproved === true,
+      };
+    } catch {
+      // keyingi cookie
+    }
+  }
+  return null;
+}
+
+function clearAuthCookies(response: NextResponse): NextResponse {
+  for (const kind of AUTH_KIND_ORDER) {
+    response.cookies.delete(AUTH_COOKIE[kind]);
+  }
+  return response;
+}
+
 // ================= MIDDLEWARE =================
 function isPublicPath(pathname: string): boolean {
-  if (PUBLIC_PAGE_ROUTES.some((r) => pathname.startsWith(r))) return true;
-  if (PUBLIC_AUTH_API.some((r) => pathname.startsWith(r))) return true;
-  if (INTERNAL_API.some((r) => pathname === r)) return true;
+  if (PUBLIC_PAGE_ROUTES.some((r) => matchesRoute(pathname, r))) return true;
+  if (PUBLIC_AUTH_API.some((r) => pathname === r)) return true;
   if (pathname === '/admin') return true;
   return false;
 }
@@ -150,31 +243,9 @@ export async function middleware(req: NextRequest) {
   const isApi = pathname.startsWith('/api/');
   const nonce = generateCspNonce();
 
-  // 0. BLOKLANGAN IP (dev: o‘tkazib yuboriladi — tez kirish)
-  if (
-    process.env.NODE_ENV !== 'development' &&
-    (await isRequestIpBlocked(req))
-  ) {
-    queueSecurityLog(req, {
-      type: 'waf_block',
-      message: 'Bloklangan IP',
-      statusCode: 403,
-    });
-    if (isApi) {
-      return secureResponse(
-        NextResponse.json(
-          { message: 'IP manzilingiz bloklangan' },
-          { status: 403 }
-        ),
-        pathname,
-        nonce
-      );
-    }
-    return secureResponse(
-      new NextResponse('Forbidden', { status: 403 }),
-      pathname,
-      nonce
-    );
+  // 0. Rasm optimizatori o‘chirilgan (next.config: images.unoptimized)
+  if (matchesRoute(pathname, '/_next/image')) {
+    return new NextResponse('Not Found', { status: 404 });
   }
 
   // 1. STATIC BYPASS
@@ -186,53 +257,83 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // 2. ICHKI API — route ichida maxfiy kalit tekshiriladi
   if (INTERNAL_API.some((r) => pathname === r)) {
-    return NextResponse.next();
+    return NextResponse.next({
+      request: { headers: sanitizedRequestHeaders(req) },
+    });
   }
 
-  // Kirish / ro‘yxatdan o‘tish — rate limit va auth talab qilinmaydi
-  if (isPublicPath(pathname)) {
-    return continueWithNonce(req, pathname, nonce);
+  // 3. BLOKLANGAN IP (dev: o‘tkazib yuboriladi — tez kirish)
+  if (
+    process.env.NODE_ENV !== 'development' &&
+    (await isRequestIpBlocked(req))
+  ) {
+    queueSecurityLog(req, {
+      type: 'waf_block',
+      message: 'Bloklangan IP',
+      statusCode: 403,
+    });
+    return secureResponse(
+      isApi ?
+        NextResponse.json(
+          { message: 'IP manzilingiz bloklangan' },
+          { status: 403 }
+        )
+      : new NextResponse('Forbidden', { status: 403 }),
+      pathname,
+      nonce
+    );
   }
 
-  const ip =
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('x-real-ip') ??
-    '127.0.0.1';
+  // 4. CSRF — boshqa saytdan kelgan o‘zgartiruvchi so‘rovlar rad etiladi
+  if (isApi && !SAFE_METHODS.has(req.method) && isCrossSiteRequest(req)) {
+    queueSecurityLog(req, {
+      type: 'suspicious',
+      message: 'Boshqa saytdan kelgan so‘rov (CSRF)',
+      statusCode: 403,
+    });
+    return secureResponse(
+      NextResponse.json(
+        { message: 'So‘rov manbasi tasdiqlanmadi', code: 'CSRF_REJECTED' },
+        { status: 403 }
+      ),
+      pathname,
+      nonce
+    );
+  }
 
-  // 2. RATE LIMITING (himoyalangan yo‘llar uchun)
+  const ip = getClientIp(req.headers);
+  const isPublic = isPublicPath(pathname);
+  const rateCfg = getRateLimitConfig(pathname);
   const skipRateLimit =
-    pathname === '/api/auth/access-status' ||
-    (process.env.NODE_ENV === 'development' && ip === '127.0.0.1');
+    process.env.NODE_ENV === 'development' && ip === '127.0.0.1';
 
+  // 5. IP BO‘YICHA RATE LIMIT (ochiq yo‘llar ham kiradi)
   if (!skipRateLimit) {
-    if (Math.random() < 0.01) cleanupRateLimit();
-
-    const rateCfg = getRateLimitConfig(pathname);
-    const { allowed, count } = checkRateLimit(
+    const isPublicAuthApi = isApi && isPublic;
+    const ipLimit =
+      isPublicAuthApi ? PUBLIC_AUTH_API_LIMIT_PER_MINUTE
+      : isPublic ? rateCfg.limit
+      : rateCfg.limit * IP_CEILING_MULTIPLIER;
+    const ipResult = consumeRateLimit(
+      isPublicAuthApi ? 'mw-ip-auth' : isApi ? 'mw-ip-api' : 'mw-ip-page',
       ip,
-      rateCfg.limit,
+      ipLimit,
       rateCfg.windowMs
     );
-    if (!allowed) {
+    if (!ipResult.allowed) {
       queueSecurityLog(req, {
-        type: count >= rateCfg.ddosThreshold ? 'ddos' : 'rate_limit',
-        message: `So‘rovlar: ${count}/${rateCfg.limit} min`,
+        type:
+          ipResult.count >= ipLimit + rateCfg.ddosThreshold ? 'ddos' : 'rate_limit',
+        message: `So‘rovlar: ${ipResult.count}/${ipLimit} min`,
         statusCode: 429,
       });
-      const body = isApi
-        ? NextResponse.json(
-            { message: 'Juda ko‘p so‘rov. Keyinroq urinib ko‘ring.' },
-            { status: 429, headers: { 'Retry-After': '60' } }
-          )
-        : new NextResponse('Too Many Requests', {
-            status: 429,
-            headers: {
-              'Retry-After': '60',
-              'Content-Type': 'text/plain',
-            },
-          });
-      return secureResponse(body, pathname, nonce);
+      return secureResponse(
+        tooManyRequests(isApi, ipResult.retryAfterSeconds),
+        pathname,
+        nonce
+      );
     }
   }
 
@@ -243,167 +344,134 @@ export async function middleware(req: NextRequest) {
     });
   }
 
-  // 3. SUSPICIOUS REQUEST DETECTION
+  // 6. SUSPICIOUS REQUEST DETECTION
   if (isSuspiciousRequest(pathname, searchParams)) {
     queueSecurityLog(req, {
       type: 'suspicious',
       message: 'Xavfli URL naqsh',
       statusCode: 400,
     });
-    return new NextResponse('Bad Request', { status: 400 });
-  }
-
-  // 5. AUTHENTICATION — avval token/sa_token, keyin ref_token (admin)
-  const token = readMainToken(req);
-
-  if (!token) {
-    const refToken = readRefToken(req);
-    if (refToken && (pathname.startsWith('/admin') || isApi)) {
-      try {
-        const verified = await jwtVerify(refToken, REFRESH_SECRET, {
-          algorithms: ['HS256'],
-        });
-        const userId = verified.payload.userId;
-        const role =
-          typeof verified.payload.role === 'string' ?
-            verified.payload.role
-          : 'admin';
-
-        if (userId) {
-          const matchedRoute = Object.keys(ROLE_PERMISSIONS).find((route) =>
-            pathname.startsWith(route)
-          );
-          if (matchedRoute) {
-            const allowedRoles = ROLE_PERMISSIONS[matchedRoute];
-            if (!allowedRoles.includes(role)) {
-              if (isApi) {
-                return NextResponse.json(
-                  { message: 'Bu API uchun ruxsat yo‘q' },
-                  { status: 403 }
-                );
-              }
-              const homePath = ROLE_HOME[role] ?? '/sign-in';
-              return NextResponse.redirect(new URL(homePath, req.url));
-            }
-          }
-
-          const response = continueWithNonce(req, pathname, nonce);
-          response.headers.set('X-User-Id', String(userId));
-          response.headers.set('X-User-Role', role);
-          response.headers.set('X-Access-Approved', 'true');
-          if (typeof verified.payload.sessionId === 'string') {
-            response.headers.set('X-Session-Id', verified.payload.sessionId);
-          }
-          return response;
-        }
-      } catch {
-        if (pathname.startsWith('/admin')) {
-          const res = NextResponse.redirect(new URL('/admin', req.url));
-          res.cookies.delete('ref_token');
-          return res;
-        }
-        if (isApi) {
-          return NextResponse.json(
-            { message: 'ref_token yaroqsiz' },
-            { status: 401 }
-          );
-        }
-      }
-    }
-
-    if (isApi) {
-      return NextResponse.json(
-        { message: 'Avtorizatsiya talab qilinadi' },
-        { status: 401 }
-      );
-    }
-    const url = new URL('/sign-in', req.url);
-    url.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(url);
-  }
-
-  let payload: Record<string, unknown>;
-
-  try {
-    const verified = await jwtVerify(token, SECRET, {
-      algorithms: ['HS256'],
-    });
-    payload = verified.payload as Record<string, unknown>;
-  } catch {
-    if (isApi) {
-      return NextResponse.json({ message: 'Token yaroqsiz' }, { status: 401 });
-    }
-    const res = NextResponse.redirect(new URL('/sign-in', req.url));
-    res.cookies.delete('token');
-    res.cookies.delete('sa_token');
-    return res;
-  }
-
-  const role = payload.role;
-  const userId = payload.userId;
-
-  if (!role || !userId || typeof role !== 'string') {
-    if (isApi) {
-      return NextResponse.json(
-        { message: 'Token ma’lumotlari yetarli emas' },
-        { status: 401 }
-      );
-    }
-    const res = NextResponse.redirect(new URL('/sign-in', req.url));
-    res.cookies.delete('token');
-    res.cookies.delete('sa_token');
-    return res;
-  }
-
-  const approved = role === 'superAdmin' || payload.accessApproved === true;
-  const accessHeader = approved ? 'true' : 'false';
-
-  if (!approved) {
-    if (isApi) {
-      return NextResponse.json(
-        { message: 'Kirish uchun ruxsat berilmagan', code: 'PENDING_APPROVAL' },
-        { status: 403 }
-      );
-    }
-    const res = NextResponse.redirect(
-      new URL('/sign-in?pending=approval', req.url)
+    return secureResponse(
+      new NextResponse('Bad Request', { status: 400 }),
+      pathname,
+      nonce
     );
-    res.cookies.delete('token');
-    res.cookies.delete('sa_token');
-    return res;
   }
 
-  // 6. ROLE-BASED ACCESS CONTROL (RBAC)
+  // Kirish / ro‘yxatdan o‘tish — auth talab qilinmaydi
+  if (isPublic) {
+    return continueWithNonce(req, pathname, nonce);
+  }
+
+  // 7. AUTHENTICATION
+  const identity = await resolveIdentity(req);
+
+  if (!identity) {
+    if (isApi) {
+      return secureResponse(
+        NextResponse.json(
+          { message: 'Avtorizatsiya talab qilinadi' },
+          { status: 401 }
+        ),
+        pathname,
+        nonce
+      );
+    }
+    const loginUrl =
+      matchesRoute(pathname, '/admin') ?
+        new URL('/admin', req.url)
+      : new URL('/sign-in', req.url);
+    if (loginUrl.pathname === '/sign-in') {
+      loginUrl.searchParams.set('callbackUrl', pathname);
+    }
+    return secureResponse(
+      clearAuthCookies(NextResponse.redirect(loginUrl)),
+      pathname,
+      nonce
+    );
+  }
+
+  const { role, userId } = identity;
+
+  if (!identity.accessApproved) {
+    if (isApi) {
+      return secureResponse(
+        NextResponse.json(
+          { message: 'Kirish uchun ruxsat berilmagan', code: 'PENDING_APPROVAL' },
+          { status: 403 }
+        ),
+        pathname,
+        nonce
+      );
+    }
+    return secureResponse(
+      clearAuthCookies(
+        NextResponse.redirect(new URL('/sign-in?pending=approval', req.url))
+      ),
+      pathname,
+      nonce
+    );
+  }
+
+  // 8. FOYDALANUVCHI BO‘YICHA RATE LIMIT
+  if (!skipRateLimit && pathname !== '/api/auth/access-status') {
+    const userResult = consumeRateLimit(
+      isApi ? 'mw-user-api' : 'mw-user-page',
+      userId,
+      rateCfg.limit,
+      rateCfg.windowMs
+    );
+    if (!userResult.allowed) {
+      queueSecurityLog(req, {
+        type: userResult.count >= rateCfg.ddosThreshold ? 'ddos' : 'rate_limit',
+        message: `So‘rovlar: ${userResult.count}/${rateCfg.limit} min`,
+        loginHint: userId,
+        statusCode: 429,
+      });
+      return secureResponse(
+        tooManyRequests(isApi, userResult.retryAfterSeconds),
+        pathname,
+        nonce
+      );
+    }
+  }
+
+  // 9. ROLE-BASED ACCESS CONTROL (RBAC)
   const matchedRoute = Object.keys(ROLE_PERMISSIONS).find((route) =>
-    pathname.startsWith(route)
+    matchesRoute(pathname, route)
   );
 
-  if (matchedRoute) {
-    const allowedRoles = ROLE_PERMISSIONS[matchedRoute];
-
-    if (!allowedRoles.includes(role)) {
-      const homePath = ROLE_HOME[role] ?? '/sign-in';
-
-      // Cheksiz redirect oldini olish
-      if (pathname.startsWith(homePath)) {
-        return NextResponse.next();
-      }
-
-      const redirectRes = NextResponse.redirect(new URL(homePath, req.url));
-      return secureResponse(redirectRes, pathname, nonce);
+  if (matchedRoute && !ROLE_PERMISSIONS[matchedRoute].includes(role)) {
+    if (isApi) {
+      return secureResponse(
+        NextResponse.json(
+          { message: 'Bu API uchun ruxsat yo‘q' },
+          { status: 403 }
+        ),
+        pathname,
+        nonce
+      );
     }
+
+    const homePath = ROLE_HOME[role] ?? '/sign-in';
+    // Cheksiz redirect oldini olish
+    if (matchesRoute(pathname, homePath)) {
+      return secureResponse(
+        new NextResponse('Forbidden', { status: 403 }),
+        pathname,
+        nonce
+      );
+    }
+    return secureResponse(
+      NextResponse.redirect(new URL(homePath, req.url)),
+      pathname,
+      nonce
+    );
   }
 
-  const response = continueWithNonce(req, pathname, nonce);
-  response.headers.set('X-User-Id', String(userId));
-  response.headers.set('X-User-Role', String(role));
-  response.headers.set('X-Access-Approved', accessHeader);
-  if (typeof payload.sessionId === 'string') {
-    response.headers.set('X-Session-Id', payload.sessionId);
-  }
-  return response;
+  return continueWithNonce(req, pathname, nonce);
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|tinymce).*)'],
+  matcher: ['/((?!_next/static|favicon.ico|tinymce).*)'],
 };

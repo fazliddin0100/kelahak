@@ -1,4 +1,5 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
+import { isKotibiyatActor } from '@/lib/documentAccess';
 import {
   isKotibiyatAssignedInboxItem,
   isKotibiyatQueueVisible,
@@ -66,6 +67,13 @@ export async function GET(request: NextRequest) {
 
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
+
+    if (!isKotibiyatActor(auth)) {
+      return NextResponse.json(
+        { message: 'Bu ro‘yxat faqat kotibiyat xodimlari uchun' },
+        { status: 403 }
+      );
+    }
 
     const currentUserId = auth.userId;
     const authUser = auth.user;
@@ -191,10 +199,9 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Nomaʼlum xato';
     console.error('Kotibiyat hujjatlari:', error);
     return NextResponse.json(
-      { message: 'Server xatosi', error: message },
+      { message: 'Server xatosi' },
       { status: 500 }
     );
   }

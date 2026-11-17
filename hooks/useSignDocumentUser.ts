@@ -7,14 +7,8 @@ export const useSignetDocuments = () => {
 
   useEffect(() => {
     const fetchDocuments = async () => {
-      const token = localStorage.getItem('token');
-
       try {
-        const res = await fetch('/api/documents/signet-documents', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await fetch('/api/documents/signet-documents');
 
         const json = await res.json();
         setSignDocuments(json.documents || []);

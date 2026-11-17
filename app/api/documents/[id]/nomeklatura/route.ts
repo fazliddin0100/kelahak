@@ -1,6 +1,12 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import connectToDatabase, { prisma } from '@/lib/prisma';
+import {
+  documentNotFoundResponse,
+  isKotibiyatActor,
+  loadViewableDocument,
+} from '@/lib/documentAccess';
 import { canOwnerLinkToNomeklatura } from '@/lib/documentLifecycle';
+import { regionsMatch } from '@/lib/documentWorkflow';
 import { userCanAccessNomeklatura } from '@/lib/userNomeklatura';
 import {
   findDocumentById,
@@ -38,16 +44,29 @@ export async function POST(
 
     const province = user.personal.province || '';
 
-    const document = await findDocumentById(id);
+    const document = await loadViewableDocument(id, auth);
     if (!document) {
-      return NextResponse.json(
-        { message: 'Hujjat topilmadi' },
-        { status: 404 }
-      );
+      return documentNotFoundResponse();
     }
 
     const docView = serializeDocumentForApi(document);
     const isOwner = document.ownerId === userId;
+
+    if (
+      !isOwner &&
+      !(
+        isKotibiyatActor(auth) &&
+        regionsMatch(document.ownerRegion, province)
+      )
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            'Hujjatni nomeklaturaga faqat egasi yoki viloyat kotibiyati biriktirishi mumkin',
+        },
+        { status: 403 }
+      );
+    }
 
     if (isOwner && !canOwnerLinkToNomeklatura(docView)) {
       if (document.status === DocumentStatus.IN_WORK_FILE) {
@@ -132,7 +151,10 @@ export async function POST(
       const exists = await prisma.nomeklatura.findUnique({
         where: { id: nomeklaturaId },
       });
-      if (!exists) {
+      if (
+        !exists ||
+        !regionsMatch(exists.ownerRegion, document.ownerRegion || province)
+      ) {
         return NextResponse.json(
           { message: 'Nomeklatura topilmadi' },
           { status: 404 }
@@ -176,11 +198,7 @@ export async function POST(
       { status: 200 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Noma'lum xato";
     console.error('Nomeklaturaga biriktirishda xato:', error);
-    return NextResponse.json(
-      { message: 'Server xatosi', error: message },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Server xatosi' }, { status: 500 });
   }
 }

@@ -4,10 +4,7 @@ import { toast } from '@/components/ui/sonner';
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 
-function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('token');
-}
+const jsonHeaders: HeadersInit = { 'Content-Type': 'application/json' };
 
 export function useDocumentActionHandlers(
   documentId: string,
@@ -15,25 +12,15 @@ export function useDocumentActionHandlers(
 ) {
   const router = useRouter();
 
-  const authHeaders = useCallback((): HeadersInit => {
-    const token = getToken();
-    return {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
-  }, []);
-
   const onEdit = useCallback(() => {
     router.push(`/document/${documentId}`);
   }, [router, documentId]);
 
   const onSign = useCallback(async () => {
-    const token = getToken();
-    if (!token) return toast.error('Token topilmadi!');
     try {
       const res = await fetch(`/api/documents/${documentId}/signed`, {
         method: 'POST',
-        headers: authHeaders(),
+        headers: jsonHeaders,
       });
       const data = await res.json();
       if (!res.ok) return toast.error(data.message || 'Xatolik!');
@@ -43,15 +30,13 @@ export function useDocumentActionHandlers(
     } catch {
       toast.error('Server xatosi!');
     }
-  }, [documentId, authHeaders, onRefresh, router]);
+  }, [documentId, onRefresh, router]);
 
   const onRegister = useCallback(async () => {
-    const token = getToken();
-    if (!token) return toast.error('Token topilmadi!');
     try {
       const res = await fetch(`/api/documents/${documentId}/register`, {
         method: 'POST',
-        headers: authHeaders(),
+        headers: jsonHeaders,
       });
       const data = await res.json();
       if (!res.ok) return toast.error(data.message || 'Xatolik!');
@@ -61,15 +46,13 @@ export function useDocumentActionHandlers(
     } catch {
       toast.error('Server xatosi!');
     }
-  }, [documentId, authHeaders, onRefresh, router]);
+  }, [documentId, onRefresh, router]);
 
   const onBack = useCallback(async () => {
-    const token = getToken();
-    if (!token) return toast.error('Token topilmadi!');
     try {
       const res = await fetch(`/api/documents/${documentId}/back-doc`, {
         method: 'POST',
-        headers: authHeaders(),
+        headers: jsonHeaders,
       });
       const data = await res.json();
       if (!res.ok) return toast.error(data.message || 'Xatolik!');
@@ -79,15 +62,13 @@ export function useDocumentActionHandlers(
     } catch {
       toast.error('Server xatosi!');
     }
-  }, [documentId, authHeaders, onRefresh, router]);
+  }, [documentId, onRefresh, router]);
 
   const onSubmitToKotibiyat = useCallback(async () => {
-    const token = getToken();
-    if (!token) return toast.error('Token topilmadi!');
     try {
       const res = await fetch(`/api/documents/${documentId}/submit-kotibiyat`, {
         method: 'POST',
-        headers: authHeaders(),
+        headers: jsonHeaders,
       });
       const data = await res.json();
       if (!res.ok) return toast.error(data.message || 'Xatolik!');
@@ -97,15 +78,13 @@ export function useDocumentActionHandlers(
     } catch {
       toast.error('Server xatosi!');
     }
-  }, [documentId, authHeaders, onRefresh, router]);
+  }, [documentId, onRefresh, router]);
 
   const onLinkNomeklatura = useCallback(async () => {
-    const token = getToken();
-    if (!token) return toast.error('Token topilmadi!');
     try {
       const res = await fetch(`/api/documents/${documentId}/nomeklatura`, {
         method: 'POST',
-        headers: authHeaders(),
+        headers: jsonHeaders,
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -121,7 +100,7 @@ export function useDocumentActionHandlers(
     } catch {
       toast.error('Server xatosi!');
     }
-  }, [documentId, authHeaders, onRefresh, router]);
+  }, [documentId, onRefresh, router]);
 
   return {
     onEdit,

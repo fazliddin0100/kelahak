@@ -16,14 +16,6 @@ import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-function getAuthHeaders(): HeadersInit {
-  const token =
-    typeof window !== 'undefined' ?
-      localStorage.getItem('ref_token') || localStorage.getItem('token')
-    : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 function resolveId(id: NomeklaturaItem['_id']): string {
   if (!id) return '';
   return typeof id === 'string' ? id : id.$oid;
@@ -53,7 +45,6 @@ export default function IshJildLinkModal({
     try {
       const res = await fetch('/api/nameklatura/get-users-nomeklatura', {
         credentials: 'include',
-        headers: getAuthHeaders(),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -118,7 +109,6 @@ export default function IshJildLinkModal({
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeaders(),
         },
         body: JSON.stringify({ nomeklaturaId: selectedId }),
       });

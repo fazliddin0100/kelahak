@@ -95,7 +95,12 @@ export function applySecurityHeaders(
     );
   }
 
-  response.headers.set('X-XSS-Protection', '1; mode=block');
+  // Eskirgan XSS auditor o‘zi zaiflik manbai bo‘lgani uchun o‘chiriladi; himoya — CSP.
+  response.headers.set('X-XSS-Protection', '0');
+  response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
+  if (pathname.startsWith('/api/')) {
+    response.headers.set('Cache-Control', 'no-store');
+  }
 
   return response;
 }

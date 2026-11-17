@@ -2,8 +2,10 @@
 
 import {
   findUserById,
+  isValidDbId,
   setJobAccessApproved,
 } from '@/lib/db/user';
+import { prisma } from '@/lib/prisma';
 import { requireAdminOperator } from '@/lib/userAccess';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -33,7 +35,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { userId } = body;
 
-    if (!userId) {
+    if (typeof userId !== 'string' || !isValidDbId(userId)) {
       return NextResponse.json({ error: 'userId majburiy' }, { status: 400 });
     }
 
@@ -64,15 +66,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (user.id === adminId) {
+    const targetRole = user.job?.role?.role;
+    if (
+      admin.job?.role?.role !== 'superAdmin' &&
+      (targetRole === 'admin' || targetRole === 'superAdmin')
+    ) {
       return NextResponse.json(
-        { error: "O'z akkauntingizni bloklay olmaysiz" },
+        {
+          error:
+            'Kotibiyat (admin) akkauntini faqat SuperAdmin bloklashi mumkin',
+        },
         { status: 403 },
       );
     }
 
     if (user.job) {
       await setJobAccessApproved(userId, false);
+      await prisma.userSession.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
     }
 
     return NextResponse.json(

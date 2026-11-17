@@ -4,14 +4,6 @@ import type { BolinmaWithNomeklatura } from '@/hooks/useNomeklatura';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-function getAuthHeaders(): HeadersInit {
-  const token =
-    typeof window !== 'undefined' ?
-      localStorage.getItem('ref_token') || localStorage.getItem('token')
-    : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 export const useUserNomeklatura = () => {
   const [nomeklatura, setNomeklatura] = useState<BolinmaWithNomeklatura[]>([]);
   const [loading, setLoading] = useState(false);
@@ -22,7 +14,6 @@ export const useUserNomeklatura = () => {
     try {
       const res = await fetch('/api/nameklatura/get-users-nomeklatura', {
         credentials: 'include',
-        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error(`Failed: ${res.status}`);
       const data = await res.json();

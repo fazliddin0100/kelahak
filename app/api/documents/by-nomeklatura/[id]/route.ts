@@ -69,10 +69,9 @@ export async function GET(
       total: serialized.length,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Nomaʼlum xato';
     console.error('by-nomeklatura:', error);
     return NextResponse.json(
-      { message: 'Server xatosi', error: message },
+      { message: 'Server xatosi' },
       { status: 500 }
     );
   }

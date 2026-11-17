@@ -85,7 +85,14 @@ const formSchema = z.object({
   position: z.string().min(1, 'Lavozim majburiy'),
   militaryRank: z.string().min(1, 'Unvon majburiy'),
   login: z.string().min(3, 'Login kamida 3 belgidan iborat bo‘lishi kerak'),
-  password: z.string().min(6, 'Parol kamida 6 belgidan iborat bo‘lishi kerak'),
+  password: z
+    .string()
+    .min(12, 'Parol kamida 12 belgidan iborat bo‘lishi kerak')
+    .max(72, 'Parol ko‘pi bilan 72 belgidan iborat bo‘lishi kerak')
+    .refine(
+      (value) => /[A-Za-z]/.test(value) && /[0-9]/.test(value),
+      'Parolda kamida bitta harf va bitta raqam bo‘lishi kerak'
+    ),
 });
 
 type FormData = z.infer<typeof formSchema>;

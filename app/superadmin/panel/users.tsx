@@ -16,15 +16,6 @@ import {
 import { useState } from 'react';
 import { SaSectionShell } from './shared';
 
-function saHeaders(): HeadersInit {
-  const token =
-    localStorage.getItem('sa_token') || localStorage.getItem('token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
 export default function SuperAdminUsers() {
   const { users, loading, refetch } = useSuperAdminUsers();
   const [search, setSearch] = useState('');
@@ -46,7 +37,7 @@ export default function SuperAdminUsers() {
     try {
       const res = await fetch('/api/superadmin/users/grant', {
         method: 'POST',
-        headers: saHeaders(),
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ userId }),
       });
@@ -66,7 +57,7 @@ export default function SuperAdminUsers() {
     try {
       const res = await fetch('/api/superadmin/users/revoke', {
         method: 'POST',
-        headers: saHeaders(),
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ userId }),
       });

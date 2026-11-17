@@ -53,11 +53,12 @@ export function normalizeRegion(region?: string): string {
   return region?.trim().toLowerCase() ?? '';
 }
 
-export function regionsMatch(a?: string, b?: string): boolean {
-  const na = normalizeRegion(a);
-  const nb = normalizeRegion(b);
+/** Aniq tenglik: «Toshkent» va «Toshkent viloyati» — turli hududlar */
+export function regionsMatch(a?: string | null, b?: string | null): boolean {
+  const na = normalizeRegion(a ?? undefined);
+  const nb = normalizeRegion(b ?? undefined);
   if (!na || !nb) return false;
-  return na === nb || na.includes(nb) || nb.includes(na);
+  return na === nb;
 }
 
 export function wasSentToCommander(doc: WorkflowDocument): boolean {
@@ -302,7 +303,7 @@ export function isAddressedToCommander(
   commanderUserId: string,
 ): boolean {
   const uid = commanderUserId.toString();
-  if (doc.sentToCommander === true) return true;
+  if (!uid) return false;
 
   if (collectReceiverUserIds(doc.receiver).includes(uid)) return true;
   if (collectAllowedUserIds(doc.allowedUsers).includes(uid)) return true;

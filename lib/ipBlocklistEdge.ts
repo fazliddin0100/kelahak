@@ -1,4 +1,10 @@
 import { NextRequest } from 'next/server';
+import { getClientIp } from '@/lib/clientIp';
+import {
+  getInternalKey,
+  INTERNAL_KEY_HEADER,
+  internalUrl,
+} from '@/lib/internalKeys';
 
 const CACHE_MS = 30_000;
 
@@ -8,20 +14,12 @@ const globalStore = globalThis as typeof globalThis & {
   __blockedIpCache?: BlockCache;
 };
 
-function getClientIp(req: NextRequest): string {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    req.headers.get('x-real-ip') ||
-    '127.0.0.1'
-  );
-}
-
 /** Edge middleware — IP block list is loaded through the internal API */
 export async function isRequestIpBlocked(req: NextRequest): Promise<boolean> {
   if (process.env.NODE_ENV === 'development') {
     return false;
   }
-  const ip = getClientIp(req);
+  const ip = getClientIp(req.headers);
   const now = Date.now();
   const cache = globalStore.__blockedIpCache;
 
@@ -30,26 +28,28 @@ export async function isRequestIpBlocked(req: NextRequest): Promise<boolean> {
   }
 
   try {
-    const url = new URL('/api/waf/blocked-list', req.url);
-    const key =
-      process.env.WAF_SYNC_KEY?.trim() ||
-      process.env.SECURITY_LOG_KEY?.trim() ||
-      'dev-log-key';
-
-    const res = await fetch(url.toString(), {
-      headers: { 'x-waf-sync-key': key },
+    const res = await fetch(internalUrl('/api/waf/blocked-list'), {
+      headers: {
+        [INTERNAL_KEY_HEADER['waf-sync']]: await getInternalKey('waf-sync'),
+      },
       cache: 'no-store',
     });
 
-    if (!res.ok) return false;
+    if (!res.ok) {
+      console.error(`IP blok ro‘yxati yuklanmadi: HTTP ${res.status}`);
+      return cache?.ips.has(ip) ?? false;
+    }
 
     const data = (await res.json()) as { blocked?: string[] };
     const ips = new Set(data.blocked ?? []);
     globalStore.__blockedIpCache = { ips, at: now };
     return ips.has(ip);
-  } catch {
-    return false;
+  } catch (error) {
+    console.error('IP blok ro‘yxati yuklanmadi:', error);
+    return cache?.ips.has(ip) ?? false;
   }
 }
 
-export { getClientIp as getMiddlewareClientIp };
+export function getMiddlewareClientIp(req: NextRequest): string {
+  return getClientIp(req.headers);
+}

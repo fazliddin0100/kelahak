@@ -41,15 +41,9 @@ export function useDocumentFormUsers(
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const token =
-        typeof window !== 'undefined' ?
-          localStorage.getItem('token') ||
-          localStorage.getItem('ref_token')
-        : null;
       const query = scope === 'unit' ? '' : `?scope=${scope}`;
       const res = await fetch(`/api/users/department-peers${query}`, {
         credentials: 'include',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json();
       if (!res.ok) {

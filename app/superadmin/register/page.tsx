@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -33,6 +34,17 @@ import {
 } from '@/lib/registrationConstants';
 import { KeyRound, Shield } from 'lucide-react';
 import Link from 'next/link';
+
+const formSchema = registrationFormSchema.extend({
+  password: z
+    .string()
+    .min(12, 'Parol kamida 12 belgidan iborat bo‘lishi kerak')
+    .max(72, 'Parol ko‘pi bilan 72 belgidan iborat bo‘lishi kerak')
+    .refine(
+      (value) => /[A-Za-z]/.test(value) && /[0-9]/.test(value),
+      'Parolda kamida bitta harf va bitta raqam bo‘lishi kerak'
+    ),
+});
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -74,7 +86,7 @@ export default function SuperAdminRegisterPage() {
   } | null>(null);
 
   const form = useForm<RegistrationFormData>({
-    resolver: zodResolver(registrationFormSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       fName: '',
       name: '',

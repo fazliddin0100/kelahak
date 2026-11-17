@@ -16,13 +16,8 @@ export function useGetSharedDocuments() {
   const fetchDocuments = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
 
-      const res = await fetch('/api/documents/registration-documents', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await fetch('/api/documents/registration-documents');
 
       const data: ApiResponse = await res.json();
       if (!res.ok) {

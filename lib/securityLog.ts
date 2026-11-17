@@ -1,3 +1,5 @@
+import { getClientIp } from '@/lib/clientIp';
+import { verifyInternalKey } from '@/lib/internalKeys';
 import connectToDatabase, { prisma } from '@/lib/prisma';
 import type { SecurityEventType } from '@prisma/client';
 
@@ -19,13 +21,17 @@ export type SecurityLogEntry = {
 const MAX_MEMORY = 3000;
 const memoryLogs: SecurityLogEntry[] = [];
 
-export function getClientIp(headers: Headers): string {
-  return (
-    headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    headers.get('x-real-ip') ||
-    '127.0.0.1'
-  );
-}
+export { getClientIp };
+
+export const SECURITY_EVENT_TYPES: readonly SecurityEventType[] = [
+  'visit',
+  'login_failed',
+  'login_success',
+  'rate_limit',
+  'suspicious',
+  'waf_block',
+  'ddos',
+];
 
 function pushMemory(
   entry: Omit<SecurityLogEntry, '_id' | 'createdAt'> & { createdAt?: string }
@@ -52,12 +58,12 @@ export async function logSecurityEvent(
       data: {
         id: newLogId(),
         type: entry.type,
-        ip: entry.ip,
-        path: entry.path,
-        method: entry.method,
+        ip: entry.ip.slice(0, 64),
+        path: entry.path.slice(0, 500),
+        method: entry.method.slice(0, 16),
         userAgent: entry.userAgent?.slice(0, 500),
-        loginHint: entry.loginHint,
-        message: entry.message,
+        loginHint: entry.loginHint?.slice(0, 100),
+        message: entry.message?.slice(0, 500),
         statusCode: entry.statusCode,
       },
     });
@@ -173,8 +179,6 @@ export async function getSecurityStats(hours = 24) {
   };
 }
 
-export function verifySecurityLogKey(request: Request): boolean {
-  const key = process.env.SECURITY_LOG_KEY?.trim();
-  if (!key) return process.env.NODE_ENV === 'development';
-  return request.headers.get('x-security-log-key') === key;
+export function verifySecurityLogKey(request: Request): Promise<boolean> {
+  return verifyInternalKey(request, 'security-log');
 }

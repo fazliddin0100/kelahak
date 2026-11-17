@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clearAuthCookies } from '@/lib/authTokens';
 import { readRequestIdentity } from '@/lib/userid';
 import { finalizeUserSession } from '@/lib/sessionFiles';
 
 export async function POST(request: NextRequest) {
     const identity = readRequestIdentity(request);
     if (identity?.sessionId) await finalizeUserSession(identity.sessionId);
-    const response = NextResponse.json({ success: true });
-    response.cookies.delete("token");
-    response.cookies.delete("sa_token");
-    response.cookies.delete("ref_token");
-    response.cookies.delete("csrf-token");
-
-    return response;
+    return clearAuthCookies(NextResponse.json({ success: true }));
 }

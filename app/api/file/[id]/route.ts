@@ -49,7 +49,11 @@ export async function GET(
     } else if (fileDoc.pendingUpload) {
       encrypted = await fs.readFile(fileDoc.pendingUpload.storagePath);
     } else if (fileDoc.filePath) {
+      const uploadsRoot = path.resolve('public', 'uploads');
       const filePath = path.resolve('public', fileDoc.filePath.replace(/^\/+/, ''));
+      if (!filePath.startsWith(`${uploadsRoot}${path.sep}`)) {
+        return NextResponse.json({ error: 'Fayl topilmadi' }, { status: 404 });
+      }
       fileName = path.basename(filePath);
       const legacyBytes = await fs.readFile(filePath);
       return new NextResponse(legacyBytes, {
@@ -62,7 +66,7 @@ export async function GET(
     } else {
       return NextResponse.json({ error: 'Fayl tarkibi topilmadi' }, { status: 404 });
     }
-    const buffer = decryptDocumentFile(encrypted);
+    const buffer = decryptDocumentFile(encrypted, fileDoc.id);
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
@@ -72,11 +76,7 @@ export async function GET(
       },
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('File download error:', error);
-    return NextResponse.json(
-      { error: 'Server xatosi: ' + message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Server xatosi' }, { status: 500 });
   }
 }

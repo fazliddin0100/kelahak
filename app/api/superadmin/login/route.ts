@@ -1,58 +1,23 @@
-import bcrypt from 'bcryptjs';
-import { findUserByLogin } from '@/lib/db/user';
-import { getClientIp, logSecurityEvent } from '@/lib/securityLog';
-import { setSuperAdminCookie, signSuperAdminToken } from '@/lib/superadminAuth';
+import { setAuthCookies } from '@/lib/authTokens';
+import {
+  logLoginDenied,
+  logLoginSuccess,
+  verifyLoginRequest,
+} from '@/lib/loginFlow';
+import { signSuperAdminToken } from '@/lib/superadminAuth';
 import { NextRequest, NextResponse } from 'next/server';
-import validator from 'validator';
 import { createUserSession } from '@/lib/sessionFiles';
+
+const PATH = '/api/superadmin/login';
+const SESSION_SECONDS = 8 * 60 * 60;
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const login = typeof body.login === 'string' ? body.login : '';
-    const password = typeof body.password === 'string' ? body.password : '';
+    const verified = await verifyLoginRequest(request, PATH);
+    if (!verified.ok) return verified.response;
+    const { authRecord, ip, login } = verified;
 
-    if (!login || !password) {
-      return NextResponse.json(
-        { message: 'Login va parol kerak' },
-        { status: 400 }
-      );
-    }
-
-    const cleanLogin = validator.trim(validator.escape(login)).toLowerCase();
-    const cleanPassword = validator.trim(password);
-    const ip = getClientIp(request.headers);
-    const logFail = (message: string, statusCode: number) => {
-      void logSecurityEvent({
-        type: 'login_failed',
-        ip,
-        path: '/api/superadmin/login',
-        method: 'POST',
-        loginHint: cleanLogin,
-        message,
-        statusCode,
-      });
-    };
-
-    const authRow = await findUserByLogin(cleanLogin);
-    if (!authRow) {
-      logFail('SuperAdmin login topilmadi', 401);
-      return NextResponse.json(
-        { message: 'Noto‘g‘ri login yoki parol' },
-        { status: 401 }
-      );
-    }
-
-    const valid = await bcrypt.compare(cleanPassword, authRow.password);
-    if (!valid) {
-      logFail('SuperAdmin parol noto‘g‘ri', 401);
-      return NextResponse.json(
-        { message: 'Noto‘g‘ri login yoki parol' },
-        { status: 401 }
-      );
-    }
-
-    const user = authRow.user;
+    const user = authRecord.user;
     if (!user) {
       return NextResponse.json(
         { message: 'Foydalanuvchi topilmadi' },
@@ -61,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (user.job?.role?.role !== 'superAdmin') {
-      logFail('SuperAdmin emas', 403);
+      logLoginDenied(ip, PATH, login, 'SuperAdmin emas');
       return NextResponse.json(
         {
           message:
@@ -72,18 +37,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const sessionId = await createUserSession(user.id, 8 * 60 * 60 * 1000);
+    const sessionId = await createUserSession(user.id, SESSION_SECONDS * 1000);
     const token = signSuperAdminToken(user.id, sessionId);
+
+    logLoginSuccess(ip, PATH, login);
+
     const response = NextResponse.json(
       {
-        token,
         role: 'superAdmin',
         message: 'SuperAdmin paneliga xush kelibsiz',
       },
       { status: 200 }
     );
 
-    return setSuperAdminCookie(response, token);
+    return setAuthCookies(response, { superadmin: token }, SESSION_SECONDS);
   } catch {
     return NextResponse.json({ message: 'Server xatosi' }, { status: 500 });
   }

@@ -1,4 +1,5 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
+import { isKotibiyatActor } from '@/lib/documentAccess';
 import connectToDatabase from '@/lib/prisma';
 import {
   findDocuments,
@@ -14,24 +15,31 @@ export async function GET(request: NextRequest) {
     await connectToDatabase();
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { user } = auth;
+    const { user, userId } = auth;
 
     const province = user?.personal?.province;
+    if (!province) {
+      return NextResponse.json(
+        { message: 'Foydalanuvchi topilmadi' },
+        { status: 404 }
+      );
+    }
 
     const where: Record<string, unknown> = {
       registrationIndex: { not: null },
       status: { not: DocumentStatus.DELETED },
     };
 
-    if (province) {
+    if (isKotibiyatActor(auth)) {
       where.OR = [
         { ownerRegion: provinceFilter(province) },
         { sourceRegion: provinceFilter(province) },
-        {
-          owner: {
-            personal: { province: provinceFilter(province) },
-          },
-        },
+      ];
+    } else {
+      // Kotibiyatdan boshqalar faqat o‘ziga tegishli hujjatlarni ko‘radi
+      where.OR = [
+        { ownerId: userId },
+        { allowedUsers: { some: { userId } } },
       ];
     }
 
@@ -55,9 +63,8 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Server xatosi';
     console.error('Registration documents:', error);
-    return NextResponse.json({ message: 'Server xatosi', error: message }, {
+    return NextResponse.json({ message: 'Server xatosi' }, {
       status: 500,
     });
   }

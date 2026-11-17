@@ -10,14 +10,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { bolinma } = body;
 
-    if (!bolinma) {
+    if (typeof bolinma !== 'string' || !bolinma.trim() || bolinma.length > 200) {
       return NextResponse.json(
         { message: "Bo'linma field is required" },
         { status: 400 }
       );
     }
 
-    const auth = await requireApiAuth(request);
+    const auth = await requireApiAuth(request, {
+      roles: ['admin', 'superAdmin'],
+    });
     if (isAuthError(auth)) return auth;
     const { userId, role, user, department } = auth;
 
@@ -28,7 +30,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const oldBolinma = await prisma.bolinma.findFirst({ where: { bolinma } });
+    const oldBolinma = await prisma.bolinma.findFirst({
+      where: { bolinma, province: user.personal.province },
+    });
     if (oldBolinma) {
       return NextResponse.json(
         { message: "Bu bo'linma allaqachon mavjud" },
@@ -52,10 +56,9 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Xatolik:', error);
     return NextResponse.json(
-      { message: 'Serverda xatolik', error: message },
+      { message: 'Serverda xatolik' },
       { status: 500 }
     );
   }

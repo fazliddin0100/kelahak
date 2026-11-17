@@ -10,13 +10,8 @@ export const useTashkilot = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            const token = localStorage.getItem("token");
             try {
-                const res = await fetch("/api/tashkilot", {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                });
+                const res = await fetch("/api/tashkilot");
                 const json = await res.json();
                 setData(json);
             } catch (err) {

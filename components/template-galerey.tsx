@@ -25,9 +25,6 @@ const create = async ({
 }) => {
   if (typeof window === 'undefined') throw new Error('Client-side only');
 
-  const token = localStorage.getItem('token');
-  if (!token) throw new Error('Token topilmadi');
-
   try {
     const response = await axios.post(
       '/api/documents',
@@ -35,7 +32,6 @@ const create = async ({
       {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
       }
     );

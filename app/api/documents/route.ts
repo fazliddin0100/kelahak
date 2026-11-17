@@ -9,10 +9,37 @@ import {
   serializeDocumentForApi,
   serializeDocumentsForApi,
 } from '@/lib/db/document';
-import { sanitizeHTML } from '@/lib/purify';
+import { filterAttachableDocumentIds } from '@/lib/documentAccess';
+import {
+  resolveReceiverList,
+  resolveSigner,
+  resolveSignerList,
+} from '@/lib/documentSigners';
+import { sanitizeDocumentContent } from '@/lib/purify';
 import { parseAttachmentTextIds } from '@/lib/parseAttachmentTextIds';
 import { isKotibiyatStaffRole } from '@/lib/roles';
 import { DocumentStatus } from '@/types/document-status.enum';
+
+const MAX_TITLE_LENGTH = 500;
+const MAX_GRIF_LENGTH = 100;
+const MAX_COPY_TARGETS = 30;
+const SORTABLE_FIELDS = new Set([
+  'createdAt',
+  'updatedAt',
+  'title',
+  'status',
+  'year',
+  'registrationIndex',
+]);
+
+function cleanCopyNumber(input: unknown): string[] {
+  const raw = Array.isArray(input) ? input : [input];
+  return raw
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim().slice(0, 100))
+    .filter(Boolean)
+    .slice(0, MAX_COPY_TARGETS);
+}
 
 // hujjat yaratish
 export async function POST(request: NextRequest) {
@@ -21,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
+    const { userId, user } = auth;
 
     if (!user.personal) {
       return NextResponse.json(
@@ -31,20 +58,19 @@ export async function POST(request: NextRequest) {
     }
     const personal = user.personal;
 
-        const {
-      title,
-      content = '',
-      grif = '',
-      copyNumber = [],
-      attachmentText = [],
-      approvers = [],
-      sender = null,
-      receiver = [],
-    } = await request.json();
+    const body = await request.json();
+    const title = typeof body.title === 'string' ? body.title.trim() : '';
+    const grif = typeof body.grif === 'string' ? body.grif.trim() : '';
 
-    if (!title || title.trim() === '') {
+    if (!title) {
       return NextResponse.json(
         { message: 'Title majburiy maydon' },
+        { status: 400 }
+      );
+    }
+    if (title.length > MAX_TITLE_LENGTH || grif.length > MAX_GRIF_LENGTH) {
+      return NextResponse.json(
+        { message: 'Sarlavha yoki grif juda uzun' },
         { status: 400 }
       );
     }
@@ -54,7 +80,7 @@ export async function POST(request: NextRequest) {
     const isKotibiyatStaff = isKotibiyatStaffRole(roleName);
     const now = new Date();
 
-    const cleanContent = content.trim() ? sanitizeHTML(content) : {};
+    const cleanContent = sanitizeDocumentContent(body.content) || {};
 
     const authorPayload = {
       userId,
@@ -66,27 +92,29 @@ export async function POST(request: NextRequest) {
       hasSigned: false,
     };
 
-    const hasSender =
-      sender &&
-      typeof sender === 'object' &&
-      !Array.isArray(sender) &&
-      (sender as { userId?: unknown }).userId;
+    const [approvers, sender, receiver, attachmentIds] = await Promise.all([
+      resolveSignerList(body.approvers),
+      resolveSigner(body.sender),
+      resolveReceiverList(body.receiver),
+      filterAttachableDocumentIds(
+        parseAttachmentTextIds(body.attachmentText),
+        auth
+      ),
+    ]);
 
     const document = await createDocument({
-      title: title.trim(),
+      title,
       content: cleanContent,
-      grif: grif.trim(),
-      copyNumber: Array.isArray(copyNumber) ?
-        copyNumber
-      : [copyNumber].filter(Boolean),
-      attachmentIds: parseAttachmentTextIds(attachmentText),
+      grif,
+      copyNumber: cleanCopyNumber(body.copyNumber),
+      attachmentIds,
       ownerId: userId,
       status: DocumentStatus.YANGI,
       ownerRegion: personal.province,
       author: authorPayload,
-      approvers: approvers || [],
-      sender: hasSender ? sender : authorPayload,
-      receiver: receiver || [],
+      approvers,
+      sender: sender ?? authorPayload,
+      receiver,
       ...(isKotibiyatStaff ?
         {
           createdByKotibiyat: true,
@@ -112,10 +140,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(populatedDoc, { status: 201 });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Nomaʼlum xato';
     console.error('Hujjat yaratishda xato:', error);
     return NextResponse.json(
-      { message: 'Hujjat yaratishda xatolik', error: message },
+      { message: 'Hujjat yaratishda xatolik' },
       { status: 500 }
     );
   }
@@ -127,7 +154,7 @@ export async function GET(request: NextRequest) {
 
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
+    const { userId, user } = auth;
 
     if (!user.personal?.province) {
       return NextResponse.json(
@@ -139,14 +166,16 @@ export async function GET(request: NextRequest) {
     const userProvince = user.personal.province;
     const { searchParams } = new URL(request.url);
 
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
     const limit = Math.max(
       1,
-      Math.min(100, parseInt(searchParams.get('limit') || '10', 10))
+      Math.min(100, parseInt(searchParams.get('limit') || '10', 10) || 10)
     );
     const skip = (page - 1) * limit;
 
-    const sortField = searchParams.get('sortField') || 'createdAt';
+    const requestedSort = searchParams.get('sortField') || 'createdAt';
+    const sortField =
+      SORTABLE_FIELDS.has(requestedSort) ? requestedSort : 'createdAt';
     const sortOrder = searchParams.get('sortOrder') === 'desc' ? 'desc' : 'asc';
     const scope = searchParams.get('scope') || 'all';
     const includeWorkFile = searchParams.get('includeWorkFile') === '1';

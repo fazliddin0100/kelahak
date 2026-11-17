@@ -18,7 +18,7 @@ function isEncrypted(value) {
     value &&
     typeof value === 'object' &&
     !Array.isArray(value) &&
-    value[marker] === 1
+    (value[marker] === 1 || value[marker] === 2)
   );
 }
 
@@ -101,7 +101,8 @@ try {
     const rows = await prisma.$queryRaw`
       SELECT "documentId", content
       FROM document_contents
-      WHERE content->>'__mexonEncryptedContent' IS DISTINCT FROM '1'
+      WHERE content->>'__mexonEncryptedContent' IS NULL
+         OR content->>'__mexonEncryptedContent' NOT IN ('1', '2')
       ORDER BY "documentId"
       LIMIT 250
     `;

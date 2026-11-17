@@ -4,14 +4,6 @@ import { Author, DateLike, DocumentType, IdReferenceLike } from '@/types/documen
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-function getAuthHeaders(): HeadersInit {
-  const token =
-    typeof window !== 'undefined' ?
-      localStorage.getItem('ref_token') || localStorage.getItem('token')
-    : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 import type { UserNomeklaturaRelation } from '@/lib/userNomeklaturaLabels';
 
 export type { UserNomeklaturaRelation };
@@ -49,7 +41,6 @@ export const useNomeklatura = () => {
     try {
       const res = await fetch('/api/nameklatura/get-users-nomeklatura', {
         credentials: 'include',
-        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error(`Failed: ${res.status}`);
       const data = await res.json();

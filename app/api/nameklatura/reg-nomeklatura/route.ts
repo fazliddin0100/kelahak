@@ -1,5 +1,6 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { findUserById } from '@/lib/db/user';
+import { regionsMatch } from '@/lib/documentWorkflow';
 import connectToDatabase, { prisma } from '@/lib/prisma';
 import {
   createDbId,
@@ -26,7 +27,9 @@ export async function POST(request: NextRequest) {
       author,
     } = body;
 
-    const auth = await requireApiAuth(request);
+    const auth = await requireApiAuth(request, {
+      roles: ['admin', 'superAdmin'],
+    });
     if (isAuthError(auth)) return auth;
     const { userId, role, user, department } = auth;
 
@@ -40,10 +43,23 @@ export async function POST(request: NextRequest) {
     const bolinmaId = String(Array.isArray(bolinma) ? bolinma[0] : bolinma);
     const bolimId = String(Array.isArray(bolim) ? bolim[0] : bolim);
 
+    const province = user.personal.province;
+    if (
+      [registrationIndex, title, grif].some(
+        (value) =>
+          typeof value !== 'string' || !value.trim() || value.length > 500
+      )
+    ) {
+      return NextResponse.json(
+        { message: 'Indeks, nom va grif to‘ldirilishi shart' },
+        { status: 400 }
+      );
+    }
+
     const existingBolinma = await prisma.bolinma.findUnique({
       where: { id: bolinmaId },
     });
-    if (!existingBolinma) {
+    if (!existingBolinma || !regionsMatch(existingBolinma.province, province)) {
       return NextResponse.json(
         { message: 'Bo‘linma topilmadi' },
         { status: 404 }
@@ -53,7 +69,7 @@ export async function POST(request: NextRequest) {
     const existingBolim = await prisma.bolim.findUnique({
       where: { id: bolimId },
     });
-    if (!existingBolim) {
+    if (!existingBolim || !regionsMatch(existingBolim.province, province)) {
       return NextResponse.json(
         { message: 'Bo‘lim topilmadi' },
         { status: 404 }
@@ -76,7 +92,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!authorUser.personal) {
+    if (
+      !authorUser.personal ||
+      !regionsMatch(authorUser.personal.province, province)
+    ) {
       return NextResponse.json(
         { message: 'Javobgar shaxs personal ma’lumoti topilmadi' },
         { status: 400 }
@@ -131,11 +150,9 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : String(error);
     console.error('Nomeklatura yaratishda xato:', error);
     return NextResponse.json(
-      { message: 'Serverda xatolik', error: message },
+      { message: 'Serverda xatolik' },
       { status: 500 }
     );
   }

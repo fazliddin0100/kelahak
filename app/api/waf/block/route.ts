@@ -2,6 +2,7 @@ import { blockIpPersistent } from '@/lib/ipBlocklist';
 import { logSecurityEvent } from '@/lib/securityLog';
 import { blockIp } from '@/lib/waf';
 import { requireSuperAdmin } from '@/lib/superadminAuth';
+import { isIP } from 'node:net';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -12,8 +13,8 @@ export async function POST(request: NextRequest) {
   const target = String(body.ip ?? '').trim();
   const reason = body.reason ? String(body.reason) : 'SuperAdmin blokladi';
 
-  if (!target) {
-    return NextResponse.json({ message: 'IP kerak' }, { status: 400 });
+  if (!isIP(target)) {
+    return NextResponse.json({ message: 'To‘g‘ri IP manzil kerak' }, { status: 400 });
   }
 
   blockIp(target);

@@ -131,9 +131,7 @@ export async function distributeRegionalCopies(
         await tx.documentContent.create({
           data: {
             documentId: copyId,
-            content: encryptDocumentContent(typeof source.content === 'object' ?
-              source.content
-            : {}) as object,
+            content: encryptDocumentContent(source.content, copyId) as object,
           },
         });
       }

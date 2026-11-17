@@ -29,10 +29,6 @@ export default function SuperAdminLoginPage() {
         toast.error(data.message || 'Kirish muvaffaqiyatsiz');
         return;
       }
-      if (data.token) {
-        localStorage.setItem('sa_token', data.token);
-        localStorage.setItem('token', data.token);
-      }
       toast.success('Xush kelibsiz, SuperAdmin!');
       router.push('/superadmin/panel');
     } catch {

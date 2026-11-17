@@ -162,7 +162,17 @@ export function serializeUser(user: UserWithRelations) {
     personal: user.personal ?
       { ...user.personal, _id: user.personal.id }
     : null,
-    auth: user.auth ? { ...user.auth, _id: user.auth.id } : null,
+    auth:
+      user.auth ?
+        {
+          _id: user.auth.id,
+          id: user.auth.id,
+          userId: user.auth.userId,
+          login: user.auth.login,
+          createdAt: user.auth.createdAt,
+          updatedAt: user.auth.updatedAt,
+        }
+      : null,
     job:
       user.job ?
         {
@@ -173,7 +183,8 @@ export function serializeUser(user: UserWithRelations) {
           : null,
         }
       : null,
-    devices: user.devices.map((ud) => ({
+    // `forwardedBy` kabi qisman yuklangan foydalanuvchilarda qurilmalar bo‘lmaydi
+    devices: (user.devices ?? []).map((ud) => ({
       ...ud.device,
       _id: ud.device.id,
     })),

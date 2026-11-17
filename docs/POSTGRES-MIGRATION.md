@@ -10,7 +10,7 @@ Stop any existing development server, then run:
 npm run dev
 ```
 
-The command generates Prisma Client, checks the PostgreSQL connection and baseline, backs up existing data before pending migrations, applies migrations and encryption, then starts Next.js. Set `DATABASE_URL` in `.env` and keep `secrets/app-encryption-key` available.
+The command generates Prisma Client, checks the PostgreSQL connection and baseline, backs up existing data before pending migrations, applies migrations and encryption, then starts Next.js. Set `DATABASE_URL` in `.env` and keep `secrets/app-encryption-key` available. PostgreSQL itself must be running. If the database named in `DATABASE_URL` does not exist yet, the script creates it through the `postgres` maintenance database; the configured PostgreSQL user therefore needs `CREATEDB` permission. Existing databases are left in place and only pending migrations are applied.
 
 ## Ubuntu production behind Nginx
 

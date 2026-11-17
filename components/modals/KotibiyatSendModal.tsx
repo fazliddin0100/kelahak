@@ -47,10 +47,8 @@ export default function KotibiyatSendModal({
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch('/api/users/kotibiyat', {
         credentials: 'include',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.message);
@@ -79,13 +77,11 @@ export default function KotibiyatSendModal({
     }
     setSending(true);
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/documents/${documentId}/submit-kotibiyat`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ kotibiyatUserId: selectedId }),
       });

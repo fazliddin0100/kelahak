@@ -2,6 +2,7 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/prisma';
+import { isCommanderRole } from '@/lib/roles';
 import {
   findPendingBosSignDocuments,
   serializeDocumentsForApi,
@@ -14,6 +15,13 @@ export async function GET(request: NextRequest) {
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
     const { user } = auth;
+
+    if (!isCommanderRole(auth.role)) {
+      return NextResponse.json(
+        { message: 'Bu ro‘yxat faqat komandirlar uchun' },
+        { status: 403 }
+      );
+    }
 
     if (!user.personal) {
       return NextResponse.json(

@@ -78,12 +78,9 @@ export default function UserNomeklaturaView({
   const handleAccept = async (id: string) => {
     setAcceptingId(id);
     try {
-      const token =
-        localStorage.getItem('ref_token') || localStorage.getItem('token');
       const res = await fetch(`/api/nameklatura/${id}/accept`, {
         method: 'POST',
         credentials: 'include',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json();
       if (!res.ok) {

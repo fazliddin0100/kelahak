@@ -24,6 +24,8 @@ services:
     image: edoburu/pgbouncer:1.22.1-p0
     container_name: mysayt-pgbouncer-prod
     restart: always
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,6 +41,8 @@ services:
     image: redis:7-alpine
     container_name: mysayt-redis-prod
     restart: always
+    security_opt:
+      - no-new-privileges:true
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_prod_data:/data
@@ -57,7 +61,8 @@ services:
       dockerfile: Dockerfile
       target: backup
     container_name: mysayt-backup-init-prod
-    env_file: .env.production.local
+    security_opt:
+      - no-new-privileges:true
     environment:
       PGHOST: postgres
       PGPORT: '5432'
@@ -117,8 +122,14 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB}?pgbouncer=true&schema=public
       APP_ENCRYPTION_KEY_FILE: /run/secrets/app_encryption_key
+      # Nginx shu xostda ishlaydi va X-Forwarded-For ga mijoz IP sini qo‘shadi.
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
     secrets:
       - app_encryption_key
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     depends_on:
       postgres:
         condition: service_healthy
@@ -128,8 +139,9 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    # Faqat lokal interfeys: tashqi kirish Nginx (TLS) orqali bo‘lishi shart.
     ports:
-      - '${APP_PORT:-3001}:3001'
+      - '${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-3001}:3001'
     volumes:
       - staging_data:/var/lib/mexon/staging
     healthcheck:
@@ -149,7 +161,8 @@ services:
       target: backup
     container_name: mysayt-backup-prod
     restart: unless-stopped
-    env_file: .env.production.local
+    security_opt:
+      - no-new-privileges:true
     environment:
       PGHOST: postgres
       PGPORT: '5432'

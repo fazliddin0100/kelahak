@@ -49,14 +49,10 @@ export default function DocumentOpenButtons({ document }: AmallarButtonsProps) {
   const hendlerRegDocument = async (id: string) => {
     console.log('id: ', id);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return toast.error('Token topilmadi!');
-
       const res = await fetch(`/api/documents/${id}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
       });
       const data = await res.json();

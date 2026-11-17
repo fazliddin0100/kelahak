@@ -3,10 +3,27 @@ import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import connectToDatabase from '@/lib/prisma';
 import { parseAttachmentTextIds } from '@/lib/parseAttachmentTextIds';
 import {
-  canUserEditDocument,
+  canCommanderReviewEdit,
+} from '@/lib/documentLifecycle';
+import {
+  canViewDocument,
+  canViewDocumentDirect,
+  documentNotFoundResponse,
+  filterAttachableDocumentIds,
+  isCommanderActor,
+  loadViewableDocument,
+} from '@/lib/documentAccess';
+import {
+  canUserEditOwnDocument,
   isDocumentCreator,
 } from '@/lib/documentEditRules';
-import { sanitizeHTML } from '@/lib/purify';
+import {
+  resolveReceiverList,
+  resolveSigner,
+  resolveSignerList,
+} from '@/lib/documentSigners';
+import type { WorkflowDocument } from '@/lib/documentWorkflow';
+import { sanitizeDocumentContent } from '@/lib/purify';
 import {
   findDocumentById,
   findDocuments,
@@ -14,16 +31,21 @@ import {
   serializeDocumentForApi,
   updateDocument,
 } from '@/lib/db/document';
+import { DocumentStatus } from '@/types/document-status.enum';
 import { NextRequest, NextResponse } from 'next/server';
 
-type SignerInput = {
-  userId?: unknown;
-  fullName?: string;
-  militaryRank?: string;
-  position?: string;
-  hasSigned?: boolean;
-  signedAt?: Date;
-};
+const MAX_TITLE_LENGTH = 500;
+const MAX_GRIF_LENGTH = 100;
+const MAX_COPY_TARGETS = 30;
+
+function cleanCopyNumber(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim().slice(0, 100))
+    .filter(Boolean)
+    .slice(0, MAX_COPY_TARGETS);
+}
 
 export async function PUT(
   request: NextRequest,
@@ -38,7 +60,7 @@ export async function PUT(
     }
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
+    const { userId, role } = auth;
 
     const document = await findDocumentById(id, {
       includeOwner: true,
@@ -47,16 +69,24 @@ export async function PUT(
       includeContent: true,
     });
 
-    if (!document) {
-      return NextResponse.json(
-        { message: 'Hujjat topilmadi' },
-        { status: 404 }
-      );
+    if (!document || !(await canViewDocument(document, auth))) {
+      return documentNotFoundResponse();
     }
 
     const docForRules = serializeDocumentForApi(document, { populateOwner: true });
 
-    if (!canUserEditDocument(docForRules, userId)) {
+    const commanderApproved =
+      document.status === DocumentStatus.APPROVED ||
+      (document.bosSigned as { hasSigned?: boolean } | null)?.hasSigned === true;
+
+    const canEditAsOwner =
+      canUserEditOwnDocument(docForRules, userId) && !commanderApproved;
+    const canEditAsCommander =
+      isCommanderActor(auth) &&
+      canViewDocumentDirect(document, auth) &&
+      canCommanderReviewEdit(docForRules as unknown as WorkflowDocument, userId);
+
+    if (!canEditAsOwner && !canEditAsCommander) {
       if (!isDocumentCreator(docForRules, userId)) {
         return NextResponse.json(
           { message: 'Faqat hujjat egasi tahrirlashi mumkin' },
@@ -65,7 +95,10 @@ export async function PUT(
       }
       return NextResponse.json(
         {
-          message: "Hujjat ro'yxatga olingan -- tahrirlash mumkin emas",
+          message:
+            commanderApproved ?
+              'Komandir tasdiqlagan hujjatni tahrirlab bo‘lmaydi'
+            : "Hujjat ro'yxatga olingan -- tahrirlash mumkin emas",
         },
         { status: 403 }
       );
@@ -73,77 +106,50 @@ export async function PUT(
 
     const body = await request.json();
 
+    const title =
+      typeof body.title === 'string' ? body.title.trim() : '';
+    const grif = typeof body.grif === 'string' ? body.grif.trim() : '';
+    if (title.length > MAX_TITLE_LENGTH || grif.length > MAX_GRIF_LENGTH) {
+      return NextResponse.json(
+        { message: 'Sarlavha yoki grif juda uzun' },
+        { status: 400 }
+      );
+    }
+
     const updatePayload: Parameters<typeof updateDocument>[1] = {
-      grif: body.grif || '',
-      copyNumber: Array.isArray(body.copyNumber) ? body.copyNumber : [],
-      title: body.title || document.title || undefined,
-      content:
-        typeof body.content === 'string' ?
-          sanitizeHTML(body.content)
-        : body.content,
+      grif,
+      copyNumber: cleanCopyNumber(body.copyNumber),
+      title: title || document.title || undefined,
     };
 
+    if (body.content !== undefined) {
+      updatePayload.content = sanitizeDocumentContent(body.content) || {};
+    }
+
     if (body.attachmentText !== undefined) {
-      updatePayload.attachmentIds = parseAttachmentTextIds(body.attachmentText);
+      updatePayload.attachmentIds = await filterAttachableDocumentIds(
+        parseAttachmentTextIds(body.attachmentText),
+        auth,
+        (document.attachments ?? []).map((a) => a.attachmentId)
+      );
     }
 
-    if (
-      body.signerInfo?.userId &&
-      isValidDbId(String(body.signerInfo.userId))
-    ) {
-      updatePayload.bosSigned = {
-        userId: body.signerInfo.userId,
-        fullName: body.signerInfo.fullName,
-        militaryRank: body.signerInfo.militaryRank || '',
-        position: body.signerInfo.position || '',
-        hasSigned: body.signerInfo.hasSigned || false,
-        signedAt: body.signerInfo.signedAt || undefined,
-      };
-    }
+    // Imzolovchilar: mijozdan faqat userId olinadi, imzo holati hech qachon.
+    const [bosSigned, approvers, sender, receiver, author] = await Promise.all([
+      resolveSigner(body.signerInfo),
+      Array.isArray(body.signerInfo?.approvers) ?
+        resolveSignerList(body.signerInfo.approvers)
+      : null,
+      resolveSigner(body.sender),
+      Array.isArray(body.receiver) ? resolveReceiverList(body.receiver) : null,
+      resolveSigner(body.author),
+    ]);
 
-    if (Array.isArray(body.signerInfo?.approvers)) {
-      updatePayload.approvers = (body.signerInfo.approvers as SignerInput[])
-        .filter((a) => a.userId && isValidDbId(String(a.userId)))
-        .map((a) => ({
-          userId: a.userId,
-          fullName: a.fullName,
-          militaryRank: a.militaryRank || '',
-          position: a.position || '',
-          hasSigned: a.hasSigned || false,
-          signedAt: a.signedAt || undefined,
-        }));
-    }
-
-    if (body.sender?.userId && isValidDbId(String(body.sender.userId))) {
-      updatePayload.sender = {
-        userId: body.sender.userId,
-        fullName: body.sender.fullName,
-        militaryRank: body.sender.militaryRank || '',
-        position: body.sender.position || '',
-        hasSigned: body.sender.hasSigned || false,
-      };
-    }
-
-    if (Array.isArray(body.receiver)) {
-      updatePayload.receiver = (body.receiver as SignerInput[])
-        .filter((r) => r.userId && isValidDbId(String(r.userId)))
-        .map((r) => ({
-          userId: r.userId,
-          fullName: r.fullName,
-          militaryRank: r.militaryRank || '',
-          position: r.position || '',
-        }));
-    }
-
-    if (body.author?.userId && isValidDbId(String(body.author.userId))) {
-      updatePayload.author = {
-        userId: body.author.userId,
-        fullName: body.author.fullName,
-        militaryRank: body.author.militaryRank || '',
-        position: body.author.position || '',
-        hasSigned: body.author.hasSigned || false,
-      };
-    }
+    if (bosSigned) updatePayload.bosSigned = bosSigned;
+    if (approvers) updatePayload.approvers = approvers;
+    if (sender) updatePayload.sender = sender;
+    if (receiver) updatePayload.receiver = receiver;
+    if (author) updatePayload.author = author;
 
     const updated = await updateDocument(id, updatePayload);
 
@@ -156,12 +162,8 @@ export async function PUT(
       { status: 200 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Nomaʼlum xato';
     console.error('Xato:', error);
-    return NextResponse.json(
-      { message: 'Xatolik', error: message },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Xatolik' }, { status: 500 });
   }
 }
 
@@ -179,10 +181,8 @@ export async function GET(
 
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
 
-
-    const document = await findDocumentById(id, {
+    const document = await loadViewableDocument(id, auth, {
       includeContent: true,
       includeAttachments: true,
       includeOwner: true,
@@ -190,10 +190,7 @@ export async function GET(
     });
 
     if (!document) {
-      return NextResponse.json(
-        { message: 'Hujjat topilmadi' },
-        { status: 404 }
-      );
+      return documentNotFoundResponse();
     }
 
     const attachmentIds = parseAttachmentTextIds(
@@ -222,16 +219,18 @@ export async function GET(
       populateForwardedBy: true,
     });
 
+    // Eski yozuvlar ham brauzerga faqat tozalangan HTML bo‘lib boradi.
+    populatedDoc.content = sanitizeDocumentContent(populatedDoc.content) || {};
+
     const { ensureSenderFromAuthor } = await import('@/lib/ensureDocumentParties');
 
     return NextResponse.json(ensureSenderFromAuthor(populatedDoc), {
       status: 200,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Nomaʼlum xato';
     console.error('Hujjatni olishda xato:', error);
     return NextResponse.json(
-      { message: 'Hujjatni olishda xatolik', error: message },
+      { message: 'Hujjatni olishda xatolik' },
       { status: 500 }
     );
   }

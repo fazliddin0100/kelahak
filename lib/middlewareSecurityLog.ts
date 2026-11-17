@@ -1,16 +1,14 @@
+import { getClientIp } from '@/lib/clientIp';
+import {
+  getInternalKey,
+  INTERNAL_KEY_HEADER,
+  internalUrl,
+} from '@/lib/internalKeys';
 import type { SecurityEventType } from '@/lib/securityLog';
 import { NextRequest } from 'next/server';
 
 const THROTTLE_MS = 30_000;
 const throttleStore = new Map<string, number>();
-
-function getIp(req: NextRequest): string {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    req.headers.get('x-real-ip') ||
-    '127.0.0.1'
-  );
-}
 
 function shouldThrottle(ip: string, path: string, type: SecurityEventType): boolean {
   const key = `${ip}|${path}|${type}`;
@@ -22,6 +20,10 @@ function shouldThrottle(ip: string, path: string, type: SecurityEventType): bool
     const cutoff = now - THROTTLE_MS * 2;
     for (const [k, t] of throttleStore.entries()) {
       if (t < cutoff) throttleStore.delete(k);
+    }
+    for (const k of throttleStore.keys()) {
+      if (throttleStore.size <= 5000) break;
+      throttleStore.delete(k);
     }
   }
   return false;
@@ -41,28 +43,32 @@ export function queueSecurityLog(
 
   if (event.type === 'visit') return;
 
-  const ip = getIp(req);
+  const ip = getClientIp(req.headers);
   const path = req.nextUrl.pathname;
-  if (shouldThrottle(ip, path, event.type)) return;
+  if (shouldThrottle(ip, path.slice(0, 200), event.type)) return;
 
-  const key = process.env.SECURITY_LOG_KEY?.trim();
-  if (!key) return;
+  const body = JSON.stringify({
+    ...event,
+    ip,
+    path,
+    method: req.method,
+    userAgent: (req.headers.get('user-agent') || '').slice(0, 300),
+  });
 
-  const url = new URL('/api/security/log', req.url);
-  void fetch(url.toString(), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-security-log-key': key,
-    },
-    body: JSON.stringify({
-      ...event,
-      ip,
-      path,
-      method: req.method,
-      userAgent: (req.headers.get('user-agent') || '').slice(0, 300),
-    }),
-  }).catch(() => {});
+  void getInternalKey('security-log')
+    .then((key) =>
+      fetch(internalUrl('/api/security/log'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          [INTERNAL_KEY_HEADER['security-log']]: key,
+        },
+        body,
+      })
+    )
+    .catch((error) => {
+      console.error('Xavfsizlik logi yozilmadi:', error);
+    });
 }
 
 const BOT_UA =

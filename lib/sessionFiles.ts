@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 
 export const SESSION_IDLE_MS = 30 * 60 * 1000;
 const stagingRoot = process.env.FILE_STAGING_DIR ?? '/var/lib/mexon/staging';
+const SESSION_ID_PATTERN = /^[0-9a-f-]{36}$/i;
 let lastSweepAt = 0;
 
 export async function createUserSession(userId: string, lifetimeMs: number) {
@@ -76,11 +77,21 @@ export async function sweepExpiredSessions() {
   for (const session of stale) await finalizeSession(session.id);
 }
 
-export async function stageEncryptedUpload(sessionId: string, bytes: Buffer) {
+export async function stageEncryptedUpload(
+  sessionId: string,
+  fileId: string,
+  bytes: Buffer
+) {
+  if (!SESSION_ID_PATTERN.test(sessionId)) {
+    throw new Error('Sessiya identifikatori noto‘g‘ri.');
+  }
   const directory = path.join(stagingRoot, sessionId);
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const storagePath = path.join(directory, `${randomUUID()}.mxf`);
-  await writeFile(storagePath, encryptDocumentFile(bytes), { mode: 0o600, flag: 'wx' });
+  await writeFile(storagePath, encryptDocumentFile(bytes, fileId), {
+    mode: 0o600,
+    flag: 'wx',
+  });
   return storagePath;
 }
 

@@ -10,14 +10,16 @@ export async function POST(request: NextRequest) {
     await connectToDatabase();
 
     const { bolim } = await request.json();
-    if (!bolim) {
+    if (typeof bolim !== 'string' || !bolim.trim() || bolim.length > 200) {
       return NextResponse.json(
         { message: "Barcha maydonlar to'ldirilishi kerak" },
         { status: 400 }
       );
     }
 
-    const auth = await requireApiAuth(request);
+    const auth = await requireApiAuth(request, {
+      roles: ['admin', 'superAdmin'],
+    });
     if (isAuthError(auth)) return auth;
     const { userId, role, user, department } = auth;
 
@@ -35,7 +37,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const findBolim = await prisma.bolim.findFirst({ where: { bolim } });
+    const findBolim = await prisma.bolim.findFirst({
+      where: { bolim, province: user.personal.province },
+    });
     if (findBolim) {
       return NextResponse.json({ message: "Bo'lim mavjud" }, { status: 404 });
     }
@@ -50,10 +54,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json("Bo'lim yaratildi", { status: 201 });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Hujjat yaratishda xato:', error);
     return NextResponse.json(
-      { message: 'Hujjat yaratishda xatolik', error: message },
+      { message: 'Hujjat yaratishda xatolik' },
       { status: 500 }
     );
   }

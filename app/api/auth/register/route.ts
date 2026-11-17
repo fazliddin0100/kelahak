@@ -1,18 +1,24 @@
 // app/api/register/route.ts
-import bcrypt from 'bcryptjs';
 import { NextRequest, NextResponse } from 'next/server';
 import os from 'os';
 import validator from 'validator';
 import type { DbRole } from '@prisma/client';
 
+import { getClientIp } from '@/lib/clientIp';
 import { commanderExistsInUnit } from '@/lib/commanderSlot';
 import { createDbId } from '@/lib/db/document';
 import { authLoginExists } from '@/lib/db/user';
+import { hashPassword, validateNewPassword } from '@/lib/passwordPolicy';
 import connectToDatabase, { prisma } from '@/lib/prisma';
+import { consumeRateLimit } from '@/lib/rateLimit';
+import { provinces } from '@/lib/registrationConstants';
 import { normalizeRoleForDb } from '@/lib/roles';
-import { roleBypassesApproval } from '@/lib/userAccess';
 import { detectRole } from '../../../../helpers/detectRole';
 import { getPermissionsForRole } from '../../../../helpers/PermissionsForRole';
+
+const REGISTRATIONS_PER_IP_PER_HOUR =
+  process.env.NODE_ENV === 'development' ? 200 : 10;
+const MAX_FIELD_LENGTH = 150;
 
 interface UserRequest {
   fName: string;
@@ -28,56 +34,77 @@ interface UserRequest {
 
   // Device (ixtiyoriy)
   mac?: string;
-  ip?: string;
   hostname?: string;
   note?: string;
 }
 
-export async function POST(request: NextRequest) {
-  await connectToDatabase();
+function cleanText(value: unknown): string {
+  return typeof value === 'string' ? validator.trim(value) : '';
+}
 
+export async function POST(request: NextRequest) {
   try {
+    const clientIp = getClientIp(request.headers);
+    const limit = consumeRateLimit(
+      'register-ip',
+      clientIp,
+      REGISTRATIONS_PER_IP_PER_HOUR,
+      60 * 60 * 1000
+    );
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { message: 'Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(limit.retryAfterSeconds) },
+        }
+      );
+    }
+
+    await connectToDatabase();
+
     const body = (await request.json()) as Partial<UserRequest>;
 
-    const {
+    const fName = cleanText(body.fName);
+    const name = cleanText(body.name);
+    const sName = cleanText(body.sName);
+    const cleanProvince = cleanText(body.province);
+    const organ = cleanText(body.organ);
+    const cleanPosition = cleanText(body.position);
+    const cleanDepartment = cleanText(body.department);
+    const cleanMilitaryRank = cleanText(body.militaryRank);
+    const cleanLogin = cleanText(body.login).toLowerCase();
+    const cleanPassword = cleanText(body.password);
+
+    // Majburiy maydonlar
+    const textFields = [
       fName,
       name,
       sName,
-      province,
+      cleanProvince,
       organ,
-      position = '',
-      department = '',
-      militaryRank,
-      login,
-      password,
-      mac,
-      ip,
-      hostname,
-      note,
-    } = body;
-
-    // Majburiy maydonlar
-    if (
-      !fName ||
-      !name ||
-      !sName ||
-      !province ||
-      !organ ||
-      !position ||
-      !department ||
-      !militaryRank ||
-      !login ||
-      !password
-    ) {
+      cleanPosition,
+      cleanDepartment,
+      cleanMilitaryRank,
+    ];
+    if (textFields.some((value) => !value) || !cleanLogin || !cleanPassword) {
       return NextResponse.json(
         { message: 'Barcha maydonlar to‘ldirilishi shart!' },
         { status: 400 }
       );
     }
-
-    // Sanitizatsiya
-    const cleanLogin = validator.trim(validator.escape(login)).toLowerCase();
-    const cleanPassword = validator.trim(password);
+    if (textFields.some((value) => value.length > MAX_FIELD_LENGTH)) {
+      return NextResponse.json(
+        { message: `Maydon uzunligi ${MAX_FIELD_LENGTH} belgidan oshmasin` },
+        { status: 400 }
+      );
+    }
+    if (!(provinces as readonly string[]).includes(cleanProvince)) {
+      return NextResponse.json(
+        { message: 'Viloyat ro‘yxatdan tanlanishi kerak' },
+        { status: 400 }
+      );
+    }
 
     // Validatsiya
     if (!validator.isLength(cleanLogin, { min: 3, max: 50 })) {
@@ -92,11 +119,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!validator.isLength(cleanPassword, { min: 6 })) {
-      return NextResponse.json(
-        { message: 'Parol kamida 6 belgidan iborat bo‘lsin' },
-        { status: 400 }
-      );
+    const passwordError = validateNewPassword(cleanPassword);
+    if (passwordError) {
+      return NextResponse.json({ message: passwordError }, { status: 400 });
     }
 
     // Login unique
@@ -108,19 +133,18 @@ export async function POST(request: NextRequest) {
     }
 
     // ROLE ANIQLASH — lavozim, bo‘lim va unvon bo‘yicha
-    const cleanProvince = validator.trim(province);
-    const cleanDepartment = validator.trim(department);
-    const cleanPosition = validator.trim(position);
-    const cleanMilitaryRank = validator.trim(militaryRank);
-
     const detectedRole = detectRole(
       cleanPosition,
       cleanDepartment,
       cleanMilitaryRank
     );
     const autoRole = normalizeRoleForDb(detectedRole);
-    /** Kotibiyat (admin) va superAdmin darhol kiradi; user/komandir kutadi */
-    const isUserTrue = roleBypassesApproval(autoRole);
+    /**
+     * Rol foydalanuvchi o‘zi yozgan lavozimdan taxmin qilinadi, shuning uchun
+     * hech bir akkaunt o‘zini o‘zi faollashtira olmaydi: admin (kotibiyat)
+     * rolini superAdmin, qolganlarini viloyat admini tasdiqlaydi.
+     */
+    const isUserTrue = false;
 
     // Bir viloyat + bo‘limda faqat bitta `commander`
     if (autoRole === 'commander') {
@@ -137,7 +161,7 @@ export async function POST(request: NextRequest) {
     }
 
     const permissions = getPermissionsForRole(autoRole);
-    const hashedPassword = await bcrypt.hash(cleanPassword, 10);
+    const hashedPassword = await hashPassword(cleanPassword);
 
     const userId = createDbId();
     const roleId = createDbId();
@@ -161,9 +185,9 @@ export async function POST(request: NextRequest) {
         data: {
           id: personalId,
           userId,
-          name: validator.trim(name),
-          fName: validator.trim(fName),
-          sName: validator.trim(sName),
+          name,
+          fName,
+          sName,
           province: cleanProvince,
         },
       });
@@ -183,7 +207,7 @@ export async function POST(request: NextRequest) {
           userId,
           roleId,
           position: cleanPosition,
-          organ: validator.trim(organ),
+          organ,
           department: cleanDepartment,
           militaryRank: cleanMilitaryRank,
           isUserTrue,
@@ -195,19 +219,16 @@ export async function POST(request: NextRequest) {
     let deviceId: string | null = null;
     try {
       const deviceDbId = createDbId();
-      const deviceIp =
-        ip ||
-        request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-        request.headers.get('x-real-ip') ||
-        '127.0.0.1';
 
       await prisma.device.create({
         data: {
           id: deviceDbId,
-          mac: mac || '00:00:00:00:00:00',
-          ip: deviceIp,
-          hostname: hostname || os.hostname(),
-          note: note || 'Foydalanuvchi birinchi ro‘yxatdan o‘tgan qurilma',
+          mac: cleanText(body.mac).slice(0, 64) || '00:00:00:00:00:00',
+          ip: clientIp,
+          hostname: cleanText(body.hostname).slice(0, 255) || os.hostname(),
+          note:
+            cleanText(body.note).slice(0, 500) ||
+            'Foydalanuvchi birinchi ro‘yxatdan o‘tgan qurilma',
           lastSeen: new Date(),
         },
       });
@@ -230,14 +251,10 @@ export async function POST(request: NextRequest) {
       console.error('Device yaratishda xato:', message);
     }
 
-    const successMessage =
-      autoRole === 'superAdmin' ?
-        'Muvaffaqiyatli ro‘yxatdan o‘tildi! SuperAdmin sifatida darhol tizimga kira olasiz.'
-      : 'Muvaffaqiyatli ro‘yxatdan o‘tildi! Tizimga kirish uchun ruxsat berilguncha kuting.';
-
     return NextResponse.json(
       {
-        message: successMessage,
+        message:
+          'Muvaffaqiyatli ro‘yxatdan o‘tildi! Tizimga kirish uchun ruxsat berilguncha kuting.',
         userId,
         role: autoRole,
         detectedRole,
@@ -247,8 +264,10 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Server xatosi';
     console.error('Registration xatosi:', error);
-    return NextResponse.json({ message }, { status: 500 });
+    return NextResponse.json(
+      { message: 'Ro‘yxatdan o‘tishda server xatosi' },
+      { status: 500 }
+    );
   }
 }

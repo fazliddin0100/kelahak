@@ -157,6 +157,47 @@ function readEncryptionKey() {
   return Buffer.from(raw, 'hex');
 }
 
+function maintenanceDatabaseUrl(databaseUrl) {
+  let url;
+  try {
+    url = new URL(databaseUrl);
+  } catch {
+    fail('DATABASE_URL noto‘g‘ri. .env dagi PostgreSQL manzilini tekshiring.');
+  }
+  if (!['postgres:', 'postgresql:'].includes(url.protocol)) {
+    fail('DATABASE_URL PostgreSQL ulanish manzili bo‘lishi kerak.');
+  }
+  const databaseName = decodeURIComponent(url.pathname.replace(/^\//, ''));
+  if (!databaseName) fail('DATABASE_URL ichida ma’lumotlar bazasi nomi ko‘rsatilmagan.');
+  url.pathname = '/postgres';
+  return { url: url.toString(), databaseName };
+}
+
+async function ensureDatabaseExists(databaseUrl) {
+  const { url, databaseName } = maintenanceDatabaseUrl(databaseUrl);
+  const { PrismaClient } = await import('@prisma/client');
+  const admin = new PrismaClient({ datasources: { db: { url } } });
+  try {
+    const rows = await admin.$queryRawUnsafe(
+      'SELECT 1 FROM pg_database WHERE datname = $1',
+      databaseName
+    );
+    if (rows.length === 0) {
+      console.info(`PostgreSQL da “${databaseName}” bazasi yo‘q; yangisi yaratilmoqda...`);
+      const quotedName = `"${databaseName.replace(/"/g, '""')}"`;
+      await admin.$executeRawUnsafe(`CREATE DATABASE ${quotedName}`);
+      console.info('Yangi PostgreSQL bazasi yaratildi.');
+    }
+  } catch (error) {
+    fail(
+      `“${databaseName}” bazasini avtomatik yaratib bo‘lmadi (${error.code ?? error.message}). ` +
+        'PostgreSQL server ishlayotganini va DATABASE_URL dagi foydalanuvchida CREATEDB huquqi borligini tekshiring.'
+    );
+  } finally {
+    await admin.$disconnect();
+  }
+}
+
 async function encryptFileToBackup(sourcePath, destinationPath, key) {
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', key, iv);
@@ -262,6 +303,8 @@ async function main() {
   console.info('1/5 Prisma Client generatsiyasi...');
   const generate = runNode(['generate']);
   if (generate.status !== 0) fail('Prisma Client generatsiyasi muvaffaqiyatsiz tugadi.');
+
+  await ensureDatabaseExists(process.env.DATABASE_URL);
 
   const { PrismaClient } = await import('@prisma/client');
   const prisma = new PrismaClient();

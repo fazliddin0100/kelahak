@@ -5,6 +5,7 @@ import {
   findDocuments,
   serializeDocumentsForApi,
 } from '@/lib/db/document';
+import { isCommanderRole } from '@/lib/roles';
 import { type NextRequest, NextResponse } from 'next/server';
 
 /** Mahalliy user hujjatlari -- komandir ko'rib chiqishi uchun */
@@ -15,6 +16,13 @@ export async function GET(request: NextRequest) {
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
     const { user } = auth;
+
+    if (!isCommanderRole(auth.role)) {
+      return NextResponse.json(
+        { message: 'Bu ro‘yxat faqat komandirlar uchun' },
+        { status: 403 }
+      );
+    }
 
     if (!user.personal) {
       return NextResponse.json(
@@ -37,9 +45,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ documents: serialized }, { status: 200 });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Serverda xatolik';
-    return NextResponse.json({ message: 'Serverda xatolik', error: message }, {
-      status: 500,
-    });
+    console.error('commander-local:', error);
+    return NextResponse.json({ message: 'Serverda xatolik' }, { status: 500 });
   }
 }

@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ documents }, { status: 200 });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Serverda xatolik';
-    return NextResponse.json({ message: 'Serverda xatolik', error: message }, {
+    console.error(error);
+    return NextResponse.json({ message: 'Serverda xatolik' }, {
       status: 500,
     });
   }

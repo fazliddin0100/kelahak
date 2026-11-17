@@ -98,15 +98,7 @@ const DocumentPage = () => {
         return;
       }
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          toast.error('Siz tizimda mavjud emassiz!');
-          router.push('/sign-in');
-          return;
-        }
-        const res = await fetch(`/api/documents/${documentId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(`/api/documents/${documentId}`);
         if (!res.ok) {
           const error = await res.json();
           throw new Error(error.message || 'Hujjatni yuklab bo‘lmadi');
@@ -228,12 +220,10 @@ const DocumentPage = () => {
         }),
       };
 
-      const token = localStorage.getItem('token');
       const response = await fetch(`/api/documents/${documentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });

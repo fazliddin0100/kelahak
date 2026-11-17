@@ -32,10 +32,8 @@ export function useDepartmentPeers() {
   const fetchPeers = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch('/api/users/department-peers', {
         credentials: 'include',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) throw new Error('Foydalanuvchilar yuklanmadi');
       const data = await res.json();

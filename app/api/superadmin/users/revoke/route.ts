@@ -50,6 +50,10 @@ export async function POST(request: NextRequest) {
       where: { id: user.job.id },
       data: { isUserTrue: false },
     });
+    await prisma.userSession.updateMany({
+      where: { userId: user.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
 
     return NextResponse.json({
       success: true,

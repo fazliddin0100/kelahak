@@ -25,14 +25,6 @@ const thClass =
   'whitespace-nowrap px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500';
 const tdClass = 'px-3 py-2.5 text-sm text-slate-700';
 
-function getAuthHeaders(): HeadersInit {
-  const token =
-    typeof window !== 'undefined' ?
-      localStorage.getItem('ref_token') || localStorage.getItem('token')
-    : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 const FileArxiv: React.FC<Props> = ({ nomeklaturaId }) => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,7 +44,6 @@ const FileArxiv: React.FC<Props> = ({ nomeklaturaId }) => {
         `/api/documents/by-nomeklatura/${nomeklaturaId}`,
         {
           credentials: 'include',
-          headers: getAuthHeaders(),
         }
       );
       const data = await res.json();

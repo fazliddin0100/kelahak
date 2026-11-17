@@ -19,12 +19,15 @@ Open [http://127.0.0.1:3001](http://127.0.0.1:3001) with your browser to see the
 
 ## Database (PostgreSQL)
 
+Set `DATABASE_URL` in `.env` to a PostgreSQL server and database. The server must be running, and its configured user must have permission to create databases. On first `npm run dev`, Mezon creates the named database when it is missing, applies Prisma migrations, and preserves data in an existing database while applying pending migrations.
+
+For a local PostgreSQL server in Docker, start it once:
+
 ```bash
 npm run docker:up
-npm run db:push
 ```
 
-Copy `.env.example` to `.env.local` and set `DATABASE_URL`, `JWT_SECRET`, and `JWT_SECRET_REFRESH`.
+Keep `secrets/app-encryption-key` available; it protects application data and must remain the same across restarts and upgrades.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

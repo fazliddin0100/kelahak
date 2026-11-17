@@ -2,8 +2,16 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/prisma';
-import { findDocuments, isValidDbId, updateDocument } from '@/lib/db/document';
+import { isValidDbId, updateDocument } from '@/lib/db/document';
+import {
+  canViewDocumentDirect,
+  documentNotFoundResponse,
+  isKotibiyatActor,
+  loadViewableDocument,
+} from '@/lib/documentAccess';
+import { isDocumentEditableStatus } from '@/lib/documentEditRules';
 
+/** Kotibiyat hujjatni ro‘yxatga olmasdan egasiga qaytaradi */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -17,28 +25,44 @@ export async function POST(
     }
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
 
-        const owned = await findDocuments({ ownerId: user.id }, { take: 1 });
-    const document = owned[0];
+    const document = await loadViewableDocument(id, auth);
     if (!document) {
-      return NextResponse.json({ message: 'Hujjat mavjud emas!' }, { status: 400 });
+      return documentNotFoundResponse();
+    }
+
+    const isOwner = document.ownerId === auth.userId;
+    const isKotibiyatOfDocument =
+      isKotibiyatActor(auth) && canViewDocumentDirect(document, auth);
+    if (!isOwner && !isKotibiyatOfDocument) {
+      return NextResponse.json(
+        { message: 'Hujjatni faqat kotibiyat egasiga qaytarishi mumkin' },
+        { status: 403 }
+      );
+    }
+
+    if (!isDocumentEditableStatus(document.status)) {
+      return NextResponse.json(
+        { message: 'Ro‘yxatga olingan hujjatni qaytarib bo‘lmaydi' },
+        { status: 400 }
+      );
     }
 
     await updateDocument(document.id, {
       sharedWithAdmin: false,
+      submittedToKotibiyat: false,
+      submittedToKotibiyatAt: null,
       allowedUserIds: [document.ownerId],
     });
 
     return NextResponse.json(
-      { message: "Hujjat muvaffaqiyatli ro'yxatga olindi" },
+      { message: 'Hujjat egasiga qaytarildi' },
       { status: 200 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Nomaʼlum xato';
     console.error('Xatolik:', error);
     return NextResponse.json(
-      { message: 'Ichki server xatosi', error: message },
+      { message: 'Ichki server xatosi' },
       { status: 500 }
     );
   }

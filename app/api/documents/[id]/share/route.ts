@@ -1,12 +1,16 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import connectToDatabase from '@/lib/prisma';
+import {
+  documentNotFoundResponse,
+  loadViewableDocument,
+} from '@/lib/documentAccess';
 import { canGrantDocumentViewAccess } from '@/lib/documentShare';
 import {
-  findDocumentById,
   isValidDbId,
   serializeDocumentForApi,
   updateDocument,
 } from '@/lib/db/document';
+import { findUserById } from '@/lib/db/user';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
@@ -27,12 +31,9 @@ export async function POST(
       return NextResponse.json({ message: "Noto'g'ri ID" }, { status: 400 });
     }
 
-    const document = await findDocumentById(id, { includeAllowedUsers: true });
+    const document = await loadViewableDocument(id, auth);
     if (!document) {
-      return NextResponse.json(
-        { message: 'Hujjat topilmadi' },
-        { status: 404 }
-      );
+      return documentNotFoundResponse();
     }
 
     const roleName = role ?? null;
@@ -46,7 +47,7 @@ export async function POST(
     }
 
     const { userId: targetUserId } = await request.json();
-    if (!targetUserId || !isValidDbId(targetUserId)) {
+    if (typeof targetUserId !== 'string' || !isValidDbId(targetUserId)) {
       return NextResponse.json(
         { message: 'Foydalanuvchi tanlanmadi' },
         { status: 400 }
@@ -56,6 +57,14 @@ export async function POST(
     if (targetUserId === currentUserId) {
       return NextResponse.json(
         { message: "O'zingizga yuborib bo'lmaydi" },
+        { status: 400 }
+      );
+    }
+
+    const targetUser = await findUserById(targetUserId);
+    if (!targetUser?.job?.isUserTrue) {
+      return NextResponse.json(
+        { message: 'Foydalanuvchi topilmadi yoki faol emas' },
         { status: 400 }
       );
     }

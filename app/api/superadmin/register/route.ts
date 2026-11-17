@@ -1,19 +1,39 @@
-import bcrypt from 'bcryptjs';
 import {
   countSuperAdmins,
   isValidBootstrapKey,
 } from '@/lib/superadminAuth';
+import { getClientIp } from '@/lib/clientIp';
 import { createDbId } from '@/lib/db/document';
+import { hashPassword, validateNewPassword } from '@/lib/passwordPolicy';
+import { consumeRateLimit } from '@/lib/rateLimit';
 import connectToDatabase, { prisma } from '@/lib/prisma';
 import { getPermissionsForRole } from '@/helpers/PermissionsForRole';
 import { NextRequest, NextResponse } from 'next/server';
 import os from 'os';
 import validator from 'validator';
 
+const ATTEMPTS_PER_IP = process.env.NODE_ENV === 'development' ? 100 : 5;
+
 export async function POST(request: NextRequest) {
-  await connectToDatabase();
+  const clientIp = getClientIp(request.headers);
+  const limit = consumeRateLimit(
+    'superadmin-register-ip',
+    clientIp,
+    ATTEMPTS_PER_IP,
+    15 * 60 * 1000
+  );
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { message: 'Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(limit.retryAfterSeconds) },
+      }
+    );
+  }
 
   try {
+    await connectToDatabase();
     const body = await request.json();
     const {
       fName,
@@ -28,7 +48,6 @@ export async function POST(request: NextRequest) {
       password,
       bootstrapKey = '',
       mac,
-      ip,
       hostname,
       note,
     } = body;
@@ -67,15 +86,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           message:
-            'Birinchi SuperAdmin uchun .env da SUPERADMIN_BOOTSTRAP_KEY o‘rnating va formada kiriting',
+            'Birinchi SuperAdmin uchun .env da SUPERADMIN_BOOTSTRAP_KEY (kamida 16 belgi) o‘rnating va formada kiriting',
           code: 'BOOTSTRAP_KEY_REQUIRED',
         },
         { status: 400 }
       );
     }
 
-    const cleanLogin = validator.trim(validator.escape(login)).toLowerCase();
-    const cleanPassword = validator.trim(password);
+    const cleanLogin = validator.trim(String(login)).toLowerCase();
+    const cleanPassword = validator.trim(String(password));
 
     if (!validator.isLength(cleanLogin, { min: 3, max: 50 })) {
       return NextResponse.json(
@@ -83,11 +102,15 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!validator.isLength(cleanPassword, { min: 8 })) {
+    if (!validator.isAlphanumeric(cleanLogin, 'en-US', { ignore: '_-' })) {
       return NextResponse.json(
-        { message: 'Parol kamida 8 belgidan iborat bo‘lishi kerak' },
+        { message: 'Login faqat harf, raqam, _ va - bo‘lsin' },
         { status: 400 }
       );
+    }
+    const passwordError = validateNewPassword(cleanPassword);
+    if (passwordError) {
+      return NextResponse.json({ message: passwordError }, { status: 400 });
     }
 
     const existingAuth = await prisma.auth.findUnique({
@@ -101,7 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanProvince = validator.trim(province);
-    const hashedPassword = await bcrypt.hash(cleanPassword, 10);
+    const hashedPassword = await hashPassword(cleanPassword);
     const userId = createDbId();
     const roleId = createDbId();
     const personalId = createDbId();
@@ -109,10 +132,7 @@ export async function POST(request: NextRequest) {
     const jobId = createDbId();
 
     const deviceMac = mac || '00:00:00:00:00:00';
-    const deviceIp =
-      ip ||
-      request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-      '127.0.0.1';
+    const deviceIp = clientIp;
     const deviceHostname = hostname || os.hostname();
     const deviceNote = note || 'SuperAdmin ro‘yxatdan o‘tish';
 
@@ -191,7 +211,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Server xatosi';
-    return NextResponse.json({ message }, { status: 500 });
+    console.error('SuperAdmin ro‘yxatdan o‘tish xatosi:', error);
+    return NextResponse.json({ message: 'Server xatosi' }, { status: 500 });
   }
 }

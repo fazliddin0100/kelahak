@@ -1,6 +1,7 @@
 'use client';
 
 import InstitutionalNavigation from '@/components/InstitutionalNavigation';
+import { clearLegacyAuthStorage } from '@/lib/clientAuthStorage';
 import { BookOpen, LayoutDashboard, LogOut, ShieldAlert, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -27,9 +28,7 @@ export default function SuperAdminNavbar({
       method: 'POST',
       credentials: 'include',
     });
-    localStorage.removeItem('sa_token');
-    localStorage.removeItem('token');
-    localStorage.removeItem('ref_token');
+    clearLegacyAuthStorage();
     router.push('/sign-in');
   };
 

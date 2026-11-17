@@ -71,14 +71,10 @@ export function ForwardQueueSidebar({
     }
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return toast.error('Token topilmadi!');
-
       const res = await fetch(`/api/documents/${document._id}/forward`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           comment: comment.trim(),
@@ -99,12 +95,10 @@ export function ForwardQueueSidebar({
   const saveCommentOnly = async () => {
     if (!comment.trim()) return toast.error('Izoh yozilmadi!');
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/documents/${document._id}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ text: comment }),
       });

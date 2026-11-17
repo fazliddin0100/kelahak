@@ -1,3 +1,4 @@
+import { verifyInternalKey } from '@/lib/internalKeys';
 import connectToDatabase, { prisma } from '@/lib/prisma';
 
 const memoryBlocked = new Set<string>();
@@ -69,11 +70,6 @@ export async function unblockIpPersistent(ip: string) {
   cacheLoadedAt = Date.now();
 }
 
-export function verifyWafSyncKey(request: Request): boolean {
-  const key =
-    process.env.WAF_SYNC_KEY?.trim() ||
-    process.env.SECURITY_LOG_KEY?.trim() ||
-    '';
-  if (!key) return process.env.NODE_ENV === 'development';
-  return request.headers.get('x-waf-sync-key') === key;
+export function verifyWafSyncKey(request: Request): Promise<boolean> {
+  return verifyInternalKey(request, 'waf-sync');
 }

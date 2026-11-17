@@ -59,8 +59,7 @@ export default function LoginPage() {
       });
 
       const data = await res.json();
-      if (res.ok && data.token) {
-        localStorage.setItem('token', data.token);
+      if (res.ok) {
         toast.success('Xush kelibsiz!');
         const target = getPostLoginPath(data);
         window.location.replace(target);

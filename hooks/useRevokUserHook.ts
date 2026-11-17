@@ -1,17 +1,6 @@
 import { useState } from 'react';
 import { toast } from '../components/ui/sonner';
 
-function getAdminAuthHeaders(): HeadersInit {
-  const token =
-    typeof window !== 'undefined' ?
-      localStorage.getItem('ref_token') || localStorage.getItem('token')
-    : null;
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
 const useRevokeUser = (onSuccess?: () => void) => {
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
 
@@ -21,7 +10,7 @@ const useRevokeUser = (onSuccess?: () => void) => {
 
       const res = await fetch('/api/users/sessions/revoke', {
         method: 'POST',
-        headers: getAdminAuthHeaders(),
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ userId }),
       });

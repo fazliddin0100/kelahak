@@ -19,7 +19,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import mexonLogo from '@/public/mexon-mark.png';
-import { decodeToken } from '@/lib/jwt';
 import { PENDING_ACCESS_MESSAGE } from '@/lib/authConstants';
 
 const formSchema = z.object({
@@ -51,20 +50,12 @@ export default function Login() {
 
       const data = await res.json();
       if (res.ok) {
-        localStorage.setItem('ref_token', data.ref_token);
-        // eslint-disable-next-line react-hooks/immutability
-        document.cookie = `ref_token=${data.ref_token}; path=/; SameSite=Lax;`;
-        if (data.token) {
-          localStorage.setItem('sa_token', data.token);
-          localStorage.setItem('token', data.token);
-        }
         toast.success('Xush kelibsiz!');
-        const decode = decodeToken(data.ref_token);
         if (data.role === 'superAdmin') {
           setTimeout(() => router.push('/superadmin/panel'), 200);
         } else if (
           data.role === 'admin' ||
-          decode.department === 'kotibiyat'
+          data.department === 'kotibiyat'
         ) {
           setTimeout(() => router.push('/admin/navbar'), 200);
         } else {

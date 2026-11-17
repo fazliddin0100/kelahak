@@ -1,6 +1,7 @@
 // lib/purify.ts
 import DOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
+import { normalizeDocumentContent } from '@/lib/normalizeDocumentContent';
 
 const { window } = new JSDOM('');
 const purify = DOMPurify(window);
@@ -63,6 +64,7 @@ export const purifyConfig = {
     'href',
     'alt',
     'target',
+    'rel',
     'data-mce-style',
     'data-mce-selected',
     'data-mce-placeholder',
@@ -87,6 +89,21 @@ export const purifyConfig = {
   ],
 };
 
+purify.addHook('afterSanitizeAttributes', (node) => {
+  if (node.tagName === 'A' && node.getAttribute('target')) {
+    node.setAttribute('rel', 'noopener noreferrer');
+  }
+});
+
 export const sanitizeHTML = (html: string): string => {
   return purify.sanitize(html, purifyConfig);
 };
+
+/**
+ * Hujjat matni faqat tozalangan HTML satri sifatida saqlanadi va qaytariladi.
+ * Eski yozuvlardagi `{ html | body | content }` obyektlari ham satrga keltiriladi.
+ */
+export function sanitizeDocumentContent(content: unknown): string {
+  const html = normalizeDocumentContent(content);
+  return html.trim() ? sanitizeHTML(html) : '';
+}

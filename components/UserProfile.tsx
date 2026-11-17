@@ -4,6 +4,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { CircleUser, LogOut, ShieldUser } from 'lucide-react';
 import LoadingState from '@/components/LoadingState';
+import { clearLegacyAuthStorage } from '@/lib/clientAuthStorage';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -46,10 +47,7 @@ export default function UserProfile() {
   const handleLogout = async () => {
     try {
       await axios.post('/api/logout', {}, { withCredentials: true });
-      localStorage.removeItem('token');
-      localStorage.removeItem('csrf-token');
-      sessionStorage.removeItem('token');
-      sessionStorage.removeItem('csrf-token');
+      clearLegacyAuthStorage();
       router.push('/sign-in');
     } catch (err) {
       console.error('Logout error:', err);

@@ -27,13 +27,10 @@ export function useDocumentById(
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
-
       const res = await fetch(`/api/documents/${documentId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: token ? `Bearer ${token}` : '',
         },
       });
 

@@ -11,11 +11,8 @@ import { DocumentType } from '@/types/document';
 import { useEffect, useMemo, useState } from 'react';
 
 async function fetchAttachmentById(id: string): Promise<DocumentType | null> {
-  const token =
-    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const res = await fetch(`/api/documents/${id}`, {
     credentials: 'include',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) return null;
   const data = await res.json();

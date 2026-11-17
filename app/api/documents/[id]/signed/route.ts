@@ -11,13 +11,18 @@ import {
 import { DocumentType } from '@/types/document';
 import { isCommanderRole } from '@/lib/roles';
 import {
+  actorProvince,
+  documentNotFoundResponse,
+  loadViewableDocument,
+} from '@/lib/documentAccess';
+import {
   isAwaitingCommanderApproval,
   isKotibiyatDirectFlow,
   isUserAuthorSigned,
+  regionsMatch,
 } from '@/lib/documentWorkflow';
 import connectToDatabase from '@/lib/prisma';
 import {
-  findDocumentById,
   isValidDbId,
   serializeDocumentForApi,
   updateDocument,
@@ -33,6 +38,20 @@ type SignerJson = {
   viewedAt?: Date;
   [key: string]: unknown;
 };
+
+function hasUnsignedEntry(field: unknown, userId: string): boolean {
+  const entries =
+    Array.isArray(field) ? field
+    : field && typeof field === 'object' ? [field]
+    : [];
+  return entries.some(
+    (entry) =>
+      entry &&
+      typeof entry === 'object' &&
+      resolveIdReference((entry as SignerJson).userId) === userId &&
+      (entry as SignerJson).hasSigned !== true
+  );
+}
 
 function signField(field: SignerJson | SignerJson[] | null | undefined, userId: string) {
   if (!field) return field;
@@ -66,22 +85,30 @@ export async function POST(
 
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
-
+    const { userId, user } = auth;
 
     const roleName = user.job?.role?.role;
 
-    const document = await findDocumentById(id, { includeAllowedUsers: true });
+    const document = await loadViewableDocument(id, auth);
     if (!document) {
-      return NextResponse.json(
-        { message: 'Hujjat topilmadi' },
-        { status: 404 }
-      );
+      return documentNotFoundResponse();
     }
 
     const docView = serializeDocumentForApi(document) as unknown as DocumentType;
     const pendingForwardSign = canForwardReviewerSign(docView, userId);
-    const isCommander = roleName && isCommanderRole(roleName);
+    /** Komandir sifatida imzo: faqat o‘z viloyati hujjati yoki o‘zi yo‘naltirgan hujjat */
+    const isCommander =
+      !!roleName &&
+      isCommanderRole(roleName) &&
+      (regionsMatch(document.ownerRegion, actorProvince(auth)) ||
+        document.forwardedById === userId);
+    const canSignAsParticipant = [
+      document.author,
+      document.sender,
+      document.approvers,
+      document.receiver,
+      document.forwardedTo,
+    ].some((field) => hasUnsignedEntry(field, userId));
 
     if (document.status === DocumentStatus.APPROVED) {
       return NextResponse.json(
@@ -148,7 +175,7 @@ export async function POST(
       forwardedSigner: document.forwardedSigner,
     };
 
-    if (roleName && isCommanderRole(roleName)) {
+    if (isCommander) {
       const commanderResult = await applyCommanderDocumentSign(
         mutableDoc as Parameters<typeof applyCommanderDocumentSign>[0],
         userId
@@ -170,13 +197,24 @@ export async function POST(
       }
       if (
         commanderResult.status !== 400 ||
-        commanderResult.message.includes('holati')
+        commanderResult.message.includes('holati') ||
+        !canSignAsParticipant
       ) {
         return NextResponse.json(
           { message: commanderResult.message },
           { status: commanderResult.status }
         );
       }
+    }
+
+    if (!canSignAsParticipant) {
+      return NextResponse.json(
+        {
+          message:
+            'Siz bu hujjatning imzolovchilari qatorida emassiz yoki allaqachon imzolagansiz',
+        },
+        { status: 403 }
+      );
     }
 
     const isForwardReviewerSign = canForwardReviewerSign(docView, userId);
@@ -237,15 +275,7 @@ export async function POST(
       }
     }
 
-    if (document.bosSigned && roleName && isCommanderRole(roleName)) {
-      patch.bosSigned = {
-        ...(document.bosSigned as SignerJson),
-        hasSigned: true,
-      };
-    }
-
-    const body = await request.json().catch(() => ({}));
-    const mode = body.mode === 'loose' ? 'loose' : 'strict';
+    const mode = 'strict' as const;
 
     const previewDoc = serializeDocumentForApi({
       ...document,
@@ -295,10 +325,7 @@ export async function POST(
       { status: 200 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Nomaʼlum xato';
-    return NextResponse.json(
-      { message: 'Server xatosi', error: message },
-      { status: 500 }
-    );
+    console.error('Hujjatni imzolashda xato:', error);
+    return NextResponse.json({ message: 'Server xatosi' }, { status: 500 });
   }
 }

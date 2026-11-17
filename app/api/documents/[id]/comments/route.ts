@@ -1,8 +1,16 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
+import {
+  documentNotFoundResponse,
+  isCommanderActor,
+  loadViewableDocument,
+} from '@/lib/documentAccess';
+import { isDocumentEditableStatus } from '@/lib/documentEditRules';
 import { applyCommanderCommentSignature } from '@/lib/documentForwardedSigner';
 import connectToDatabase from '@/lib/prisma';
-import { findDocumentById, isValidDbId, updateDocument } from '@/lib/db/document';
+import { isValidDbId, updateDocument } from '@/lib/db/document';
 import { type NextRequest, NextResponse } from 'next/server';
+
+const MAX_COMMENT_LENGTH = 2000;
 
 export async function POST(
   request: NextRequest,
@@ -18,27 +26,39 @@ export async function POST(
 
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
+    const { userId } = auth;
 
+    if (!isCommanderActor(auth)) {
+      return NextResponse.json(
+        { message: 'Izohni faqat komandir qoldirishi mumkin' },
+        { status: 403 }
+      );
+    }
 
     const { text } = await request.json();
-    if (!text || !String(text).trim()) {
+    const comment =
+      typeof text === 'string' ? text.trim().slice(0, MAX_COMMENT_LENGTH) : '';
+    if (!comment) {
       return NextResponse.json(
         { message: "Izoh matni bo'sh bo'lmasligi kerak" },
         { status: 400 }
       );
     }
 
-    const document = await findDocumentById(id);
+    const document = await loadViewableDocument(id, auth);
     if (!document) {
+      return documentNotFoundResponse();
+    }
+
+    if (!isDocumentEditableStatus(document.status)) {
       return NextResponse.json(
-        { message: 'Hujjat topilmadi' },
-        { status: 404 }
+        { message: 'Ro‘yxatga olingan hujjatga izoh qoldirib bo‘lmaydi' },
+        { status: 400 }
       );
     }
 
     const patch: Parameters<typeof updateDocument>[1] = {};
-    await applyCommanderCommentSignature(patch, userId, String(text));
+    await applyCommanderCommentSignature(patch, userId, comment);
     const updated = await updateDocument(id, patch);
 
     return NextResponse.json(
@@ -51,9 +71,7 @@ export async function POST(
       { status: 200 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Serverda xatolik';
-    return NextResponse.json({ message: 'Serverda xatolik', error: message }, {
-      status: 500,
-    });
+    console.error('Izoh saqlashda xato:', error);
+    return NextResponse.json({ message: 'Serverda xatolik' }, { status: 500 });
   }
 }

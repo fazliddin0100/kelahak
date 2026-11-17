@@ -40,16 +40,9 @@ export default function AmallarButtons({
   const handleAccept = async () => {
     setAccepting(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Avval tizimga kiring');
-        return;
-      }
-
       const res = await fetch(`/api/documents/${document._id}/accept`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });

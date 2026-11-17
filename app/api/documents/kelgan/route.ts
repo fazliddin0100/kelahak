@@ -6,16 +6,24 @@ import {
   serializeDocumentsForApi,
 } from '@/lib/db/document';
 import { isCommanderExternalInboxDocument } from '@/lib/documentWorkflow';
+import { isCommanderRole } from '@/lib/roles';
 import { DocumentType } from '@/types/document';
 import { type NextRequest, NextResponse } from 'next/server';
 
-/** Komandir uchun: boshqa viloyatdan kotibiyat yuborgan hujjatlar */
+/** Komandir uchun: boshqa viloyatdan kotibiyat orqali shaxsan unga yuborilgan hujjatlar */
 export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
     const { user, userId } = auth;
+
+    if (!isCommanderRole(auth.role)) {
+      return NextResponse.json(
+        { message: 'Bu ro‘yxat faqat komandirlar uchun' },
+        { status: 403 }
+      );
+    }
 
     if (!user.personal) {
       return NextResponse.json(
@@ -27,7 +35,7 @@ export async function GET(request: NextRequest) {
     const province = user.personal.province;
 
     const raw = await findDocuments(
-      commanderExternalInboxWhere(province),
+      commanderExternalInboxWhere(province, userId),
       {
         includeAllowedUsers: true,
         orderBy: [{ sentToCommanderAt: 'desc' }, { updatedAt: 'desc' }],
@@ -49,9 +57,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ documents }, { status: 200 });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Serverda xatolik';
-    return NextResponse.json({ message: 'Serverda xatolik', error: message }, {
-      status: 500,
-    });
+    console.error('kelgan:', error);
+    return NextResponse.json({ message: 'Serverda xatolik' }, { status: 500 });
   }
 }

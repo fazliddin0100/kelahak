@@ -31,6 +31,9 @@ export async function findKotibiyatStaffUserIds(
     const roleName = job?.role?.role ?? '';
     const dept = (job?.department ?? '').toLowerCase();
 
+    // Tasdiqlanmagan akkauntlar hujjat qabul qiluvchisi bo‘la olmaydi
+    if (!job?.isUserTrue && roleName !== 'superAdmin') continue;
+
     if (
       isKotibiyatStaffRole(roleName) ||
       dept.includes('kotibiyat') ||

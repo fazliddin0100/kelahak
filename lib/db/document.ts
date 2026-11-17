@@ -118,7 +118,8 @@ export async function findDocumentById(
   });
   if (document?.content) {
     document.content.content = decryptDocumentContent(
-      document.content.content
+      document.content.content,
+      document.id
     ) as Prisma.JsonValue;
   }
   return document as DocumentWithRelations | null;
@@ -144,7 +145,8 @@ export async function findDocuments(
   for (const document of documents) {
     if (document.content) {
       document.content.content = decryptDocumentContent(
-        document.content.content
+        document.content.content,
+        document.id
       ) as Prisma.JsonValue;
     }
   }
@@ -309,7 +311,8 @@ export function serializeDocumentForApi(
   };
 
   if (options.includeContent !== false) {
-    result.content = contentRow ? decryptDocumentContent(contentRow.content) : {};
+    result.content =
+      contentRow ? decryptDocumentContent(contentRow.content, id) : {};
   }
 
   if (allowedUsers) {
@@ -509,7 +512,7 @@ export async function createDocument(
       await tx.documentContent.create({
         data: {
           documentId: id,
-          content: encryptDocumentContent(content) as Prisma.InputJsonValue,
+          content: encryptDocumentContent(content, id) as Prisma.InputJsonValue,
         },
       });
     }
@@ -631,10 +634,10 @@ export async function updateDocument(
         where: { documentId: id },
         create: {
           documentId: id,
-          content: encryptDocumentContent(content) as Prisma.InputJsonValue,
+          content: encryptDocumentContent(content, id) as Prisma.InputJsonValue,
         },
         update: {
-          content: encryptDocumentContent(content) as Prisma.InputJsonValue,
+          content: encryptDocumentContent(content, id) as Prisma.InputJsonValue,
         },
       });
     }
@@ -678,6 +681,8 @@ const TERMINAL_STATUSES: DocumentStatus[] = [
   DocumentStatus.DELETED,
   DocumentStatus.ARCHIVED,
 ];
+
+const PENDING_LIST_LIMIT = 500;
 
 export function commanderLocalInboxWhere(province: string): Prisma.DocumentWhereInput {
   return {
@@ -726,8 +731,13 @@ export function kotibiyatRegionalCopyInboxWhere(
   };
 }
 
+/**
+ * Boshqa viloyatdan kelgan hujjatlar — faqat shu komandirga manzillanganlari
+ * (qabul qiluvchi, ruxsat berilgan yoki navbatga qo‘yilgan).
+ */
 export function commanderExternalInboxWhere(
-  commanderProvince: string
+  commanderProvince: string,
+  commanderUserId: string
 ): Prisma.DocumentWhereInput {
   return {
     NOT: { ownerRegion: provinceFilter(commanderProvince) },
@@ -746,7 +756,13 @@ export function commanderExternalInboxWhere(
           { sharedWithAdmin: true },
         ],
       },
-      { sentToCommander: true },
+      {
+        OR: [
+          { allowedUsers: { some: { userId: commanderUserId } } },
+          { receiver: { array_contains: [{ userId: commanderUserId }] } },
+          { forwardedTo: { array_contains: [{ userId: commanderUserId }] } },
+        ],
+      },
     ],
   };
 }
@@ -756,42 +772,46 @@ export async function findPendingSignatureDocuments(
   userId: string,
   province: string
 ): Promise<DocumentWithRelations[]> {
-  const regionDocs = await findDocuments({
-    ownerRegion: provinceFilter(province),
-  });
+  const candidates = await findDocuments(
+    {
+      ownerRegion: provinceFilter(province),
+      status: { notIn: TERMINAL_STATUSES },
+      OR: [
+        { author: { path: ['userId'], equals: userId } },
+        { sender: { path: ['userId'], equals: userId } },
+        { approvers: { array_contains: [{ userId }] } },
+      ],
+    },
+    { orderBy: { updatedAt: 'desc' }, take: PENDING_LIST_LIMIT }
+  );
 
-  return regionDocs.filter((doc) => {
+  return candidates.filter((doc) => {
     const author = doc.author as SignerJson | null;
     const sender = doc.sender as SignerJson | null;
-    const bosSigned = doc.bosSigned as SignerJson | null;
     const approvers = doc.approvers as SignerJson[] | null;
 
     if (author?.userId === userId && author.hasSigned === false) return true;
     if (sender?.userId === userId && sender.hasSigned === false) return true;
-    if (Array.isArray(approvers)) {
-      if (
-        approvers.some(
-          (a) => resolveIdReference(a.userId) === userId && a.hasSigned === false
-        )
-      ) {
-        return true;
-      }
-    }
-    if (bosSigned?.hasSigned === false || !bosSigned) return true;
-    return false;
+    return (
+      Array.isArray(approvers) &&
+      approvers.some(
+        (a) => resolveIdReference(a.userId) === userId && a.hasSigned === false
+      )
+    );
   });
 }
 
-/** Bos imzosi kutilayotgan hujjatlar */
+/** Komandir (bos) imzosi kutilayotgan, komandirga yuborilgan hujjatlar */
 export async function findPendingBosSignDocuments(
   province: string
 ): Promise<DocumentWithRelations[]> {
-  const docs = await findDocuments({
-    ownerRegion: provinceFilter(province),
+  const docs = await findDocuments(commanderLocalInboxWhere(province), {
+    orderBy: { updatedAt: 'desc' },
+    take: PENDING_LIST_LIMIT,
   });
   return docs.filter((doc) => {
     const bosSigned = doc.bosSigned as SignerJson | null;
-    return !bosSigned || bosSigned.hasSigned === false;
+    return !bosSigned || bosSigned.hasSigned !== true;
   });
 }
 

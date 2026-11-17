@@ -13,6 +13,10 @@ import {
   distributeRegionalCopies,
   resolveSourceCopyMeta,
 } from '@/lib/distributeRegionalCopies';
+import {
+  canViewDocumentDirect,
+  documentNotFoundResponse,
+} from '@/lib/documentAccess';
 import { isKotibiyatStaffRole } from '@/lib/roles';
 import {
   findDocumentById,
@@ -42,7 +46,7 @@ export async function POST(
 
     const auth = await requireApiAuth(request);
     if (isAuthError(auth)) return auth;
-    const { userId, role, user, department } = auth;
+    const { user } = auth;
 
     if (!user.personal) {
       return NextResponse.json(
@@ -70,12 +74,11 @@ export async function POST(
     const document = await findDocumentById(id, {
       includeContent: true,
       includeAttachments: true,
+      includeAllowedUsers: true,
     });
-    if (!document) {
-      return NextResponse.json(
-        { message: 'Hujjat topilmadi' },
-        { status: 404 }
-      );
+    // Faqat kotibiyatga kelgan (yuborilgan yoki ulashilgan) hujjat ro'yxatga olinadi
+    if (!document || !canViewDocumentDirect(document, auth)) {
+      return documentNotFoundResponse();
     }
 
     if (document.status === DocumentStatus.REGISTERED) {
@@ -171,11 +174,9 @@ export async function POST(
 
     return NextResponse.json(response, { status: 200 });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Noma'lum xato";
     console.error('[register/route] Xatolik:', error);
     return NextResponse.json(
-      { message: 'Ichki server xatosi', error: message },
+      { message: 'Ichki server xatosi' },
       { status: 500 }
     );
   }

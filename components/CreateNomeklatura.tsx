@@ -22,14 +22,6 @@ import axios from 'axios';
 import { FolderPlus, Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-
-function getAuthHeaders(): Record<string, string> {
-  const token =
-    typeof window !== 'undefined' ?
-      localStorage.getItem('ref_token') || localStorage.getItem('token')
-    : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 import {
   ModalBody,
   ModalField,
@@ -100,7 +92,6 @@ export default function CreateNomeklatura({ onSuccess }: CreateNomeklaturaProps)
 
       const res = await axios.post('/api/nameklatura/reg-nomeklatura', payload, {
         withCredentials: true,
-        headers: getAuthHeaders(),
       });
 
       if (res.status < 200 || res.status >= 300) {

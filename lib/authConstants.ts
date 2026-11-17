@@ -1,13 +1,15 @@
 /** Client/server authentication constants */
 
-import { isKotibiyatStaffRole } from '@/lib/roles';
-
 export const PENDING_ACCESS_MESSAGE =
   'Sizga tizimga kirish uchun hozircha ruxsat berilmagan';
 
-/** Kotibiyat (admin) va superAdmin — ro‘yxatdan keyin darhol kiradi */
+/**
+ * Faqat superAdmin tasdiqsiz kiradi (u maxfiy bootstrap kalit bilan yaratiladi).
+ * Kotibiyat (admin) roli ro‘yxatdan o‘tishda foydalanuvchi yozgan lavozimdan
+ * aniqlanadi, shuning uchun u ham tasdiqlanishi shart.
+ */
 export function roleBypassesApproval(role: string): boolean {
-  return isKotibiyatStaffRole(role);
+  return role === 'superAdmin';
 }
 
 export function canLoginWithoutApproval(

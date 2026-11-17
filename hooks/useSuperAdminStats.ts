@@ -11,14 +11,6 @@ export interface SuperAdminStats {
   byProvince: Record<string, number>;
 }
 
-function saHeaders(): HeadersInit {
-  const token =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('sa_token') || localStorage.getItem('token')
-      : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 export function useSuperAdminStats() {
   const [stats, setStats] = useState<SuperAdminStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,7 +22,6 @@ export function useSuperAdminStats() {
     try {
       const res = await fetch('/api/superadmin/stats', {
         credentials: 'include',
-        headers: saHeaders(),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {

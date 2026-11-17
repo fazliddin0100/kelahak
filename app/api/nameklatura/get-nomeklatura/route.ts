@@ -6,7 +6,9 @@ export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
 
-    const auth = await requireApiAuth(request);
+    const auth = await requireApiAuth(request, {
+      roles: ['admin', 'superAdmin'],
+    });
     if (isAuthError(auth)) return auth;
     const { userId, role, user, department } = auth;
 
@@ -17,7 +19,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const bolinmalar = await prisma.bolinma.findMany();
+    const bolinmalar = await prisma.bolinma.findMany({
+      where: { province: user.personal.province },
+    });
     if (!bolinmalar || bolinmalar.length === 0) {
       return NextResponse.json(
         { message: 'Bo‘linma topilmadi' },
@@ -70,9 +74,9 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(error);
     return NextResponse.json(
-      { message: 'Serverda xatolik', error: message },
+      { message: 'Serverda xatolik' },
       { status: 500 }
     );
   }

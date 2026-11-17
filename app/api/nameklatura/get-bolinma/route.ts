@@ -37,9 +37,9 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(error);
     return NextResponse.json(
-      { message: 'Serverda xatolik', error: message },
+      { message: 'Serverda xatolik' },
       { status: 500 }
     );
   }

@@ -31,14 +31,10 @@ export default function ShareUserModal({
     }
     setSubmitting(true);
     try {
-      const token =
-        localStorage.getItem('ref_token') || localStorage.getItem('token');
-
       const res = await fetch(`/api/documents/${documentId}/share`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ userId: selectedUser }),
       });

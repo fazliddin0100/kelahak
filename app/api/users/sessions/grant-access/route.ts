@@ -2,6 +2,7 @@
 
 import {
   findUserById,
+  isValidDbId,
   setJobAccessApproved,
 } from '@/lib/db/user';
 import { requireAdminOperator } from '@/lib/userAccess';
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { userId } = body;
 
-    if (!userId) {
+    if (typeof userId !== 'string' || !isValidDbId(userId)) {
       return NextResponse.json({ error: 'userId majburiy' }, { status: 400 });
     }
 
@@ -58,6 +59,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Siz bu foydalanuvchini boshqara olmaysiz',
+        },
+        { status: 403 },
+      );
+    }
+
+    const targetRole = user.job?.role?.role;
+    if (
+      admin.job?.role?.role !== 'superAdmin' &&
+      (targetRole === 'admin' || targetRole === 'superAdmin')
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Kotibiyat (admin) akkauntini faqat SuperAdmin tasdiqlashi mumkin',
         },
         { status: 403 },
       );

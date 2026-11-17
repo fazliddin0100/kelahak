@@ -7,13 +7,8 @@ export const useKotibiyatUsers = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem('token');
       try {
-        const res = await fetch('/api/users/kotibiyat', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await fetch('/api/users/kotibiyat');
         const json = await res.json();
         setUsers(json.users || []);
       } catch (err) {

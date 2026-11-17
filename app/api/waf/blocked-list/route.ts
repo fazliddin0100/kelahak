@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /** Middleware sync — JWT talab qilinmaydi, maxfiy kalit bilan */
 export async function GET(request: NextRequest) {
-  if (!verifyWafSyncKey(request)) {
+  if (!(await verifyWafSyncKey(request))) {
     return NextResponse.json({ message: 'Ruxsat yo‘q' }, { status: 403 });
   }
 

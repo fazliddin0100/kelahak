@@ -22,10 +22,7 @@ export const useDocuments = (userId?: string, options?: UseDocumentsOptions) => 
       const qs = params.toString();
       const url = `/api/documents/get-documents-user${qs ? `?${qs}` : ''}`;
 
-      const token = localStorage.getItem('token');
-      const res = await fetch(url, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Hujjatlarni olishda xato');
 
       const data = await res.json();

@@ -3,12 +3,11 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const total = await countSuperAdmins();
+    const hasSuperAdmin = (await countSuperAdmins()) > 0;
     return NextResponse.json({
-      hasSuperAdmin: total > 0,
-      superAdminCount: total,
+      hasSuperAdmin,
       bootstrapConfigured: Boolean(getBootstrapKey()),
-      needsBootstrap: total === 0,
+      needsBootstrap: !hasSuperAdmin,
     });
   } catch {
     return NextResponse.json(

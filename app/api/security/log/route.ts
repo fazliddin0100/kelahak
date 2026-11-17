@@ -1,18 +1,24 @@
-import { logSecurityEvent, verifySecurityLogKey } from '@/lib/securityLog';
+import {
+  logSecurityEvent,
+  SECURITY_EVENT_TYPES,
+  verifySecurityLogKey,
+} from '@/lib/securityLog';
 import type { SecurityEventType } from '@/lib/securityLog';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
-  if (!verifySecurityLogKey(request)) {
+  if (!(await verifySecurityLogKey(request))) {
     return NextResponse.json({ message: 'Ruxsat yo‘q' }, { status: 403 });
   }
 
   try {
     const body = await request.json();
     const type = body.type as SecurityEventType;
-    if (!type || !body.ip || !body.path) {
+    if (!SECURITY_EVENT_TYPES.includes(type) || !body.ip || !body.path) {
       return NextResponse.json({ message: 'type, ip, path kerak' }, { status: 400 });
     }
+
+    const statusCode = Number(body.statusCode);
 
     await logSecurityEvent({
       type,
@@ -22,7 +28,10 @@ export async function POST(request: NextRequest) {
       userAgent: body.userAgent ? String(body.userAgent) : undefined,
       loginHint: body.loginHint ? String(body.loginHint) : undefined,
       message: body.message ? String(body.message) : undefined,
-      statusCode: body.statusCode ? Number(body.statusCode) : undefined,
+      statusCode:
+        Number.isInteger(statusCode) && statusCode >= 100 && statusCode <= 599 ?
+          statusCode
+        : undefined,
     });
 
     return NextResponse.json({ ok: true });

@@ -118,11 +118,14 @@ export async function getNomeklaturaLinkIds(nomeklaturaId: string) {
   };
 }
 
-export async function findArchivedNomeklaturaPopulated() {
+export async function findArchivedNomeklaturaPopulated(province: string) {
   await connectToDatabase();
 
   const items = await prisma.nomeklatura.findMany({
-    where: { status: NomeklaturaStatus.ARCHIVED },
+    where: {
+      status: NomeklaturaStatus.ARCHIVED,
+      ownerRegion: provinceEqualsFilter(province),
+    },
     include: {
       bolimLinks: { include: { bolim: true } },
       bolinmaLinks: { include: { bolinma: true } },

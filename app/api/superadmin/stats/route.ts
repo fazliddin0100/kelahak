@@ -48,8 +48,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('SuperAdmin stats xatosi:', error);
-    const message =
-      error instanceof Error ? error.message : 'Server xatosi';
-    return NextResponse.json({ message }, { status: 500 });
+    return NextResponse.json({ message: 'Server xatosi' }, { status: 500 });
   }
 }

@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { CircleUser, LogOut } from 'lucide-react';
 import LoadingState from '@/components/LoadingState';
+import { clearLegacyAuthStorage } from '@/lib/clientAuthStorage';
 
 import {
   Popover,
@@ -47,10 +48,7 @@ export default function LogOutProfile() {
   const handleLogout = async () => {
     try {
       await axios.post('/api/logout', {}, { withCredentials: true });
-      localStorage.removeItem('token');
-      localStorage.removeItem('csrf-token');
-      sessionStorage.removeItem('token');
-      sessionStorage.removeItem('csrf-token');
+      clearLegacyAuthStorage();
       router.push('/sign-in');
     } catch (err) {
       console.error('Logout error:', err);

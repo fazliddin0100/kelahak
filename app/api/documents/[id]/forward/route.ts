@@ -4,6 +4,12 @@ import { buildPersonalFullName } from '@/lib/forwardQueue';
 import connectToDatabase from '@/lib/prisma';
 import { isSameUnitAsCommander } from '@/lib/unitPeerMatch';
 import {
+  documentNotFoundResponse,
+  isCommanderActor,
+  loadViewableDocument,
+} from '@/lib/documentAccess';
+import { isDocumentEditableStatus } from '@/lib/documentEditRules';
+import {
   findDocumentById,
   isValidDbId,
   serializeDocumentForApi,
@@ -12,6 +18,9 @@ import {
 import { findUserById, findUsersByIds } from '@/lib/db/user';
 import { DocumentStatus } from '@/types/document-status.enum';
 import { type NextRequest, NextResponse } from 'next/server';
+
+const MAX_COMMENT_LENGTH = 2000;
+const MAX_QUEUE_LENGTH = 50;
 
 export async function POST(
   request: NextRequest,
@@ -31,9 +40,26 @@ export async function POST(
       return NextResponse.json({ message: "Noto'g'ri ID" }, { status: 400 });
     }
 
+    if (!isCommanderActor(auth)) {
+      return NextResponse.json(
+        { message: 'Hujjatni faqat komandir yo‘naltirishi mumkin' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
-    const comment = typeof body.comment === 'string' ? body.comment.trim() : '';
-    const userIds: string[] = Array.isArray(body.userIds) ? body.userIds : [];
+    const comment =
+      typeof body.comment === 'string' ?
+        body.comment.trim().slice(0, MAX_COMMENT_LENGTH)
+      : '';
+    const userIds: string[] = [
+      ...new Set(
+        (Array.isArray(body.userIds) ? body.userIds : []).filter(
+          (uid: unknown): uid is string =>
+            typeof uid === 'string' && isValidDbId(uid)
+        )
+      ),
+    ].slice(0, MAX_QUEUE_LENGTH) as string[];
 
     if (userIds.length === 0) {
       return NextResponse.json(
@@ -42,11 +68,15 @@ export async function POST(
       );
     }
 
-    const document = await findDocumentById(id, { includeAllowedUsers: true });
+    const document = await loadViewableDocument(id, auth);
     if (!document) {
+      return documentNotFoundResponse();
+    }
+
+    if (!isDocumentEditableStatus(document.status)) {
       return NextResponse.json(
-        { message: 'Hujjat topilmadi' },
-        { status: 404 }
+        { message: 'Ro‘yxatga olingan hujjatni yo‘naltirib bo‘lmaydi' },
+        { status: 400 }
       );
     }
 
@@ -65,9 +95,7 @@ export async function POST(
       );
     }
 
-    const targetUsers = await findUsersByIds(
-      userIds.filter((uid) => isValidDbId(uid))
-    );
+    const targetUsers = await findUsersByIds(userIds);
     const targetById = new Map(targetUsers.map((u) => [u.id, u]));
 
     const queue = [];
@@ -142,9 +170,7 @@ export async function POST(
       { status: 200 }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Serverda xatolik';
-    return NextResponse.json({ message: 'Serverda xatolik', error: message }, {
-      status: 500,
-    });
+    console.error('Hujjatni yo‘naltirishda xato:', error);
+    return NextResponse.json({ message: 'Serverda xatolik' }, { status: 500 });
   }
 }
