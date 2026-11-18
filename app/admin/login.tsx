@@ -77,7 +77,7 @@ export default function Login() {
     <div className="min-h-screen flex justify-center items-center bg-linear-to-br from-gray-50 to-gray-100 p-4">
       <div className="w-full max-w-md p-8 mx-auto rounded-2xl shadow-xl bg-white/90 backdrop-blur-sm border border-gray-200">
         {/* Logo */}
-        <div className="w-24 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl bg-[#0b1524] p-2 shadow-md">
+        <div className="w-24 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl bg-brand-ink p-2 shadow-md">
           <Image
             src={mexonLogo}
             alt="Mezon"
@@ -121,9 +121,9 @@ export default function Login() {
                   <FormLabel className="text-gray-700">Login</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="username kiriting"
+                      placeholder="Loginingizni kiriting"
                       {...field}
-                      className="h-12 text-base border-gray-300 focus:border-[#c7a75b] focus:ring-[#c7a75b]"
+                      className="h-12 text-base border-gray-300 focus:border-gold focus:ring-gold"
                     />
                   </FormControl>
                   <FormMessage />
@@ -140,9 +140,9 @@ export default function Login() {
                   <FormControl>
                     <Input
                       type="password"
-                      placeholder="••••••••"
+                      placeholder="Parolingizni kiriting"
                       {...field}
-                      className="h-12 text-base border-gray-300 focus:border-[#c7a75b] focus:ring-[#c7a75b]"
+                      className="h-12 text-base border-gray-300 focus:border-gold focus:ring-gold"
                     />
                   </FormControl>
                   <FormMessage />
@@ -152,7 +152,7 @@ export default function Login() {
 
             <Button
               type="submit"
-              className="w-full h-12 text-lg font-semibold bg-[#102c50] hover:bg-[#173c68] text-white shadow-sm transition-colors duration-150">
+              className="w-full h-12 text-lg font-semibold bg-primary hover:bg-primary-hover text-white shadow-sm transition-colors duration-150">
               Kirish
             </Button>
           </form>

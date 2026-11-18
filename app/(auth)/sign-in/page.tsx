@@ -83,7 +83,7 @@ export default function LoginPage() {
       style={{ backgroundImage: `url(${backgroundImage.src})` }}>
       <div className="w-full max-w-md p-8 mx-auto rounded-2xl shadow-xl bg-white/90 backdrop-blur-sm border border-gray-200">
         {/* Logo */}
-        <div className="w-24 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl bg-[#0b1524] p-2 shadow-md">
+        <div className="w-24 h-20 mx-auto mb-6 flex items-center justify-center rounded-2xl bg-brand-ink p-2 shadow-md">
           <Image
             src={mexonLogo}
             alt="Mezon"
@@ -121,9 +121,10 @@ export default function LoginPage() {
                   <FormLabel className="text-gray-700">Login</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="username kiriting"
+                      placeholder="Loginingizni kiriting"
+                      autoComplete="username"
                       {...field}
-                      className="h-12 text-base border-gray-300 focus:border-[#c7a75b] focus:ring-[#c7a75b]"
+                      className="h-12 text-base border-gray-300 focus:border-gold focus:ring-gold"
                     />
                   </FormControl>
                   <FormMessage />
@@ -140,9 +141,10 @@ export default function LoginPage() {
                   <FormControl>
                     <Input
                       type="password"
-                      placeholder="••••••••"
+                      placeholder="Parolingizni kiriting"
+                      autoComplete="current-password"
                       {...field}
-                      className="h-12 text-base border-gray-300 focus:border-[#c7a75b] focus:ring-[#c7a75b]"
+                      className="h-12 text-base border-gray-300 focus:border-gold focus:ring-gold"
                     />
                   </FormControl>
                   <FormMessage />
@@ -152,7 +154,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-12 text-lg font-semibold bg-[#102c50] hover:bg-[#173c68] text-white shadow-sm transition-colors duration-150">
+              className="w-full h-12 text-lg font-semibold bg-primary hover:bg-primary-hover text-white shadow-sm transition-colors duration-150">
               Kirish
             </Button>
           </form>
@@ -163,11 +165,11 @@ export default function LoginPage() {
           <p className="text-sm text-gray-600 mb-3">Hisobingiz yo‘qmi?</p>
           <Link
             href="/sign-up"
-            className="group inline-flex items-center gap-2 text-base font-medium text-[#102c50] hover:text-[#173c68] transition-colors duration-150">
+            className="group inline-flex items-center gap-2 text-base font-medium text-primary hover:text-primary-hover transition-colors duration-150">
             <UserPlus className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span className="relative">
               Ro‘yxatdan o‘tish
-              <span className="absolute -bottom-0.5 left-0 h-0.5 w-0 bg-[#c7a75b] transition-all duration-150 group-hover:w-full"></span>
+              <span className="absolute -bottom-0.5 left-0 h-0.5 w-0 bg-gold transition-all duration-150 group-hover:w-full"></span>
             </span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>

@@ -30,12 +30,12 @@ export default function DocumentClient({ documentId }: { documentId: string }) {
             href={dashboardPath}
             className={`
             inline-flex items-center justify-center gap-2
-            bg-[#102c50] hover:bg-[#173c68] active:bg-[#0b213d]
+            bg-primary hover:bg-primary-hover active:bg-primary-active
             text-white font-medium
             px-6 py-3 rounded-md
             shadow-sm
             transition-colors duration-150
-            focus:outline-none focus:ring-2 focus:ring-[#c7a75b] focus:ring-offset-2
+            focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2
           `}>
             <House className="h-5 w-5" />
             Bosh sahifaga qaytish

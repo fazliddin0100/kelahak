@@ -53,7 +53,7 @@ const Jurnal = () => {
   return (
     <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6">
       <div className="mb-5 flex items-center gap-3">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-slate-100 text-[#102c50]">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-slate-100 text-primary">
           <NotebookPen className="size-4" />
         </div>
         <div>
@@ -76,8 +76,8 @@ const Jurnal = () => {
               className={cn(
                 'flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150',
                 activeComponent === id ?
-                  'bg-[#edf2f8] text-[#102c50] shadow-[inset_0_-2px_0_#c7a75b]'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-[#102c50]'
+                  'bg-primary-soft text-primary shadow-[inset_0_-2px_0_#c7a75b]'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-primary'
               )}>
               <Icon className="size-3.5 shrink-0" strokeWidth={1.8} />
               <span className="whitespace-nowrap">{label}</span>

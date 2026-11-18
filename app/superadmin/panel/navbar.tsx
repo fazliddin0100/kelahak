@@ -43,13 +43,13 @@ export default function SuperAdminNavbar({
         <>
           <Link
             href="/admin/navbar"
-            className="hidden rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:border-[#c7a75b] hover:text-[#102c50] sm:inline-flex">
+            className="hidden rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:border-gold hover:text-primary sm:inline-flex">
             Kotibiyat paneli
           </Link>
           <button
             type="button"
             onClick={logout}
-            className="inline-flex items-center gap-1.5 rounded-md bg-[#102c50] px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-[#173c68] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c7a75b]">
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
             <LogOut className="size-3.5" />
             Chiqish
           </button>

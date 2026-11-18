@@ -110,10 +110,7 @@ const KelDocument = () => {
                     ))
                   : <TableRow>
                       <TableCell colSpan={4} className="py-16 text-center">
-                        <NotData />
-                        <p className="mt-2 text-xs text-slate-400">
-                          Navbatdagi hujjat yo‘q
-                        </p>
+                        <NotData description="Navbatdagi hujjat yo‘q" />
                       </TableCell>
                     </TableRow>
                   }

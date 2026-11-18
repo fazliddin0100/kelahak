@@ -32,6 +32,13 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-primary-soft: var(--primary-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-gold-soft: var(--gold-soft);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -50,18 +57,26 @@
   --card-foreground: oklch(0.25 0.035 255);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.25 0.035 255);
-  --primary: oklch(0.31 0.07 255);
+  /* Brend: to'q ko'k (navy) va oltin */
+  --primary: #102c50;
+  --primary-hover: #173c68;
+  --primary-active: #0b213d;
+  --primary-soft: #edf2f8;
   --primary-foreground: oklch(0.985 0 0);
+  --brand-ink: #0b1524;
+  --gold: #c7a75b;
+  --gold-light: #e4c474;
+  --gold-soft: #fbf8ef;
   --secondary: oklch(0.96 0.012 250);
-  --secondary-foreground: oklch(0.31 0.07 255);
+  --secondary-foreground: var(--primary);
   --muted: oklch(0.965 0.008 250);
   --muted-foreground: oklch(0.52 0.025 255);
   --accent: oklch(0.89 0.075 82);
-  --accent-foreground: oklch(0.31 0.07 255);
+  --accent-foreground: var(--primary);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.91 0.012 250);
   --input: oklch(0.91 0.012 250);
-  --ring: oklch(0.68 0.09 78);
+  --ring: var(--gold);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -69,12 +84,12 @@
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.25 0.035 255);
-  --sidebar-primary: oklch(0.31 0.07 255);
+  --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.96 0.012 250);
-  --sidebar-accent-foreground: oklch(0.31 0.07 255);
+  --sidebar-accent-foreground: var(--primary);
   --sidebar-border: oklch(0.91 0.012 250);
-  --sidebar-ring: oklch(0.68 0.09 78);
+  --sidebar-ring: var(--gold);
 }
 
 .dark {

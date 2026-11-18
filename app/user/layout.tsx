@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import NavbarUser from './(navbar)/navbar';
-import { UserPage } from './page';
+import { UserPage } from './UserPage';
 
 const UserPanelLayout = () => {
   const [page, setPage] = useState('file');

@@ -36,18 +36,18 @@ export default function SuperAdminGuide() {
       title="SuperAdmin qo‘llanmasi"
       description="Ushbu sayt uchun bajariladigan asosiy vazifalar"
       icon={BookOpen}
-      iconClassName="bg-slate-100 text-[#102c50]">
+      iconClassName="bg-slate-100 text-primary">
       <ol className="space-y-4 p-6">
         {TASKS.map((t, i) => (
           <li
             key={t.title}
             className="flex gap-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#102c50] text-sm font-bold text-white">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
               {i + 1}
             </span>
             <div>
               <h3 className="flex items-center gap-2 font-semibold text-slate-800">
-                <CheckCircle2 className="size-4 text-[#102c50]" />
+                <CheckCircle2 className="size-4 text-primary" />
                 {t.title}
               </h3>
               <p className="mt-1 text-sm leading-relaxed text-slate-600">

@@ -100,7 +100,7 @@ const Buyruq = () => {
                   {files.map((file, index) => (
                     <TableRow
                       key={file._id}
-                      className="border-slate-100 transition-colors hover:bg-sky-50/40">
+                      className="border-slate-100 transition-colors hover:bg-primary-soft/60">
                       <TableCell
                         className={`${adminTdClass} text-center font-medium`}>
                         {index + 1}

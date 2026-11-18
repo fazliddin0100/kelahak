@@ -10,8 +10,9 @@ import {
 } from '@/components/ui/table';
 import LoadingState from '@/components/LoadingState';
 import { useDocuments } from '@/hooks/useDocuments';
-import { cn } from '@/lib/utils';
 import NotData from '@/utils/not-data';
+import StatusBadge from '@/components/StatusBadge';
+import { ErrorState } from '@/components/EmptyState';
 import { toDate } from '@/lib/dateLike';
 import {
   Calendar,
@@ -23,18 +24,6 @@ import {
 import { useState } from 'react';
 import AmallarButtons from './amallar';
 
-const statusStyles: Record<string, string> = {
-  yangi: 'bg-sky-100 text-sky-700 ring-sky-200',
-  created: 'bg-sky-100 text-sky-700 ring-sky-200',
-  signed: 'bg-amber-100 text-amber-700 ring-amber-200',
-  registered: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
-  qabul_qilindi: 'bg-teal-100 text-teal-800 ring-teal-200',
-  ishjildda: 'bg-indigo-100 text-indigo-800 ring-indigo-200',
-  imzolandi: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
-  'rad etildi': 'bg-red-100 text-red-700 ring-red-200',
-  arxivlangan: 'bg-slate-100 text-slate-600 ring-slate-200',
-  forwarded: 'bg-violet-100 text-violet-700 ring-violet-200',
-};
 
 const DocumentTable = ({ userId }: { userId?: string }) => {
   const [search, setSearch] = useState('');
@@ -55,9 +44,7 @@ const DocumentTable = ({ userId }: { userId?: string }) => {
 
   if (error) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <NotData />
-      </div>
+      <ErrorState onRetry={refetch} />
     );
   }
 
@@ -78,7 +65,7 @@ const DocumentTable = ({ userId }: { userId?: string }) => {
             placeholder="Nomi yoki Reg/raqam bo'yicha qidirish..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-500/20"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/30"
           />
         </div>
       </div>
@@ -123,7 +110,7 @@ const DocumentTable = ({ userId }: { userId?: string }) => {
                 filteredDocuments.map((doc, index) => (
                   <TableRow
                     key={String(doc._id) || index}
-                    className="border-slate-100 transition-colors hover:bg-sky-50/40">
+                    className="border-slate-100 transition-colors hover:bg-primary-soft/60">
                     <TableCell className="text-center text-sm font-medium text-slate-500">
                       {index + 1}
                     </TableCell>
@@ -144,32 +131,26 @@ const DocumentTable = ({ userId }: { userId?: string }) => {
                       : '—'}
                     </TableCell>
                     <TableCell>
-                      <span
-                        className={cn(
-                          'inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
-                          statusStyles[doc.status ?? ''] ??
-                            'bg-slate-100 text-slate-600 ring-slate-200'
-                        )}>
-                        {doc.status === 'qabul_qilindi' ?
-                          'qabul qilindi'
-                        : doc.status === 'ishjildda' ?
-                          'ish jildda'
-                        : doc.status ?? 'nomaʼlum'}
-                      </span>
+                      <StatusBadge status={doc.status} />
                     </TableCell>
                     <TableCell className="text-center">
                       <AmallarButtons document={doc} onRefresh={refetch} />
                     </TableCell>
                   </TableRow>
                 ))
-              : <TableRow>
-                  <TableCell colSpan={7} className="py-16 text-center">
-                    <NotData />
-                  </TableCell>
-                </TableRow>
-              }
+              : null}
             </TableBody>
           </Table>
+          {filteredDocuments.length === 0 && (
+            <div className="sticky left-0 w-full">
+              {search ?
+                        <NotData
+                          title="Hech narsa topilmadi"
+                          description="Qidiruv so'zini o'zgartirib ko'ring."
+                        />
+                      : <NotData />}
+            </div>
+          )}
         </div>
       </div>
     </div>

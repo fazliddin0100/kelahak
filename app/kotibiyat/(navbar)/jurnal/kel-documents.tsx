@@ -75,7 +75,7 @@ const KelganHujjatlar = () => {
             {MOCK_ROWS.map((row, index) => (
               <TableRow
                 key={index}
-                className="border-slate-100 transition-colors hover:bg-sky-50/40">
+                className="border-slate-100 transition-colors hover:bg-primary-soft/60">
                 <TableCell className={`${jurnalTdClass} font-medium text-slate-800`}>
                   {row.regRaqam}
                 </TableCell>

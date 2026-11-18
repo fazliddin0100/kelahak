@@ -8,6 +8,7 @@ import { useTashkilot } from '@/hooks/useTashkilot';
 import { cn } from '@/lib/utils';
 import mexonLogo from '@/public/mexon-mark.png';
 import { DocumentStatus } from '@/types/document-status.enum';
+import StatusBadge from '@/components/StatusBadge';
 import {
   AlertCircle,
   ArrowLeft,
@@ -35,18 +36,6 @@ const getHomeRoute = (role: Role): string => {
   return roleRoutes[role] ?? '/';
 };
 
-const statusStyles: Record<string, string> = {
-  yangi: 'bg-sky-100 text-sky-700 ring-sky-200',
-  created: 'bg-sky-100 text-sky-700 ring-sky-200',
-  signed: 'bg-amber-100 text-amber-700 ring-amber-200',
-  registered: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
-  qabul_qilindi: 'bg-teal-100 text-teal-800 ring-teal-200',
-  ishjildda: 'bg-indigo-100 text-indigo-800 ring-indigo-200',
-  imzolandi: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
-  'rad etildi': 'bg-red-100 text-red-700 ring-red-200',
-  arxivlangan: 'bg-slate-100 text-slate-600 ring-slate-200',
-  forwarded: 'bg-violet-100 text-violet-700 ring-violet-200',
-};
 
 export default function DocumentClient({ documentId }: { documentId: string }) {
   const searchParams = useSearchParams();
@@ -74,7 +63,7 @@ export default function DocumentClient({ documentId }: { documentId: string }) {
           <p className="text-base font-semibold text-red-600">{error}</p>
           <Link
             href={getHomeRoute(currentRole)}
-            className="inline-flex items-center gap-2 rounded-md bg-[#102c50] px-4 py-2 text-sm text-white transition-colors duration-150 hover:bg-[#173c68]">
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm text-white transition-colors duration-150 hover:bg-primary-hover">
             <ArrowLeft className="size-4" />
             Bosh sahifa
           </Link>
@@ -99,7 +88,7 @@ export default function DocumentClient({ documentId }: { documentId: string }) {
       <header className="shrink-0 border-b border-slate-200 bg-white">
         <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#102c50] p-1.5">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary p-1.5">
               <Image
                 src={mexonLogo}
                 alt="Mezon"
@@ -121,14 +110,7 @@ export default function DocumentClient({ documentId }: { documentId: string }) {
                   {document.title || 'Hujjat'}
                 </p>
                 {document.status && (
-                  <span
-                    className={cn(
-                      'inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset',
-                      statusStyles[document.status] ??
-                        'bg-slate-100 text-slate-600 ring-slate-200'
-                    )}>
-                    {document.status}
-                  </span>
+                  <StatusBadge status={document.status} className="px-2 text-[10px]" />
                 )}
                 {document.grif && (
                   <span className="text-[10px] text-slate-500">

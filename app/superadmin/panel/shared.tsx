@@ -6,7 +6,7 @@ export function SaSectionShell({
   title,
   description,
   icon: Icon,
-  iconClassName = 'bg-slate-100 text-[#102c50]',
+  iconClassName = 'bg-slate-100 text-primary',
   children,
   actions,
 }: {

@@ -81,7 +81,7 @@ const FileArxiv: React.FC<Props> = ({ nomeklaturaId }) => {
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
         <Input
           placeholder="Hujjat nomidan qidirish..."
-          className="border-slate-200 bg-slate-50/80 pl-10 focus-visible:ring-sky-500/20"
+          className="border-slate-200 bg-slate-50/80 pl-10 focus-visible:ring-gold/30"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -117,7 +117,7 @@ const FileArxiv: React.FC<Props> = ({ nomeklaturaId }) => {
               {filteredFiles.map((file, index) => (
                 <TableRow
                   key={String(file._id)}
-                  className="border-slate-100 transition-colors hover:bg-sky-50/40">
+                  className="border-slate-100 transition-colors hover:bg-primary-soft/60">
                   <TableCell className={`${tdClass} text-center font-medium`}>
                     {file.registrationIndex ?? index + 1}
                   </TableCell>

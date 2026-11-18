@@ -142,11 +142,7 @@ export default function UserNomeklaturaView({
                   {nomeklatura.length === 0 ?
                     <TableRow>
                       <TableCell colSpan={9} className="py-16 text-center">
-                        <NotData />
-                        <p className="mt-2 text-xs text-slate-400">
-                          Hujjatda «Nomeklaturaga tikish» qilganingizdan keyin yoki
-                          admin sizga ish jild biriktirganda shu yerda ko‘rinadi
-                        </p>
+                        <NotData description="Hujjatda «Nomeklaturaga tikish» qilganingizdan keyin yoki admin sizga ish jild biriktirganda shu yerda ko‘rinadi" />
                       </TableCell>
                     </TableRow>
                   : nomeklatura.map((bolinmaItem) => (
@@ -177,7 +173,7 @@ export default function UserNomeklaturaView({
                           return (
                             <TableRow
                               key={id}
-                              className="border-slate-100 transition-colors hover:bg-sky-50/40">
+                              className="border-slate-100 transition-colors hover:bg-primary-soft/60">
                               <TableCell
                                 className={`${tdClass} text-center font-medium`}>
                                 {item.registrationIndex}

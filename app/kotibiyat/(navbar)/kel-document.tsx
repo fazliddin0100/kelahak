@@ -60,7 +60,7 @@ const KelDocument = () => {
               placeholder="Hujjat nomi yoki muallif bo‘yicha qidirish..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/30"
             />
           </div>
         </div>
@@ -146,10 +146,7 @@ const KelDocument = () => {
                     ))
                   : <TableRow>
                       <TableCell colSpan={7} className="py-16 text-center">
-                        <NotData />
-                        <p className="mt-2 text-xs text-slate-400">
-                          Hozircha ro‘yxatga olish uchun kelgan hujjat yo‘q
-                        </p>
+                        <NotData description="Hozircha ro‘yxatga olish uchun kelgan hujjat yo‘q" />
                       </TableCell>
                     </TableRow>
                   }

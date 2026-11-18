@@ -79,7 +79,7 @@ export default function SuperAdminUsers() {
       title="Barcha foydalanuvchilar"
       description="Barcha viloyatlar — ruxsat berish / bekor qilish (SuperAdmin)"
       icon={Users}
-      iconClassName="bg-slate-100 text-[#102c50]">
+      iconClassName="bg-slate-100 text-primary">
       <div className="p-5">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative max-w-md flex-1">
@@ -88,7 +88,7 @@ export default function SuperAdminUsers() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Qidirish..."
-              className="w-full rounded-lg border border-slate-200 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-[#c7a75b] focus:ring-2 focus:ring-[#c7a75b]/20"
+              className="w-full rounded-lg border border-slate-200 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/20"
             />
           </div>
           <p className="text-sm text-slate-500">

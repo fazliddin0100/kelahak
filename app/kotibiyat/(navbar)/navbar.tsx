@@ -17,7 +17,7 @@ const NAV_ITEMS = [
   { page: 'kel', label: 'Ro‘yxatga olish', Icon: Inbox },
   { page: 'jurnal', label: 'Jurnal', Icon: NotebookPen },
   { page: 'nomeklatura', label: 'Nomeklatura', Icon: Library },
-  { page: 'controlni', label: 'Controlni', Icon: CalendarClock },
+  { page: 'controlni', label: 'Nazorat', Icon: CalendarClock },
   { page: 'buyruq', label: 'Buyruq', Icon: BookMarked },
   { page: 'chat', label: 'Chat', Icon: MessageCircleMore },
 ] as const;

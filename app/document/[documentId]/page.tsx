@@ -262,7 +262,7 @@ const DocumentPage = () => {
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
         <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#102c50] p-1.5">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary p-1.5">
               <Image
                 src={mexonLogo}
                 alt="Mezon"
@@ -289,7 +289,7 @@ const DocumentPage = () => {
           <Button
             onClick={handleSave}
             disabled={isLoading || !canEdit}
-            className="shrink-0 gap-2 bg-[#102c50] px-5 text-white shadow-sm transition-colors duration-150 hover:bg-[#173c68] disabled:opacity-60">
+            className="shrink-0 gap-2 bg-primary px-5 text-white shadow-sm transition-colors duration-150 hover:bg-primary-hover disabled:opacity-60">
             {isLoading ?
               <Loader2 className="size-4 animate-spin" />
             : <Save className="size-4" />}
@@ -301,7 +301,7 @@ const DocumentPage = () => {
           </Button>
         </div>
 
-        <div className="border-t border-slate-200 bg-[#f4f6fa] px-4 py-2.5 sm:px-6">
+        <div className="border-t border-slate-200 bg-muted px-4 py-2.5 sm:px-6">
           <Inputs formValues={formValues} setFormValues={setFormValues} />
         </div>
       </header>

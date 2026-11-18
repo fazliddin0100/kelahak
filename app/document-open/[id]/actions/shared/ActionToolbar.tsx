@@ -83,7 +83,7 @@ export function ActionToolbar({
       icon: FileCheck,
       active: permissions.canRegister,
       className:
-        'border-[#102c50]/20 bg-[#102c50]/5 text-[#102c50] hover:bg-[#102c50]/10',
+        'border-primary/20 bg-primary/5 text-primary hover:bg-primary/10',
       onClick: handlers.onRegister,
       show: !shareOnly && showRegister && !permissions.forwardReviewOnly,
     },
@@ -93,7 +93,7 @@ export function ActionToolbar({
       icon: Send,
       active: permissions.canSend,
       className:
-        'border-[#c7a75b]/40 bg-[#c7a75b]/10 text-[#102c50] hover:bg-[#c7a75b]/20',
+        'border-gold/40 bg-gold/10 text-primary hover:bg-gold/20',
       onClick: handlers.onSend,
       show: shareOnly || !permissions.forwardReviewOnly,
     },
@@ -127,7 +127,7 @@ export function ActionToolbar({
         <Link href={homeHref}>
           <Button
             variant="outline"
-            className="h-9 gap-2 rounded-md border-slate-200 bg-white text-slate-700 hover:border-[#c7a75b] hover:bg-slate-50 hover:text-[#102c50]">
+            className="h-9 gap-2 rounded-md border-slate-200 bg-white text-slate-700 hover:border-gold hover:bg-slate-50 hover:text-primary">
             <ArrowLeft className="size-4" />
             <span className="hidden sm:inline">Orqaga</span>
           </Button>

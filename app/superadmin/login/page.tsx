@@ -42,7 +42,7 @@ export default function SuperAdminLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
       <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex size-14 items-center justify-center rounded-xl bg-[#102c50]">
+          <div className="mb-4 flex size-14 items-center justify-center rounded-xl bg-primary">
             <Shield className="size-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">SuperAdmin</h1>
@@ -70,7 +70,7 @@ export default function SuperAdminLoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="Parolingizni kiriting"
               className="h-11"
               autoComplete="current-password"
             />
@@ -78,7 +78,7 @@ export default function SuperAdminLoginPage() {
           <Button
             type="submit"
             disabled={loading}
-            className="h-11 w-full bg-[#102c50] hover:bg-[#173c68]">
+            className="h-11 w-full bg-primary hover:bg-primary-hover">
             {loading ? 'Kirish...' : 'Kirish'}
           </Button>
         </form>
@@ -87,7 +87,7 @@ export default function SuperAdminLoginPage() {
           Hisobingiz yo‘qmi?{' '}
           <Link
             href="/superadmin/register"
-            className="font-medium text-[#102c50] hover:underline">
+            className="font-medium text-primary hover:underline">
             Ro‘yxatdan o‘tish
           </Link>
         </p>

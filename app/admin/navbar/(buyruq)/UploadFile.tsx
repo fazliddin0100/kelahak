@@ -91,7 +91,7 @@ const FileModal = () => {
                 placeholder="Nomi"
                 value={nomi}
                 onChange={(e) => setNomi(e.target.value)}
-                className="border-slate-200 focus-visible:ring-sky-500/30"
+                className="border-slate-200 focus-visible:ring-gold/30"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -100,7 +100,7 @@ const FileModal = () => {
                 placeholder="Raqami"
                 value={raqami}
                 onChange={(e) => setRaqami(e.target.value)}
-                className="border-slate-200 focus-visible:ring-sky-500/30"
+                className="border-slate-200 focus-visible:ring-gold/30"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ const FileModal = () => {
                 placeholder="Maxfiylik darajasi"
                 value={maxfiylik}
                 onChange={(e) => setMaxfiylik(e.target.value)}
-                className="border-slate-200 focus-visible:ring-sky-500/30"
+                className="border-slate-200 focus-visible:ring-gold/30"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -118,7 +118,7 @@ const FileModal = () => {
                 placeholder="Sanasi"
                 value={sanasi}
                 onChange={(e) => setSanasi(e.target.value)}
-                className="border-slate-200 focus-visible:ring-sky-500/30"
+                className="border-slate-200 focus-visible:ring-gold/30"
               />
             </div>
           </div>

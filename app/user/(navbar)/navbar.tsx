@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { page: 'file', label: 'Hujjat', Icon: FileText },
   { page: 'kel', label: 'Kel/hujjat', Icon: Inbox },
   { page: 'nomeklatura', label: 'Nomeklatura', Icon: Library },
-  { page: 'controlni', label: 'Controlni', Icon: CalendarClock },
+  { page: 'controlni', label: 'Nazorat', Icon: CalendarClock },
   { page: 'buyruq', label: 'Buyruq', Icon: BookMarked },
   { page: 'chat', label: 'Chat', Icon: MessageCircleMore },
 ] as const;

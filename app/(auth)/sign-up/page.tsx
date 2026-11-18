@@ -199,7 +199,7 @@ export default function RegistrationPage() {
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-50 p-4">
       <div className="w-full max-w-xl bg-white rounded-2xl p-8 shadow-xl border border-gray-100">
-        <div className="mx-auto mb-6 flex h-20 w-24 items-center justify-center rounded-xl bg-[#0b1524] p-2 shadow-md">
+        <div className="mx-auto mb-6 flex h-20 w-24 items-center justify-center rounded-xl bg-brand-ink p-2 shadow-md">
           <Image
             src={mexonLogo}
             alt="Mezon"
@@ -334,7 +334,7 @@ export default function RegistrationPage() {
                     <FormControl>
                       <Input
                         {...field}
-                        placeholder="Login kiriting"
+                        placeholder="Masalan: aliyev_a"
                         autoComplete="off"
                         onChange={(e) => field.onChange(e.target.value.trim())}
                       />
@@ -345,7 +345,7 @@ export default function RegistrationPage() {
                           Tekshirilmoqda...
                         </span>
                       : loginValue.length === 0 ?
-                        <span className="text-gray-400">Login kiriting</span>
+                        <span className="text-gray-500">Kamida 3 belgi, bo‘sh joysiz</span>
                       : loginValue.length < 3 ?
                         <span className="text-amber-600">
                           Kamida 3 belgi bo‘lishi kerak
@@ -422,7 +422,7 @@ export default function RegistrationPage() {
             {/* Submit tugmasi */}
             <Button
               type="submit"
-              className="mt-4 h-12 w-full bg-[#102c50] text-base font-medium text-white transition-colors duration-150 hover:bg-[#173c68]"
+              className="mt-4 h-12 w-full bg-primary text-base font-medium text-white transition-colors duration-150 hover:bg-primary-hover"
               disabled={!canSubmit}>
               {form.formState.isSubmitting ?
                 'Ro‘yxatdan o‘tkazilmoqda...'

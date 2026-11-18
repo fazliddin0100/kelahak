@@ -96,11 +96,11 @@ export const TemplateGallery = ({ className }: TemplateGalleryProps) => {
                     }}
                     className={cn(
                       'relative flex h-[96px] w-[68px] items-center justify-center rounded-md border border-slate-200 bg-white transition-colors duration-150',
-                      'hover:border-[#102c50] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c7a75b]'
+                      'hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold'
                     )}
                     aria-label={`Create new document from ${template.label} template`}>
                     {isCreating && (
-                      <span className="size-4 animate-spin rounded-full border-2 border-[#102c50] border-t-transparent" />
+                      <span className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                     )}
                   </button>
 

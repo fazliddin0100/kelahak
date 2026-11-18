@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import NavbarKomandir from './(komandir-navbar)/navbar';
-import { KomandirPage } from './page';
+import { KomandirPage } from './KomandirPage';
 
 const KomandirLayout = () => {
   const [page, setPage] = useState('tayyrolangan');

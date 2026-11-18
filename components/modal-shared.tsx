@@ -5,13 +5,13 @@ import { type LucideIcon } from 'lucide-react';
 import { ReactNode } from 'react';
 
 export const modalTriggerPrimary =
-  'gap-2 border-[#102c50]/20 bg-[#102c50]/5 text-[#102c50] hover:bg-[#102c50]/10';
+  'gap-2 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10';
 
 export const modalTriggerSecondary =
   'gap-2 border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100';
 
 export const modalTriggerAccent =
-  'gap-2 border-[#c7a75b]/40 bg-[#c7a75b]/10 text-[#102c50] hover:bg-[#c7a75b]/20';
+  'gap-2 border-gold/40 bg-gold/10 text-primary hover:bg-gold/20';
 
 export const modalContentClass =
   'gap-0 overflow-hidden rounded-2xl border-slate-200 p-0 shadow-xl';
@@ -27,7 +27,7 @@ export const modalContentFormClass = cn(
 );
 
 export const modalFieldClass =
-  'border-slate-200 bg-slate-50/50 focus-visible:border-[#c7a75b] focus-visible:ring-[#c7a75b]/20';
+  'border-slate-200 bg-slate-50/50 focus-visible:border-gold focus-visible:ring-gold/20';
 
 export const modalLabelClass = 'text-xs font-medium uppercase tracking-wide text-slate-500';
 
@@ -35,7 +35,7 @@ export function ModalHeaderBlock({
   icon: Icon,
   title,
   description,
-  iconClassName = 'bg-slate-100 text-[#102c50]',
+  iconClassName = 'bg-slate-100 text-primary',
 }: {
   icon: LucideIcon;
   title: string;

@@ -28,7 +28,7 @@ export default function SuperAdminDashboard() {
         </p>
         <p className="max-w-md text-xs text-slate-500">
           SuperAdmin sifatida{' '}
-          <a href="/superadmin/login" className="text-[#102c50] underline">
+          <a href="/superadmin/login" className="text-primary underline">
             /superadmin/login
           </a>{' '}
           orqali kiring. PostgreSQL ulanishi va server holatini tekshiring.
@@ -36,7 +36,7 @@ export default function SuperAdminDashboard() {
         <button
           type="button"
           onClick={() => refetch()}
-          className="rounded-md bg-[#102c50] px-4 py-2 text-sm text-white hover:bg-[#173c68]">
+          className="rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-primary-hover">
           Qayta yuklash
         </button>
       </div>
@@ -48,7 +48,7 @@ export default function SuperAdminDashboard() {
       label: 'Jami foydalanuvchilar',
       value: stats.totalUsers,
       icon: Users,
-      className: 'from-slate-100 to-white border-slate-200 text-[#102c50]',
+      className: 'from-slate-100 to-white border-slate-200 text-primary',
     },
     {
       label: 'Tasdiqlanmagan',
@@ -68,7 +68,7 @@ export default function SuperAdminDashboard() {
       value: stats.superAdminCount,
       icon: Shield,
       className:
-        'from-slate-100 to-white border-slate-200 text-[#102c50]',
+        'from-slate-100 to-white border-slate-200 text-primary',
     },
   ];
 
@@ -90,14 +90,14 @@ export default function SuperAdminDashboard() {
         title="Viloyatlar bo‘yicha"
         description="Ro‘yxatdan o‘tgan foydalanuvchilar"
         icon={MapPin}
-        iconClassName="bg-slate-100 text-[#102c50]">
+        iconClassName="bg-slate-100 text-primary">
         <div className="grid gap-2 p-5 sm:grid-cols-2 lg:grid-cols-3">
           {Object.entries(stats.byProvince).map(([prov, count]) => (
             <div
               key={prov}
               className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3">
               <span className="text-sm font-medium text-slate-700">{prov}</span>
-              <span className="text-sm font-bold text-[#102c50]">{count}</span>
+              <span className="text-sm font-bold text-primary">{count}</span>
             </div>
           ))}
         </div>
@@ -106,14 +106,14 @@ export default function SuperAdminDashboard() {
       <SaSectionShell
         title="Rollar bo‘yicha"
         icon={Users}
-        iconClassName="bg-slate-100 text-[#102c50]">
+        iconClassName="bg-slate-100 text-primary">
         <div className="flex flex-wrap gap-2 p-5">
           {Object.entries(stats.byRole).map(([role, count]) => (
             <span
               key={role}
               className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
               {role}
-              <span className="rounded-full bg-[#102c50] px-1.5 py-0.5 text-[10px] text-white">
+              <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-white">
                 {count}
               </span>
             </span>

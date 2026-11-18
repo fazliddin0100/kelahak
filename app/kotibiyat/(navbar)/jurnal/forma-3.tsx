@@ -78,7 +78,7 @@ const Forma3 = () => {
               documents.map((doc) => (
                 <TableRow
                   key={doc._id}
-                  className="border-slate-100 transition-colors hover:bg-sky-50/40">
+                  className="border-slate-100 transition-colors hover:bg-primary-soft/60">
                   <TableCell className={`${jurnalTdClass} text-center`}>
                     <span className="font-medium text-slate-800 text-center">
                       {doc.registrationIndex || '—'}

@@ -152,7 +152,7 @@ export default function SuperAdminSecurity() {
     cn(
       'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
       tab === id
-        ? 'bg-[#102c50] text-white'
+        ? 'bg-primary text-white'
         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
     );
 
@@ -202,7 +202,7 @@ export default function SuperAdminSecurity() {
                     className={cn(
                       'rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset',
                       filterType === t
-                        ? 'bg-[#102c50] text-white ring-[#102c50]'
+                        ? 'bg-primary text-white ring-primary'
                         : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
                     )}>
                     {t ? TYPE_LABELS[t] ?? t : 'Hammasi'}

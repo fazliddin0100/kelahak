@@ -53,7 +53,7 @@ export default function Tayyrolangan() {
               placeholder="Hujjat nomi bo‘yicha qidirish..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/30"
             />
           </div>
         </div>
@@ -91,7 +91,7 @@ export default function Tayyrolangan() {
                     filteredData.map((item, index) => (
                       <TableRow
                         key={item._id}
-                        className="border-slate-100 transition-colors hover:bg-sky-50/40">
+                        className="border-slate-100 transition-colors hover:bg-primary-soft/60">
                         <TableCell className="text-center text-sm font-medium text-slate-500">
                           {index + 1}
                         </TableCell>

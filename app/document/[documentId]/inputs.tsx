@@ -25,10 +25,10 @@ interface InputsProps {
 }
 
 const toolBtn =
-  'h-9 gap-2 rounded-md border-slate-300 bg-white text-[#102c50] shadow-none transition-colors duration-150 hover:border-[#c7a75b] hover:bg-[#fbf8ef] hover:text-[#102c50] focus-visible:ring-[#c7a75b]/30';
+  'h-9 gap-2 rounded-md border-slate-300 bg-white text-primary shadow-none transition-colors duration-150 hover:border-gold hover:bg-gold-soft hover:text-primary focus-visible:ring-gold/30';
 
 const fieldClass =
-  'h-9 border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus-visible:border-[#c7a75b] focus-visible:ring-[#c7a75b]/30';
+  'h-9 border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus-visible:border-gold focus-visible:ring-gold/30';
 
 const Inputs = ({ formValues, setFormValues }: InputsProps) => {
   const [isImzoModalOpen, setImzoModalOpen] = React.useState(false);

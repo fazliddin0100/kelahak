@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import StatusBadge from '@/components/StatusBadge';
 import LoadingState from '@/components/LoadingState';
 import {
   Table,
@@ -49,7 +50,7 @@ const KelDocument = () => {
               placeholder="Hujjat nomi bo‘yicha qidirish..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/30"
             />
           </div>
         </div>
@@ -96,7 +97,7 @@ const KelDocument = () => {
                       return (
                         <TableRow
                           key={item._id}
-                          className="border-slate-100 transition-colors hover:bg-sky-50/40">
+                          className="border-slate-100 transition-colors hover:bg-primary-soft/60">
                           <TableCell className="text-center text-sm font-medium text-slate-500">
                             {index + 1}
                           </TableCell>
@@ -117,15 +118,7 @@ const KelDocument = () => {
                             : '—'}
                           </TableCell>
                           <TableCell>
-                            <span
-                              className={cn(
-                                'inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
-                                item.status === 'in_progress_forward' ?
-                                  'bg-violet-100 text-violet-700 ring-violet-200'
-                                : 'bg-sky-100 text-sky-700 ring-sky-200'
-                              )}>
-                              {item.status ?? 'yangi'}
-                            </span>
+                            <StatusBadge status={item.status ?? 'yangi'} />
                           </TableCell>
                           <TableCell className="text-sm text-slate-600">
                             {queueCount > 0 ?
@@ -140,10 +133,7 @@ const KelDocument = () => {
                     })
                   : <TableRow>
                       <TableCell colSpan={6} className="py-16 text-center">
-                        <NotData />
-                        <p className="mt-2 text-xs text-slate-400">
-                          Kelgan hujjat topilmadi
-                        </p>
+                        <NotData description="Kelgan hujjat topilmadi" />
                       </TableCell>
                     </TableRow>
                   }

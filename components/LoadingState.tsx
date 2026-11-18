@@ -28,10 +28,10 @@ export default function LoadingState({
           className="absolute inset-0 animate-[spin_5s_linear_infinite] motion-reduce:animate-none"
           aria-hidden="true"
         >
-          <span className="absolute left-1/2 top-0 size-1 -translate-x-1/2 rounded-full bg-[#c7a75b]" />
-          <span className="absolute right-0.5 top-1/2 size-1 -translate-y-1/2 rounded-full bg-[#c7a75b]/70" />
-          <span className="absolute bottom-0 left-1/2 size-1 -translate-x-1/2 rounded-full bg-[#c7a75b]/45" />
-          <span className="absolute left-0.5 top-1/2 size-1 -translate-y-1/2 rounded-full bg-[#c7a75b]/70" />
+          <span className="absolute left-1/2 top-0 size-1 -translate-x-1/2 rounded-full bg-gold" />
+          <span className="absolute right-0.5 top-1/2 size-1 -translate-y-1/2 rounded-full bg-gold/70" />
+          <span className="absolute bottom-0 left-1/2 size-1 -translate-x-1/2 rounded-full bg-gold/45" />
+          <span className="absolute left-0.5 top-1/2 size-1 -translate-y-1/2 rounded-full bg-gold/70" />
         </span>
         <Image
           src={mexonMark}
@@ -61,14 +61,14 @@ export default function LoadingState({
           className="absolute inset-0 animate-[spin_5s_linear_infinite] motion-reduce:animate-none"
           aria-hidden="true"
         >
-          <span className="absolute left-1/2 top-0 size-1.5 -translate-x-1/2 rounded-full bg-[#e4c474]" />
-          <span className="absolute right-1 top-1/4 size-1.5 rounded-full bg-[#e4c474]/70" />
-          <span className="absolute right-0 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-[#e4c474]/50" />
-          <span className="absolute bottom-1/4 right-1 size-1.5 rounded-full bg-[#e4c474]/35" />
-          <span className="absolute bottom-0 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-[#e4c474]/30" />
-          <span className="absolute bottom-1/4 left-1 size-1.5 rounded-full bg-[#e4c474]/35" />
-          <span className="absolute left-0 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-[#e4c474]/50" />
-          <span className="absolute left-1 top-1/4 size-1.5 rounded-full bg-[#e4c474]/70" />
+          <span className="absolute left-1/2 top-0 size-1.5 -translate-x-1/2 rounded-full bg-gold-light" />
+          <span className="absolute right-1 top-1/4 size-1.5 rounded-full bg-gold-light/70" />
+          <span className="absolute right-0 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-gold-light/50" />
+          <span className="absolute bottom-1/4 right-1 size-1.5 rounded-full bg-gold-light/35" />
+          <span className="absolute bottom-0 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-gold-light/30" />
+          <span className="absolute bottom-1/4 left-1 size-1.5 rounded-full bg-gold-light/35" />
+          <span className="absolute left-0 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-gold-light/50" />
+          <span className="absolute left-1 top-1/4 size-1.5 rounded-full bg-gold-light/70" />
         </span>
         <Image
           src={mexonMark}

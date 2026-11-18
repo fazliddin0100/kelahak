@@ -150,7 +150,7 @@ export function ForwardQueueSidebar({
             <ol className="space-y-1 text-xs text-slate-700">
               {existingQueue.map((item, i) => (
                 <li key={i} className="flex gap-2">
-                  <span className="font-bold text-[#102c50]">{i + 1}.</span>
+                  <span className="font-bold text-primary">{i + 1}.</span>
                   <span>
                     {item.fullName}
                     {item.position ? ` — ${item.position}` : ''}
@@ -209,7 +209,7 @@ export function ForwardQueueSidebar({
                       className="min-w-0 flex-1 cursor-pointer text-xs leading-snug">
                       <span className="font-medium text-slate-800">
                         {checked ?
-                          <span className="mr-1.5 inline-flex size-4 items-center justify-center rounded-full bg-[#102c50] text-[10px] font-bold text-white">
+                          <span className="mr-1.5 inline-flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
                             {orderIndex + 1}
                           </span>
                         : null}
@@ -246,8 +246,8 @@ export function ForwardQueueSidebar({
         </div>
 
         {selectedIds.length > 0 ?
-          <div className="rounded-lg border border-[#c7a75b]/30 bg-[#c7a75b]/10 p-2">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[#102c50]">
+          <div className="rounded-lg border border-gold/30 bg-gold/10 p-2">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-primary">
               Tanlangan navbat
             </p>
             <ol className="space-y-0.5 text-xs text-slate-700">
@@ -268,7 +268,7 @@ export function ForwardQueueSidebar({
         <Button
           disabled={submitting || selectedIds.length === 0}
           onClick={handleForward}
-          className="w-full gap-2 rounded-md bg-[#102c50] text-white transition-colors duration-150 hover:bg-[#173c68]">
+          className="w-full gap-2 rounded-md bg-primary text-white transition-colors duration-150 hover:bg-primary-hover">
           {submitting ?
             <Loader2 className="size-4 animate-spin" />
           : <Send className="size-4" />}

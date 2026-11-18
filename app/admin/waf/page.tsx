@@ -95,7 +95,7 @@ export default function WafAdminPage() {
                     return (
                       <TableRow
                         key={ip}
-                        className="border-slate-100 transition-colors hover:bg-sky-50/40">
+                        className="border-slate-100 transition-colors hover:bg-primary-soft/60">
                         <TableCell
                           className={`${adminTdClass} text-center font-medium`}>
                           {index + 1}

@@ -53,7 +53,7 @@ const UsersPage = () => {
               placeholder="Foydalanuvchini qidirish..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/30"
             />
           </div>
           <p className="text-sm text-slate-500">
@@ -99,7 +99,7 @@ const UsersPage = () => {
                     return (
                       <div
                         key={user.userId}
-                        className="grid grid-cols-10 items-center transition-colors hover:bg-sky-50/40">
+                        className="grid grid-cols-10 items-center transition-colors hover:bg-primary-soft/60">
                         <div className="px-3 py-3 text-sm text-slate-500">
                           {index + 1}
                         </div>

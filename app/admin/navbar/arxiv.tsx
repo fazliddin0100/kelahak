@@ -76,7 +76,7 @@ const Arxiv = () => {
               {arxivData.map((item) => (
                 <TableRow
                   key={item.raqam}
-                  className="border-slate-100 transition-colors hover:bg-sky-50/40">
+                  className="border-slate-100 transition-colors hover:bg-primary-soft/60">
                   <TableCell className={`${adminTdClass} font-medium`}>
                     {item.raqam}
                   </TableCell>

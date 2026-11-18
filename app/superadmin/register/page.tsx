@@ -191,7 +191,7 @@ export default function SuperAdminRegisterPage() {
   if (!setup) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-        <Loader2 className="size-6 animate-spin text-[#102c50]" />
+        <Loader2 className="size-6 animate-spin text-primary" />
       </div>
     );
   }
@@ -200,7 +200,7 @@ export default function SuperAdminRegisterPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
         <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-[#102c50]">
+          <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-primary">
             <Shield className="size-6 text-white" />
           </div>
           <h1 className="text-xl font-bold text-slate-900">
@@ -212,7 +212,7 @@ export default function SuperAdminRegisterPage() {
           </p>
           <Button
             asChild
-            className="mt-6 w-full bg-[#102c50] hover:bg-[#173c68]">
+            className="mt-6 w-full bg-primary hover:bg-primary-hover">
             <Link href="/superadmin/login">Kirish sahifasiga</Link>
           </Button>
         </div>
@@ -224,7 +224,7 @@ export default function SuperAdminRegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 py-10">
       <div className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-xl bg-[#102c50]">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-primary">
             <Shield className="size-6 text-white" />
           </div>
           <div>
@@ -384,7 +384,7 @@ export default function SuperAdminRegisterPage() {
                 Bootstrap kalit
               </label>
               <div className="relative">
-                <KeyRound className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#102c50]" />
+                <KeyRound className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary" />
                 <Input
                   id="sa-bootstrap-key"
                   className="pl-10"
@@ -407,7 +407,7 @@ export default function SuperAdminRegisterPage() {
             <Button
               type="submit"
               disabled={!canSubmit}
-              className="w-full bg-[#102c50] hover:bg-[#173c68]">
+              className="w-full bg-primary hover:bg-primary-hover">
               {form.formState.isSubmitting
                 ? 'Yaratilmoqda...'
                 : 'SuperAdmin yaratish'}
@@ -419,7 +419,7 @@ export default function SuperAdminRegisterPage() {
           Hisob mavjudmi?{' '}
           <Link
             href="/superadmin/login"
-            className="text-[#102c50] hover:underline">
+            className="text-primary hover:underline">
             Kirish
           </Link>
         </p>

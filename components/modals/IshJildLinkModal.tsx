@@ -142,7 +142,7 @@ export default function IshJildLinkModal({
             placeholder="Indeks, nom yoki grif bo‘yicha qidirish..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-500/20"
+            className="w-full rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/30"
           />
         </div>
 
