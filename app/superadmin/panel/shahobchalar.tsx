@@ -15,9 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/sonner';
 import { provinces } from '@/lib/registrationConstants';
-import { Building2, Loader2, Plus } from 'lucide-react';
+import { Building2, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
+import { DeleteShahobchaDialog, EditShahobchaDialog, type ShahobchaTarget } from './shahobcha-actions';
 import { SaSectionShell } from './shared';
 
 interface ShahobchaRow {
@@ -61,6 +62,8 @@ export default function SuperAdminShahobchalar() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
+  const [editTarget, setEditTarget] = useState<ShahobchaTarget | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ShahobchaTarget | null>(null);
 
   const set = (key: keyof typeof EMPTY_FORM) => (value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -126,7 +129,7 @@ export default function SuperAdminShahobchalar() {
             description="“Shahobcha qo‘shish” tugmasi orqali birinchi shahobcha va uning adminini yarating."
           />
         : <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="w-full min-w-[720px] text-sm">
+            <table className="w-full min-w-[820px] text-sm">
               <thead className="bg-slate-50/90 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-3 py-3">Shahobcha</th>
@@ -134,6 +137,7 @@ export default function SuperAdminShahobchalar() {
                   <th className="px-3 py-3">Admin (kotibiyat)</th>
                   <th className="px-3 py-3">Xodimlar</th>
                   <th className="px-3 py-3">Ruxsat kutmoqda</th>
+                  <th className="px-3 py-3 text-right">Amallar</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -158,6 +162,26 @@ export default function SuperAdminShahobchalar() {
                           {r.pendingCount}
                         </span>
                       : <span className="text-slate-400">0</span>}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditTarget(r)}
+                          aria-label={`${r.name} — o‘zgartirish`}
+                          title="O‘zgartirish"
+                          className="flex size-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-primary-soft hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
+                          <Pencil className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(r)}
+                          aria-label={`${r.name} — o‘chirish`}
+                          title="O‘chirish"
+                          className="flex size-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400">
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -238,6 +262,8 @@ export default function SuperAdminShahobchalar() {
           </form>
         </DialogContent>
       </Dialog>
+      <EditShahobchaDialog target={editTarget} onClose={() => setEditTarget(null)} onDone={load} />
+      <DeleteShahobchaDialog target={deleteTarget} onClose={() => setDeleteTarget(null)} onDone={load} />
     </SaSectionShell>
   );
 }

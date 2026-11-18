@@ -167,3 +167,95 @@ export async function createShahobchaWithAdmin(input: CreateShahobchaInput) {
 
   return { id: shahobchaId, name, province, adminUserId: userId };
 }
+
+/**
+ * Shahobchani o'zgartirish. Nom o'zgarsa, xodimlarning `organ` maydoni ham yangilanadi.
+ * Viloyatni faqat shahobchada xodim (admindan boshqa) bo'lmasa o'zgartirish mumkin;
+ * bunda adminning viloyati ham yangilanadi.
+ */
+export async function updateShahobcha(id: string, input: { name: unknown; province: unknown }) {
+  const name = clean(input.name);
+  const province = clean(input.province);
+  if (!name || !province) throw new ShahobchaInputError('Nom va viloyat majburiy');
+  if (name.length > MAX_FIELD_LENGTH) {
+    throw new ShahobchaInputError(`Nom ${MAX_FIELD_LENGTH} belgidan oshmasin`);
+  }
+  if (!(provinces as readonly string[]).includes(province)) {
+    throw new ShahobchaInputError('Viloyat ro‘yxatdan tanlanishi kerak');
+  }
+
+  await connectToDatabase();
+  const current = await prisma.shahobcha.findUnique({
+    where: { id },
+    include: { jobs: { select: { id: true, userId: true, roleId: true, role: { select: { role: true } } } } },
+  });
+  if (!current) throw new ShahobchaInputError('Shahobcha topilmadi', 404);
+
+  const provinceChanged = current.province !== province;
+  const admins = current.jobs.filter((j) => j.role.role === 'admin');
+  const staffCount = current.jobs.length - admins.length;
+  if (provinceChanged && staffCount > 0) {
+    throw new ShahobchaInputError(
+      `Shahobchada ${staffCount} ta xodim bor — viloyatni o‘zgartirib bo‘lmaydi. Faqat nomini o‘zgartirish mumkin.`,
+      409
+    );
+  }
+
+  if (current.name !== name || provinceChanged) {
+    const taken = await prisma.shahobcha.findUnique({
+      where: { province_name: { province, name } },
+      select: { id: true },
+    });
+    if (taken && taken.id !== id) {
+      throw new ShahobchaInputError('Bu viloyatda shunday nomli shahobcha bor', 409);
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.shahobcha.update({ where: { id }, data: { name, province } });
+    await tx.job.updateMany({ where: { shahobchaId: id }, data: { organ: name } });
+    if (provinceChanged && admins.length > 0) {
+      await tx.personal.updateMany({
+        where: { userId: { in: admins.map((a) => a.userId) } },
+        data: { province },
+      });
+      await tx.role.updateMany({
+        where: { id: { in: admins.map((a) => a.roleId) } },
+        data: { province },
+      });
+    }
+  });
+
+  return { id, name, province };
+}
+
+/**
+ * Shahobchani o'chirish: undagi admin va xodimlarning kirish ruxsati olinadi,
+ * faol sessiyalari yopiladi, shahobchaga bog'lanish uziladi.
+ * Foydalanuvchilar va ularning hujjatlari o'chirilmaydi.
+ */
+export async function deleteShahobcha(id: string) {
+  await connectToDatabase();
+  const current = await prisma.shahobcha.findUnique({
+    where: { id },
+    include: { jobs: { select: { userId: true } } },
+  });
+  if (!current) throw new ShahobchaInputError('Shahobcha topilmadi', 404);
+
+  const userIds = current.jobs.map((j) => j.userId);
+  await prisma.$transaction(async (tx) => {
+    if (userIds.length > 0) {
+      await tx.job.updateMany({
+        where: { shahobchaId: id },
+        data: { isUserTrue: false, shahobchaId: null },
+      });
+      await tx.userSession.updateMany({
+        where: { userId: { in: userIds }, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+    await tx.shahobcha.delete({ where: { id } });
+  });
+
+  return { id, name: current.name, affectedUsers: userIds.length };
+}
