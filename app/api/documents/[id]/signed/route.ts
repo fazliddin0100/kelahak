@@ -83,7 +83,7 @@ export async function POST(
       return NextResponse.json({ message: "Noto'g'ri ID" }, { status: 400 });
     }
 
-    const auth = await requireApiAuth(request);
+    const auth = await requireApiAuth(request, { permission: 'sign_document' });
     if (isAuthError(auth)) return auth;
     const { userId, user } = auth;
 

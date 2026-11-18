@@ -58,7 +58,7 @@ export async function PUT(
     if (!id || !isValidDbId(id)) {
       return NextResponse.json({ message: "Noto'g'ri ID" }, { status: 400 });
     }
-    const auth = await requireApiAuth(request);
+    const auth = await requireApiAuth(request, { permission: 'edit_document' });
     if (isAuthError(auth)) return auth;
     const { userId, role } = auth;
 

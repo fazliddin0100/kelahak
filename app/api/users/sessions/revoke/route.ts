@@ -5,6 +5,7 @@ import {
   isValidDbId,
   setJobAccessApproved,
 } from '@/lib/db/user';
+import { canAdminManage } from '@/lib/adminScope';
 import { prisma } from '@/lib/prisma';
 import { requireAdminOperator } from '@/lib/userAccess';
 import { NextRequest, NextResponse } from 'next/server';
@@ -23,14 +24,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const adminProvince = admin.personal?.province;
-
-    if (!adminProvince) {
-      return NextResponse.json(
-        { error: "Adminning province ma'lumoti topilmadi" },
-        { status: 403 },
-      );
-    }
 
     const body = await request.json();
     const { userId } = body;
@@ -54,13 +47,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const targetProvince = user.personal?.province;
-
-    if (!targetProvince || adminProvince !== targetProvince) {
+    if (!canAdminManage(admin, user)) {
       return NextResponse.json(
         {
           error:
-            'Siz bu foydalanuvchini bloklash huquqiga ega emassiz. Faqat o‘z viloyatingizdagi foydalanuvchilarni boshqarishingiz mumkin.',
+            'Siz bu foydalanuvchini bloklash huquqiga ega emassiz. Faqat o‘z shahobchangizdagi foydalanuvchilarni boshqarishingiz mumkin.',
         },
         { status: 403 },
       );

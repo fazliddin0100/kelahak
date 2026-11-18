@@ -1,7 +1,7 @@
 // app/api/users/route.ts
+import { findUsersForAdmin } from '@/lib/adminScope';
 import {
   findUserById,
-  findUsersInProvince,
   serializeJobForAdminList,
   serializePersonal,
 } from '@/lib/db/user';
@@ -13,29 +13,34 @@ export async function GET(request: NextRequest) {
     const adminCheck = await requireAdminOperator(request);
     if (adminCheck instanceof NextResponse) return adminCheck;
 
-    const userId = adminCheck.userId;
-
-    const user = await findUserById(userId);
-    if (!user) {
+    const admin = await findUserById(adminCheck.userId);
+    if (!admin) {
       return NextResponse.json(
         { error: 'Foydalanuvchi topilmadi' },
         { status: 404 }
       );
     }
 
-    if (!user.personal) {
+    if (!admin.personal) {
       return NextResponse.json(
         { error: 'Personal topilmadi' },
         { status: 404 }
       );
     }
 
-    const usersInSameProvince = await findUsersInProvince(user.personal.province);
+    const users = await findUsersForAdmin(admin);
 
-    const result = usersInSameProvince.map((u) => ({
+    const result = users.map((u) => ({
       userId: u.id,
       personal: u.personal ? serializePersonal(u.personal) : null,
-      job: u.job ? serializeJobForAdminList(u.job) : null,
+      job:
+        u.job ?
+          {
+            ...serializeJobForAdminList(u.job),
+            permissions: u.job.role?.permissions ?? [],
+            shahobcha: u.job.shahobcha?.name ?? '',
+          }
+        : null,
     }));
 
     return NextResponse.json({ users: result }, { status: 200 });

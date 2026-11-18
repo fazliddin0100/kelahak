@@ -19,6 +19,9 @@ export interface IJob {
   role: string;
   roleName?: string;
   isUserTrue: boolean;
+  /** Admin ro'yxatida: userning huquqlari va shahobchasi */
+  permissions?: string[];
+  shahobcha?: string;
   createdAt: string;
   updatedAt: string;
   __v: number;

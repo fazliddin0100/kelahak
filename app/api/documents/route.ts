@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   try {
     await connectToDatabase();
 
-    const auth = await requireApiAuth(request);
+    const auth = await requireApiAuth(request, { permission: 'create_document' });
     if (isAuthError(auth)) return auth;
     const { userId, user } = auth;
 

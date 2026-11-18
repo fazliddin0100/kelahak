@@ -25,7 +25,7 @@ interface UserRequest {
   name: string;
   sName: string;
   province: string;
-  organ: string;
+  shahobchaId: string;
   department: string;
   position: string;
   militaryRank: string;
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const name = cleanText(body.name);
     const sName = cleanText(body.sName);
     const cleanProvince = cleanText(body.province);
-    const organ = cleanText(body.organ);
+    const shahobchaId = cleanText(body.shahobchaId);
     const cleanPosition = cleanText(body.position);
     const cleanDepartment = cleanText(body.department);
     const cleanMilitaryRank = cleanText(body.militaryRank);
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       name,
       sName,
       cleanProvince,
-      organ,
+      shahobchaId,
       cleanPosition,
       cleanDepartment,
       cleanMilitaryRank,
@@ -105,6 +105,19 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Shahobcha shu viloyatga tegishli bo'lishi kerak
+    const shahobcha = await prisma.shahobcha.findFirst({
+      where: { id: shahobchaId, province: cleanProvince },
+      select: { id: true, name: true },
+    });
+    if (!shahobcha) {
+      return NextResponse.json(
+        { message: 'Shahobcha ro‘yxatdan tanlanishi kerak' },
+        { status: 400 }
+      );
+    }
+    const organ = shahobcha.name;
 
     // Validatsiya
     if (!validator.isLength(cleanLogin, { min: 3, max: 50 })) {
@@ -138,7 +151,10 @@ export async function POST(request: NextRequest) {
       cleanDepartment,
       cleanMilitaryRank
     );
-    const autoRole = normalizeRoleForDb(detectedRole);
+    // Shahobcha admini (kotibiyat) faqat SuperAdmin tomonidan yaratiladi —
+    // o'zi ro'yxatdan o'tgan foydalanuvchi admin bo'la olmaydi.
+    const normalizedRole = normalizeRoleForDb(detectedRole);
+    const autoRole = normalizedRole === 'admin' || normalizedRole === 'superAdmin' ? 'user' : normalizedRole;
     /**
      * Rol foydalanuvchi o‘zi yozgan lavozimdan taxmin qilinadi, shuning uchun
      * hech bir akkaunt o‘zini o‘zi faollashtira olmaydi: admin (kotibiyat)
@@ -211,6 +227,7 @@ export async function POST(request: NextRequest) {
           department: cleanDepartment,
           militaryRank: cleanMilitaryRank,
           isUserTrue,
+          shahobchaId: shahobcha.id,
         },
       });
     });

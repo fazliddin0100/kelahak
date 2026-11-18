@@ -6,6 +6,7 @@ import SuperAdminDashboard from './dashboard';
 import SuperAdminUsers from './users';
 import SuperAdminGuide from './guide';
 import SuperAdminSecurity from './security';
+import SuperAdminShahobchalar from './shahobchalar';
 
 export default function SuperAdminPanelPage() {
   const [page, setPage] = useState('dashboard');
@@ -16,6 +17,7 @@ export default function SuperAdminPanelPage() {
       <main className="institutional-content min-h-screen w-full">
         {page === 'dashboard' && <SuperAdminDashboard />}
         {page === 'security' && <SuperAdminSecurity />}
+        {page === 'shahobchalar' && <SuperAdminShahobchalar />}
         {page === 'users' && <SuperAdminUsers />}
         {page === 'guide' && <SuperAdminGuide />}
       </main>

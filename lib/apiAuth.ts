@@ -6,7 +6,7 @@ import { findUserById, type UserWithRelations } from '@/lib/db/user';
 import connectToDatabase from '@/lib/prisma';
 import { readRequestIdentity } from '@/lib/userid';
 import type { DbRole } from '@/lib/roles';
-import { COMMANDER_ROLES } from '@/lib/roles';
+import { COMMANDER_ROLES, PERMISSIONS } from '@/lib/roles';
 import { touchUserSession } from '@/lib/sessionFiles';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -110,9 +110,16 @@ export async function requireApiAuth(
 
   const permissions = user.job.role.permissions ?? [];
 
-  if (options?.permission && !permissions.includes(options.permission)) {
+  const fullAccess = dbRole === 'admin' || dbRole === 'superAdmin';
+  if (options?.permission && !fullAccess && !permissions.includes(options.permission)) {
+    const label =
+      (PERMISSIONS as Record<string, string>)[options.permission] ?? options.permission;
     return NextResponse.json(
-      { message: 'Bu amal uchun ruxsat yo‘q', code: 'FORBIDDEN' },
+      {
+        message: `Sizda «${label}» huquqi yo‘q. Shahobcha adminiga murojaat qiling.`,
+        code: 'FORBIDDEN',
+        permission: options.permission,
+      },
       { status: 403 }
     );
   }

@@ -37,6 +37,7 @@ const PUBLIC_AUTH_API = [
   '/api/superadmin/login',
   '/api/superadmin/register',
   '/api/superadmin/setup-status',
+  '/api/shahobcha',
 ];
 
 /** Middleware auth o‘tkazmaydi — route ichida kalit tekshiriladi */

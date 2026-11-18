@@ -1,12 +1,16 @@
 'use client';
 
+import GrantAccessModal from '@/components/modals/GrantAccessModal';
 import useGrantUser from '@/hooks/useGrantUserHook';
+import { isAssignableRole, ROLE_LABELS } from '@/lib/roles';
+import type { IUserPopulated } from '@/types/user';
 import LoadingState from '@/components/LoadingState';
 import useRevokeUser from '@/hooks/useRevokUserHook';
 import { useSessionsUsers } from '@/hooks/useSessionsUsers';
 import { cn } from '@/lib/utils';
 import {
   CircleUserRound,
+  ShieldCheck,
   Search,
   UserRoundCheck,
   UserRoundX,
@@ -20,6 +24,7 @@ const UsersPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const { revokeUser, loadingIds } = useRevokeUser(refetch);
   const { grantUser, loadingIds: grantLoadingIds } = useGrantUser(refetch);
+  const [grantTarget, setGrantTarget] = useState<IUserPopulated | null>(null);
 
   const filteredUsers = users?.filter((user) => {
     const fullName =
@@ -80,14 +85,14 @@ const UsersPage = () => {
               <div className="grid grid-cols-10 gap-0 border-b border-slate-200 bg-slate-50/90 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <div className="px-3 py-3">№</div>
                 <div className="px-3 py-3" />
-                <div className="px-3 py-3">Bo‘lim</div>
+                <div className="px-3 py-3">Shahobcha</div>
                 <div className="px-3 py-3">Unvon</div>
                 <div className="px-3 py-3">F.I.Sh</div>
-                <div className="px-3 py-3">Bo‘linma</div>
+                <div className="px-3 py-3">Bo‘lim</div>
                 <div className="px-3 py-3">Lavozim</div>
                 <div className="px-3 py-3">Holat</div>
                 <div className="px-3 py-3">Chiqarish</div>
-                <div className="px-3 py-3">Ruxsat</div>
+                <div className="px-3 py-3">Ruxsat / huquq</div>
               </div>
               <div className="divide-y divide-slate-100">
                 {filteredUsers?.length === 0 ?
@@ -107,7 +112,7 @@ const UsersPage = () => {
                           <CircleUserRound className="size-5 text-slate-400" />
                         </div>
                         <div className="px-3 py-3 text-sm">
-                          {user.job?.organ}
+                          {user.job?.shahobcha || user.job?.organ}
                         </div>
                         <div className="px-3 py-3 text-sm">
                           {user.job?.militaryRank}
@@ -131,6 +136,14 @@ const UsersPage = () => {
                             )}>
                             {approved ? 'Ruxsat bor' : 'Kutilmoqda'}
                           </span>
+                          {user.job?.roleName && (
+                            <p className="mt-1 text-xs text-slate-500">
+                              {isAssignableRole(user.job.roleName) || user.job.roleName === 'admin' ?
+                                ROLE_LABELS[user.job.roleName as keyof typeof ROLE_LABELS]
+                              : user.job.roleName}
+                              {approved && user.job.permissions ? ` · ${user.job.permissions.length} ta huquq` : ''}
+                            </p>
+                          )}
                         </div>
                         <div className="px-3 py-3">
                           <button
@@ -143,16 +156,26 @@ const UsersPage = () => {
                           </button>
                         </div>
                         <div className="px-3 py-3">
-                          <button
-                            type="button"
-                            onClick={() => grantUser(user.userId)}
-                            disabled={
-                              grantLoadingIds.has(user.userId) || approved
-                            }
-                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40">
-                            <UserRoundCheck className="size-3.5" />
-                            Ruxsat
-                          </button>
+                          {user.job?.roleName === 'admin' || user.job?.roleName === 'superAdmin' ?
+                            <span className="text-xs text-slate-400">SuperAdmin boshqaradi</span>
+                          : approved ?
+                            <button
+                              type="button"
+                              onClick={() => setGrantTarget(user)}
+                              disabled={grantLoadingIds.has(user.userId)}
+                              className="inline-flex items-center gap-1 rounded-lg bg-primary-soft px-2.5 py-1.5 text-xs font-medium text-primary ring-1 ring-primary/20 transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40">
+                              <ShieldCheck className="size-3.5" />
+                              Huquqlar
+                            </button>
+                          : <button
+                              type="button"
+                              onClick={() => setGrantTarget(user)}
+                              disabled={grantLoadingIds.has(user.userId)}
+                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40">
+                              <UserRoundCheck className="size-3.5" />
+                              Ruxsat
+                            </button>
+                          }
                         </div>
                       </div>
                     );
@@ -163,6 +186,12 @@ const UsersPage = () => {
           </div>
         }
       </div>
+      <GrantAccessModal
+        user={grantTarget}
+        onClose={() => setGrantTarget(null)}
+        onSubmit={grantUser}
+        busy={!!grantTarget && grantLoadingIds.has(grantTarget.userId)}
+      />
     </SectionShell>
   );
 };

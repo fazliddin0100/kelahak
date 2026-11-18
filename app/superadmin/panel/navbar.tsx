@@ -2,7 +2,7 @@
 
 import InstitutionalNavigation from '@/components/InstitutionalNavigation';
 import { clearLegacyAuthStorage } from '@/lib/clientAuthStorage';
-import { BookOpen, LayoutDashboard, LogOut, ShieldAlert, Users } from 'lucide-react';
+import { BookOpen, Building2, LayoutDashboard, LogOut, ShieldAlert, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Dispatch, SetStateAction } from 'react';
@@ -10,6 +10,7 @@ import type { Dispatch, SetStateAction } from 'react';
 const NAV = [
   { page: 'dashboard', label: 'Boshqaruv', Icon: LayoutDashboard },
   { page: 'security', label: 'Xavfsizlik', Icon: ShieldAlert },
+  { page: 'shahobchalar', label: 'Shahobchalar', Icon: Building2 },
   { page: 'users', label: 'Foydalanuvchilar', Icon: Users },
   { page: 'guide', label: 'Qo‘llanma', Icon: BookOpen },
 ] as const;

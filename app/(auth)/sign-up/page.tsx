@@ -67,7 +67,7 @@ const fieldLabels: Record<string, string> = {
   name: 'Ism',
   sName: 'Otasining ismi',
   province: 'Viloyat',
-  organ: 'Masul organ',
+  shahobchaId: 'Shahobcha',
   department: "Bo'lim",
   position: 'Lavozim',
   militaryRank: 'Unvon',
@@ -80,7 +80,7 @@ const formSchema = z.object({
   name: z.string().min(1, 'Ism majburiy'),
   sName: z.string().min(1, 'Otasining ismi majburiy'),
   province: z.string().min(1, 'Viloyat majburiy'),
-  organ: z.string().min(1, 'Masul organ majburiy'),
+  shahobchaId: z.string().min(1, 'Shahobchani tanlang'),
   department: z.string().min(1, "Bo'lim majburiy"),
   position: z.string().min(1, 'Lavozim majburiy'),
   militaryRank: z.string().min(1, 'Unvon majburiy'),
@@ -138,7 +138,7 @@ export default function RegistrationPage() {
       name: '',
       sName: '',
       province: '',
-      organ: '',
+      shahobchaId: '',
       department: '',
       position: '',
       militaryRank: '',
@@ -151,6 +151,24 @@ export default function RegistrationPage() {
   const { data: loginCheck, isLoading, isFetching } = useCheckUser(loginValue);
 
   const passwordValue = form.watch('password') || '';
+
+  const provinceValue = form.watch('province') || '';
+  const { data: shahobchalar = [], isFetching: shahobchaLoading } = useQuery({
+    queryKey: ['shahobchalar', provinceValue],
+    queryFn: async (): Promise<{ id: string; name: string }[]> => {
+      const res = await fetch(`/api/shahobcha?province=${encodeURIComponent(provinceValue)}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.shahobchalar ?? [];
+    },
+    enabled: !!provinceValue,
+    staleTime: 60_000,
+  });
+
+  // Viloyat o'zgarsa, oldingi shahobcha tanlovi bekor qilinadi
+  useEffect(() => {
+    form.setValue('shahobchaId', '');
+  }, [provinceValue, form]);
 
   // Parol kuchliligi (0-3)
   const getPasswordStrength = (pwd: string) => {
@@ -235,7 +253,7 @@ export default function RegistrationPage() {
               ))}
             </div>
 
-            {/* Viloyat + Organ + Bo'lim */}
+            {/* Viloyat + Shahobcha + Bo'lim */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <FormField
                 control={form.control}
@@ -284,7 +302,41 @@ export default function RegistrationPage() {
                 )}
               />
 
-              {['organ', 'department'].map((field) => (
+              <FormField
+                control={form.control}
+                name="shahobchaId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Shahobcha</FormLabel>
+                    <FormControl>
+                      <select
+                        {...field}
+                        disabled={!provinceValue || shahobchaLoading}
+                        className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60">
+                        <option value="">
+                          {!provinceValue ? 'Avval viloyatni tanlang'
+                          : shahobchaLoading ? 'Yuklanmoqda...'
+                          : shahobchalar.length === 0 ? 'Bu viloyatda shahobcha yo‘q'
+                          : 'Shahobchani tanlang'}
+                        </option>
+                        {shahobchalar.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                    {provinceValue && !shahobchaLoading && shahobchalar.length === 0 && (
+                      <p className="text-xs text-amber-700">
+                        Shahobcha SuperAdmin tomonidan yaratiladi. Administratoringizga murojaat qiling.
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {['department'].map((field) => (
                 <FormField
                   key={field}
                   control={form.control}

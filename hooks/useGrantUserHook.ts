@@ -1,10 +1,16 @@
 import { useState } from 'react';
 import { toast } from '../components/ui/sonner';
 
+export interface GrantPayload {
+  role: string;
+  permissions: string[];
+}
+
+/** Ruxsat berish (yoki huquqlarni yangilash): rol va tanlangan huquqlar bilan. */
 const useGrantUser = (onSuccess?: () => void) => {
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
 
-  const grantUser = async (userId: string) => {
+  const grantUser = async (userId: string, payload: GrantPayload) => {
     try {
       setLoadingIds((prev) => new Set(prev).add(userId));
 
@@ -12,7 +18,7 @@ const useGrantUser = (onSuccess?: () => void) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, ...payload }),
       });
 
       const data = await res.json();
@@ -24,6 +30,7 @@ const useGrantUser = (onSuccess?: () => void) => {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Xatolik yuz berdi';
       toast.error(message);
+      return null;
     } finally {
       setLoadingIds((prev) => {
         const next = new Set(prev);
