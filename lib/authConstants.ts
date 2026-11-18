@@ -4,7 +4,8 @@ export const PENDING_ACCESS_MESSAGE =
   'Sizga tizimga kirish uchun hozircha ruxsat berilmagan';
 
 /**
- * Faqat superAdmin tasdiqsiz kiradi (u maxfiy bootstrap kalit bilan yaratiladi).
+ * Faqat superAdmin tasdiqsiz kiradi (u tizimda bitta bo‘ladi va alohida
+ * /superadmin/register sahifasida yaratiladi).
  * Kotibiyat (admin) roli ro‘yxatdan o‘tishda foydalanuvchi yozgan lavozimdan
  * aniqlanadi, shuning uchun u ham tasdiqlanishi shart.
  */

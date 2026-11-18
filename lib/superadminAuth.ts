@@ -10,6 +10,7 @@ const SA_EXPIRES = (process.env.SUPERADMIN_JWT_EXPIRES_IN ||
 
 const MIN_BOOTSTRAP_KEY_LENGTH = 16;
 
+/** Eslatma: keyingi bosqichda bu kalit o‘rnini ERI (kalitli imzo) tekshiruvi egallaydi. */
 export function getBootstrapKey(): string {
   return process.env.SUPERADMIN_BOOTSTRAP_KEY?.trim() ?? '';
 }
@@ -18,6 +19,10 @@ export function isValidBootstrapKey(key: string): boolean {
   const expected = getBootstrapKey();
   if (expected.length < MIN_BOOTSTRAP_KEY_LENGTH) return false;
   return timingSafeEqualString(key.trim(), expected);
+}
+
+export function isBootstrapConfigured(): boolean {
+  return getBootstrapKey().length >= MIN_BOOTSTRAP_KEY_LENGTH;
 }
 
 export async function countSuperAdmins(): Promise<number> {

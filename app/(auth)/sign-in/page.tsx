@@ -16,7 +16,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import validator from 'validator';
 import { PENDING_ACCESS_MESSAGE } from '@/lib/authConstants';
 import { getPostLoginPath } from '@/lib/authRedirect';
 import * as z from 'zod';
@@ -48,8 +47,8 @@ export default function LoginPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       const sanitizedData = {
-        login: validator.escape(validator.trim(values.login)),
-        password: validator.escape(validator.trim(values.password)),
+        login: values.login.trim(),
+        password: values.password.trim(),
       };
 
       const res = await fetch('/api/auth/login', {

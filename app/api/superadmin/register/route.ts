@@ -1,18 +1,59 @@
-import {
-  countSuperAdmins,
-  isValidBootstrapKey,
-} from '@/lib/superadminAuth';
+import { setAuthCookies } from '@/lib/authTokens';
 import { getClientIp } from '@/lib/clientIp';
 import { createDbId } from '@/lib/db/document';
 import { hashPassword, validateNewPassword } from '@/lib/passwordPolicy';
+import { prisma } from '@/lib/prisma';
 import { consumeRateLimit } from '@/lib/rateLimit';
-import connectToDatabase, { prisma } from '@/lib/prisma';
+import { logSecurityEvent } from '@/lib/securityLog';
+import { createUserSession } from '@/lib/sessionFiles';
+import {
+  countSuperAdmins,
+  signSuperAdminToken,
+} from '@/lib/superadminAuth';
 import { getPermissionsForRole } from '@/helpers/PermissionsForRole';
+import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-import os from 'os';
 import validator from 'validator';
 
+const PATH = '/api/superadmin/register';
+const SESSION_SECONDS = 8 * 60 * 60;
 const ATTEMPTS_PER_IP = process.env.NODE_ENV === 'development' ? 100 : 5;
+
+/** PostgreSQL advisory lock — bir vaqtda ikkita SuperAdmin yaratilmasin. */
+const SUPERADMIN_LOCK_KEY = 847231001;
+
+/** Har bir satr maydoni uchun maksimal uzunlik (Personal ustunlari cheksiz text). */
+const NAME_MAX = 150;
+
+class SuperAdminExistsError extends Error {}
+
+const NAME_LABELS = {
+  fName: 'Familiya',
+  name: 'Ism',
+  sName: 'Otasining ismi',
+} as const;
+
+type NameField = keyof typeof NAME_LABELS;
+
+function cleanName(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const cleaned = value.trim().replace(/\s+/g, ' ');
+  if (!cleaned || cleaned.length > NAME_MAX) return null;
+  // Boshqaruv belgilari va HTML teglari saqlanmaydi
+  if (/[\u0000-\u001f\u007f<>]/.test(cleaned)) return null;
+  return cleaned;
+}
+
+/** Ixtiyoriy qo‘shimcha himoya: `.env` da SUPERADMIN_SETUP_IPS berilgan bo‘lsa, faqat shu IP lar. */
+function isSetupIpAllowed(ip: string): boolean {
+  const raw = process.env.SUPERADMIN_SETUP_IPS?.trim();
+  if (!raw) return true;
+  return raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .includes(ip);
+}
 
 export async function POST(request: NextRequest) {
   const clientIp = getClientIp(request.headers);
@@ -33,68 +74,78 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await connectToDatabase();
-    const body = await request.json();
-    const {
-      fName,
-      name,
-      sName,
-      province,
-      organ,
-      department,
-      position,
-      militaryRank,
-      login,
-      password,
-      bootstrapKey = '',
-      mac,
-      hostname,
-      note,
-    } = body;
-
-    if (
-      !fName ||
-      !name ||
-      !sName ||
-      !province ||
-      !organ ||
-      !department ||
-      !position ||
-      !militaryRank ||
-      !login ||
-      !password
-    ) {
+    const body = (await request.json().catch(() => null)) as Record<
+      string,
+      unknown
+    > | null;
+    if (!body) {
       return NextResponse.json(
-        { message: 'Barcha majburiy maydonlar to‘ldirilmagan' },
+        { message: 'So‘rov tanasi noto‘g‘ri' },
         { status: 400 }
       );
     }
 
-    const existingCount = await countSuperAdmins();
-    if (existingCount > 0 && !isValidBootstrapKey(String(bootstrapKey))) {
+    if (!isSetupIpAllowed(clientIp)) {
+      void logSecurityEvent({
+        type: 'suspicious',
+        ip: clientIp,
+        path: PATH,
+        method: 'POST',
+        message: 'SuperAdmin ro‘yxatdan o‘tish ruxsat etilmagan IP dan',
+        statusCode: 403,
+      });
       return NextResponse.json(
         {
           message:
-            'SuperAdmin yaratish uchun maxfiy kalit (bootstrap key) noto‘g‘ri yoki yo‘q',
-          code: 'INVALID_BOOTSTRAP_KEY',
+            'SuperAdmin ro‘yxatdan o‘tish bu manzil uchun ruxsat etilmagan',
+          code: 'SETUP_IP_DENIED',
         },
         { status: 403 }
       );
     }
 
-    if (existingCount === 0 && !isValidBootstrapKey(String(bootstrapKey))) {
+    // Tizimda faqat bitta SuperAdmin bo‘ladi
+    if ((await countSuperAdmins()) > 0) {
       return NextResponse.json(
         {
-          message:
-            'Birinchi SuperAdmin uchun .env da SUPERADMIN_BOOTSTRAP_KEY (kamida 16 belgi) o‘rnating va formada kiriting',
-          code: 'BOOTSTRAP_KEY_REQUIRED',
+          message: 'SuperAdmin allaqachon yaratilgan. Tizimga kirish sahifasidan foydalaning.',
+          code: 'SUPERADMIN_EXISTS',
         },
+        { status: 409 }
+      );
+    }
+
+    const rawNames: Record<NameField, unknown> = {
+      fName: body.fName,
+      name: body.name,
+      sName: body.sName,
+    };
+    const names = {} as Record<NameField, string>;
+    for (const field of Object.keys(NAME_LABELS) as NameField[]) {
+      const cleaned = cleanName(rawNames[field]);
+      if (!cleaned) {
+        return NextResponse.json(
+          {
+            message: `${NAME_LABELS[field]} to‘ldirilmagan yoki noto‘g‘ri (1-${NAME_MAX} belgi)`,
+          },
+          { status: 400 }
+        );
+      }
+      names[field] = cleaned;
+    }
+
+    const rawLogin = typeof body.login === 'string' ? body.login : '';
+    const rawPassword = typeof body.password === 'string' ? body.password : '';
+    if (!rawLogin || !rawPassword) {
+      return NextResponse.json(
+        { message: 'Login va parol kiritilishi shart' },
         { status: 400 }
       );
     }
 
-    const cleanLogin = validator.trim(String(login)).toLowerCase();
-    const cleanPassword = validator.trim(String(password));
+    // Login bilan bir xil normalizatsiya qoidasi (loginFlow bilan mos)
+    const cleanLogin = validator.trim(rawLogin).toLowerCase();
+    const cleanPassword = validator.trim(rawPassword);
 
     if (!validator.isLength(cleanLogin, { min: 3, max: 50 })) {
       return NextResponse.json(
@@ -115,15 +166,15 @@ export async function POST(request: NextRequest) {
 
     const existingAuth = await prisma.auth.findUnique({
       where: { login: cleanLogin },
+      select: { id: true },
     });
     if (existingAuth) {
       return NextResponse.json(
-        { message: 'Bu login band' },
+        { message: 'Bu login band', code: 'LOGIN_TAKEN' },
         { status: 409 }
       );
     }
 
-    const cleanProvince = validator.trim(province);
     const hashedPassword = await hashPassword(cleanPassword);
     const userId = createDbId();
     const roleId = createDbId();
@@ -131,85 +182,121 @@ export async function POST(request: NextRequest) {
     const authId = createDbId();
     const jobId = createDbId();
 
-    const deviceMac = mac || '00:00:00:00:00:00';
-    const deviceIp = clientIp;
-    const deviceHostname = hostname || os.hostname();
-    const deviceNote = note || 'SuperAdmin ro‘yxatdan o‘tish';
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT 1 AS locked FROM (SELECT pg_advisory_xact_lock(${SUPERADMIN_LOCK_KEY}::bigint)) AS advisory_lock`;
+        const existingCount = await tx.job.count({
+          where: { role: { role: 'superAdmin' } },
+        });
+        if (existingCount > 0) throw new SuperAdminExistsError();
 
-    await prisma.$transaction(async (tx) => {
-      await tx.role.create({
-        data: {
-          id: roleId,
-          role: 'superAdmin',
-          province: cleanProvince,
-          permissions: getPermissionsForRole('superAdmin'),
-        },
-      });
-
-      await tx.user.create({ data: { id: userId } });
-
-      await tx.personal.create({
-        data: {
-          id: personalId,
-          userId,
-          name: validator.trim(name),
-          fName: validator.trim(fName),
-          sName: validator.trim(sName),
-          province: cleanProvince,
-        },
-      });
-
-      await tx.auth.create({
-        data: {
-          id: authId,
-          userId,
-          login: cleanLogin,
-          password: hashedPassword,
-        },
-      });
-
-      await tx.job.create({
-        data: {
-          id: jobId,
-          userId,
-          roleId,
-          position: validator.trim(position),
-          organ: validator.trim(organ),
-          department: validator.trim(department),
-          militaryRank: validator.trim(militaryRank),
-          isUserTrue: true,
-        },
-      });
-
-      try {
-        const deviceId = createDbId();
-        await tx.device.create({
+        await tx.role.create({
           data: {
-            id: deviceId,
-            mac: deviceMac,
-            ip: deviceIp,
-            hostname: deviceHostname,
-            note: deviceNote,
-            lastSeen: new Date(),
+            id: roleId,
+            role: 'superAdmin',
+            province: '',
+            permissions: getPermissionsForRole('superAdmin'),
           },
         });
-        await tx.userDevice.create({
-          data: { userId, deviceId },
+
+        await tx.user.create({ data: { id: userId } });
+
+        await tx.personal.create({
+          data: {
+            id: personalId,
+            userId,
+            name: names.name,
+            fName: names.fName,
+            sName: names.sName,
+            province: '',
+          },
         });
-      } catch {
-        /* optional */
+
+        await tx.auth.create({
+          data: {
+            id: authId,
+            userId,
+            login: cleanLogin,
+            password: hashedPassword,
+          },
+        });
+
+        await tx.job.create({
+          data: {
+            id: jobId,
+            userId,
+            roleId,
+            position: 'SuperAdmin',
+            organ: '',
+            department: '',
+            militaryRank: '',
+            isUserTrue: true,
+          },
+        });
+      });
+    } catch (error) {
+      if (error instanceof SuperAdminExistsError) {
+        return NextResponse.json(
+          {
+            message:
+              'SuperAdmin allaqachon yaratilgan. Tizimga kirish sahifasidan foydalaning.',
+            code: 'SUPERADMIN_EXISTS',
+          },
+          { status: 409 }
+        );
       }
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return NextResponse.json(
+          { message: 'Bu login band', code: 'LOGIN_TAKEN' },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
+
+    void logSecurityEvent({
+      type: 'login_success',
+      ip: clientIp,
+      path: PATH,
+      method: 'POST',
+      loginHint: cleanLogin,
+      message: 'SuperAdmin hisobi yaratildi',
+      statusCode: 201,
     });
 
-    return NextResponse.json(
-      {
-        message:
-          'SuperAdmin muvaffaqiyatli yaratildi. Endi tizimga kirishingiz mumkin.',
+    // Ro‘yxatdan o‘tgach darhol tizimga kiradi
+    try {
+      const sessionId = await createUserSession(
         userId,
-        role: 'superAdmin',
-      },
-      { status: 201 }
-    );
+        SESSION_SECONDS * 1000
+      );
+      const token = signSuperAdminToken(userId, sessionId);
+      const response = NextResponse.json(
+        {
+          message: 'SuperAdmin yaratildi. Panelga yo‘naltirilmoqda...',
+          userId,
+          role: 'superAdmin',
+          autoLogin: true,
+        },
+        { status: 201 }
+      );
+      return setAuthCookies(response, { superadmin: token }, SESSION_SECONDS);
+    } catch (sessionError) {
+      console.error('SuperAdmin sessiyasini yaratishda xato:', sessionError);
+      return NextResponse.json(
+        {
+          message:
+            'SuperAdmin yaratildi. Endi kirish sahifasi orqali tizimga kiring.',
+          userId,
+          role: 'superAdmin',
+          autoLogin: false,
+        },
+        { status: 201 }
+      );
+    }
   } catch (error: unknown) {
     console.error('SuperAdmin ro‘yxatdan o‘tish xatosi:', error);
     return NextResponse.json({ message: 'Server xatosi' }, { status: 500 });

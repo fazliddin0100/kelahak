@@ -6,7 +6,7 @@ import { BookOpen, CheckCircle2 } from 'lucide-react';
 const TASKS = [
   {
     title: 'Birinchi SuperAdmin yaratish',
-    body: '.env faylga SUPERADMIN_BOOTSTRAP_KEY=... qo‘ying. /superadmin/register sahifasida kalit bilan ro‘yxatdan o‘ting.',
+    body: '.env faylga SUPERADMIN_BOOTSTRAP_KEY (kamida 16 belgi) qo‘ying. /superadmin/register sahifasida familiya, ism, otasining ismi, login, parol va shu kalitni kiriting — hisob darhol faol bo‘ladi va panelga kiriladi. Tizimda faqat bitta SuperAdmin bo‘ladi; keyinchalik kalit o‘rnini ERI (kalitli imzo) egallaydi.',
   },
   {
     title: 'Kotibiyat xodimlari',

@@ -1,4 +1,4 @@
-import { countSuperAdmins, getBootstrapKey } from '@/lib/superadminAuth';
+import { countSuperAdmins, isBootstrapConfigured } from '@/lib/superadminAuth';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -6,13 +6,10 @@ export async function GET() {
     const hasSuperAdmin = (await countSuperAdmins()) > 0;
     return NextResponse.json({
       hasSuperAdmin,
-      bootstrapConfigured: Boolean(getBootstrapKey()),
-      needsBootstrap: !hasSuperAdmin,
+      needsSetup: !hasSuperAdmin,
+      bootstrapConfigured: isBootstrapConfigured(),
     });
   } catch {
-    return NextResponse.json(
-      { message: 'Server xatosi' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Server xatosi' }, { status: 500 });
   }
 }

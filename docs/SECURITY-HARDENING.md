@@ -26,7 +26,13 @@ Brauzer → Nginx (TLS) → Middleware (IP blok, CSRF, rate limit, JWT cookie, R
 
 - Rol lavozim matnidan *taxmin* qilinadi, lekin **hech bir akkaunt o‘zini faollashtira olmaydi**.
 - `admin` (kotibiyat) akkauntini faqat superAdmin, qolganlarini o‘z viloyati admini tasdiqlaydi.
-- SuperAdmin faqat `SUPERADMIN_BOOTSTRAP_KEY` (kamida 16 belgi) bilan yaratiladi.
+- SuperAdmin tizimda **bitta** bo‘ladi va `/superadmin/register` orqali familiya, ism,
+  otasining ismi, login, parol + `SUPERADMIN_BOOTSTRAP_KEY` (kamida 16 belgi) bilan yaratiladi.
+  Hisob yaratilishi bilan endpoint yopiladi (mavjud bo‘lsa 409 qaytaradi); yaratish PostgreSQL
+  advisory lock bilan poygadan himoyalangan. SuperAdmin tasdiqlashni talab qilmaydi
+  (`isUserTrue=true`) va login qilganda darhol tizimga kiradi. Qo‘shimcha himoya uchun ixtiyoriy
+  `SUPERADMIN_SETUP_IPS` (vergul bilan ajratilgan IP lar) berilishi mumkin.
+  Keyingi bosqichda bootstrap kalit o‘rnini ERI (kalitli imzo) tekshiruvi egallaydi.
 - Yangi parol: kamida 12 belgi, harf + raqam, bcrypt cost 12 (eski xeshlar kirishda yangilanadi).
 - Kirish urinishlari: bitta login uchun 10, bitta IP uchun 50 xato / 15 daqiqa.
 

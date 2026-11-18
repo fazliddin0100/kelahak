@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import validator from 'validator';
 import { motion } from 'framer-motion';
 import {
   Form,
@@ -38,8 +37,8 @@ export default function Login() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       const sanitizedData = {
-        login: validator.escape(validator.trim(values.login)),
-        password: validator.escape(validator.trim(values.password)),
+        login: values.login.trim(),
+        password: values.password.trim(),
       };
 
       const res = await fetch('/api/auth/admin', {
