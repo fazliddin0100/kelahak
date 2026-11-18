@@ -40,6 +40,9 @@ const PUBLIC_AUTH_API = [
   '/api/shahobcha',
 ];
 
+/** public/ ildizidagi rasm fayllari (faqat bitta daraja, papkasiz) */
+const PUBLIC_ROOT_ASSET_RE = /^\/[A-Za-z0-9_-]+\.(?:png|webp|svg|jpe?g|ico)$/;
+
 /** Middleware auth o‘tkazmaydi — route ichida kalit tekshiriladi */
 const INTERNAL_API = ['/api/security/log', '/api/waf/blocked-list'];
 
@@ -249,11 +252,14 @@ export async function middleware(req: NextRequest) {
     return new NextResponse('Not Found', { status: 404 });
   }
 
-  // 1. STATIC BYPASS
+  // 1. STATIC BYPASS — public/ ildizidagi rasmlar (logo, favicon, shablon rasmlari)
+  // auth tekshiruvisiz beriladi: aks holda kirmagan foydalanuvchida favicon
+  // so'rovi ham kirish sahifasiga yo'naltirilib, ortiqcha sahifa render qilinadi.
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon.ico') ||
-    pathname.startsWith('/tinymce')
+    pathname.startsWith('/tinymce') ||
+    PUBLIC_ROOT_ASSET_RE.test(pathname)
   ) {
     return NextResponse.next();
   }

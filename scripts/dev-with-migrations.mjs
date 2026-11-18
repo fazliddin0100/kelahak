@@ -428,9 +428,14 @@ async function main() {
 
   console.info('5/5 Tayyor. Next.js development server ishga tushmoqda...');
   const nextCli = path.join(root, 'node_modules', 'next', 'dist', 'bin', 'next');
+  // Turbopack (Next.js 16 standarti) dev kompilyatsiyasini ancha tezlashtiradi.
+  // Muammo bo'lsa: MEZON_DEV_BUNDLER=webpack npm run dev
+  const bundlerFlag =
+    process.env.MEZON_DEV_BUNDLER === 'webpack' ? '--webpack' : '--turbopack';
+  console.info(`   Bundler: ${bundlerFlag.slice(2)}`);
   const child = spawn(
     process.execPath,
-    [nextCli, 'dev', '--webpack', '-H', '127.0.0.1', '-p', '3001'],
+    [nextCli, 'dev', bundlerFlag, '-H', '127.0.0.1', '-p', '3001'],
     { cwd: root, env: process.env, stdio: 'inherit', windowsHide: false }
   );
   const stop = () => child.kill('SIGINT');
