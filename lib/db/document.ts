@@ -16,6 +16,7 @@ import {
   serializeUser,
   type UserWithRelations,
 } from '@/lib/db/user';
+import { provinceWhere } from '@/lib/province';
 import { resolveIdReference } from '@/lib/resolveIdReference';
 import { DocumentStatus } from '@/types/document-status.enum';
 import {
@@ -31,7 +32,7 @@ export function createDbId(): string {
 }
 
 export function provinceFilter(province: string): Prisma.StringFilter {
-  return { equals: province.trim(), mode: 'insensitive' };
+  return provinceWhere(province);
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -772,18 +773,32 @@ export async function findPendingSignatureDocuments(
   userId: string,
   province: string
 ): Promise<DocumentWithRelations[]> {
-  const candidates = await findDocuments(
-    {
-      ownerRegion: provinceFilter(province),
-      status: { notIn: TERMINAL_STATUSES },
-      OR: [
-        { author: { path: ['userId'], equals: userId } },
-        { sender: { path: ['userId'], equals: userId } },
-        { approvers: { array_contains: [{ userId }] } },
-      ],
-    },
-    { orderBy: { updatedAt: 'desc' }, take: PENDING_LIST_LIMIT }
-  );
+  await connectToDatabase();
+  // `@>` (JSON ichida mavjudlik) GIN indekslarida ishlaydi; Prisma'ning `path` filtri esa
+  // parametrli ifoda hosil qilgani uchun indeksdan foydalana olmaydi.
+  const region = provinceFilter(province);
+  const regionSql =
+    region.mode === 'insensitive' ?
+      Prisma.sql`"ownerRegion" ILIKE ${region.equals}`
+    : Prisma.sql`"ownerRegion" = ${region.equals}`;
+  const me = JSON.stringify({ userId });
+  const meInArray = JSON.stringify([{ userId }]);
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "documents"
+    WHERE ${regionSql}
+      AND status NOT IN (${Prisma.join(TERMINAL_STATUSES)})
+      AND (
+        author @> ${me}::jsonb
+        OR sender @> ${me}::jsonb
+        OR approvers @> ${meInArray}::jsonb
+      )
+    ORDER BY "updatedAt" DESC
+    LIMIT ${PENDING_LIST_LIMIT}`;
+  if (rows.length === 0) return [];
+  const order = new Map(rows.map((r, i) => [r.id, i]));
+  const candidates = (
+    await findDocuments({ id: { in: rows.map((r) => r.id) } })
+  ).sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 
   return candidates.filter((doc) => {
     const author = doc.author as SignerJson | null;

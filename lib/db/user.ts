@@ -1,4 +1,5 @@
 import connectToDatabase, { prisma } from '@/lib/prisma';
+import { provinceWhere } from '@/lib/province';
 import { COMMANDER_ROLES } from '@/lib/roles';
 
 export type UserWithRelations = NonNullable<
@@ -48,7 +49,7 @@ export async function findUsersInProvinceCaseInsensitive(province: string) {
   return prisma.user.findMany({
     where: {
       personal: {
-        province: { equals: trimmed, mode: 'insensitive' },
+        province: provinceWhere(trimmed),
       },
     },
     include: {
@@ -67,7 +68,7 @@ export async function findLetterRecipientCandidates(province: string) {
       OR: [
         {
           personal: {
-            province: { equals: trimmed, mode: 'insensitive' },
+            province: provinceWhere(trimmed),
           },
         },
         {

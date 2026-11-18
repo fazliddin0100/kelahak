@@ -262,6 +262,12 @@ model Document {
   @@index([forwardedById])
   @@index([parentId])
   @@index([year, ownerRegion, status])
+  // Imzolovchi/qabul qiluvchi JSON maydonlari bo'yicha qidiruv (@>)
+  @@index([approvers(ops: JsonbPathOps)], type: Gin, map: "documents_approvers_gin")
+  @@index([receiver(ops: JsonbPathOps)], type: Gin, map: "documents_receiver_gin")
+  @@index([forwardedTo(ops: JsonbPathOps)], type: Gin, map: "documents_forwardedTo_gin")
+  @@index([author(ops: JsonbPathOps)], type: Gin, map: "documents_author_gin")
+  @@index([sender(ops: JsonbPathOps)], type: Gin, map: "documents_sender_gin")
   @@map("documents")
 }
 

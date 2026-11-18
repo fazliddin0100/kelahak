@@ -1,3 +1,4 @@
+import { provinceWhere } from '@/lib/province';
 import {
   findUserById,
   isValidDbId,
@@ -17,7 +18,7 @@ export async function findKotibiyatStaffUserIds(
   const users = await prisma.user.findMany({
     where: {
       personal: {
-        province: { equals: province.trim(), mode: 'insensitive' },
+        province: provinceWhere(province),
       },
     },
     include: {

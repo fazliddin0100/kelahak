@@ -1,3 +1,4 @@
+import { provinceWhere } from '@/lib/province';
 import type {
   Bolim,
   Bolinma,
@@ -27,7 +28,7 @@ export type AuthorJson = {
 };
 
 export function provinceEqualsFilter(province: string): Prisma.StringFilter {
-  return { equals: province.trim(), mode: 'insensitive' };
+  return provinceWhere(province);
 }
 
 export function serializeBolim(doc: Bolim) {
