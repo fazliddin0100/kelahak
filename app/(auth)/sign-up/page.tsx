@@ -26,6 +26,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/components/ui/sonner';
 
@@ -74,6 +75,15 @@ const fieldLabels: Record<string, string> = {
   login: 'Login',
   password: 'Parol',
 };
+
+/** Server ham shu chegarani qo'llaydi (api/auth/register: MAX_FIELD_LENGTH) */
+const LONG_FIELD_MAX = 150;
+
+const LONG_FIELD_PLACEHOLDERS = {
+  department: 'Bo‘lim yoki bo‘linmaning to‘liq nomi',
+  position: 'Lavozimning to‘liq nomi',
+  militaryRank: 'Unvon',
+} as const;
 
 const formSchema = z.object({
   fName: z.string().min(1, 'Familiya majburiy'),
@@ -216,7 +226,7 @@ export default function RegistrationPage() {
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-50 p-4">
-      <div className="w-full max-w-xl bg-white rounded-2xl p-8 shadow-xl border border-gray-100">
+      <div className="w-full max-w-4xl bg-white rounded-2xl p-6 sm:p-10 shadow-xl border border-gray-100">
         <div className="mx-auto mb-6 flex h-20 w-24 items-center justify-center rounded-xl bg-brand-ink p-2 shadow-md">
           <Image
             src={mexonLogo}
@@ -253,8 +263,8 @@ export default function RegistrationPage() {
               ))}
             </div>
 
-            {/* Viloyat + Shahobcha + Bo'lim */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Viloyat + Shahobcha */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <FormField
                 control={form.control}
                 name="province"
@@ -336,36 +346,37 @@ export default function RegistrationPage() {
                 )}
               />
 
-              {['department'].map((field) => (
-                <FormField
-                  key={field}
-                  control={form.control}
-                  name={field as keyof FormData}
-                  render={({ field: f }) => (
-                    <FormItem>
-                      <FormLabel>{fieldLabels[field]}</FormLabel>
-                      <FormControl>
-                        <Input {...f} placeholder={fieldLabels[field]} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              ))}
             </div>
 
-            {/* Lavozim + Unvon */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {['position', 'militaryRank'].map((field) => (
+            {/* Bo'lim, Lavozim, Unvon — uzun nomlar uchun o'zi kengayadigan maydonlar */}
+            <div className="grid grid-cols-1 gap-5">
+              {(['department', 'position', 'militaryRank'] as const).map((field) => (
                 <FormField
                   key={field}
                   control={form.control}
-                  name={field as keyof FormData}
+                  name={field}
                   render={({ field: f }) => (
                     <FormItem>
-                      <FormLabel>{fieldLabels[field]}</FormLabel>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <FormLabel>{fieldLabels[field]}</FormLabel>
+                        <span className="text-xs text-gray-400" aria-hidden="true">
+                          {(f.value ?? '').length}/{LONG_FIELD_MAX}
+                        </span>
+                      </div>
                       <FormControl>
-                        <Input {...f} placeholder={fieldLabels[field]} />
+                        <Textarea
+                          {...f}
+                          rows={1}
+                          maxLength={LONG_FIELD_MAX}
+                          placeholder={LONG_FIELD_PLACEHOLDERS[field]}
+                          className="min-h-9 resize-none leading-6"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.preventDefault();
+                          }}
+                          onChange={(e) =>
+                            f.onChange(e.target.value.replace(/\s*\n\s*/g, ' '))
+                          }
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
