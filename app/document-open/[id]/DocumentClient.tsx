@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import mexonLogo from '@/public/mexon-mark.png';
 import { DocumentStatus } from '@/types/document-status.enum';
 import StatusBadge from '@/components/StatusBadge';
+import DocumentSignaturesButton from '@/components/DocumentSignaturesButton';
 import {
   AlertCircle,
   ArrowLeft,
@@ -117,6 +118,10 @@ export default function DocumentClient({ documentId }: { documentId: string }) {
                     Grif: {document.grif}
                   </span>
                 )}
+                <DocumentSignaturesButton
+                  documentId={document._id}
+                  version={`${document.updatedAt ?? ''}|${document.status ?? ''}`}
+                />
               </div>
             </div>
           </div>

@@ -22,6 +22,13 @@ import {
   regionsMatch,
 } from '@/lib/documentWorkflow';
 import connectToDatabase from '@/lib/prisma';
+import { isEimzoRequired } from '@/lib/eimzo/challenge';
+import {
+  DocumentSignError,
+  saveDocumentSignature,
+  verifyDocumentSignRequest,
+  type VerifiedDocumentSignature,
+} from '@/lib/eimzo/documentSign';
 import {
   isValidDbId,
   serializeDocumentForApi,
@@ -92,6 +99,20 @@ export async function POST(
     const document = await loadViewableDocument(id, auth);
     if (!document) {
       return documentNotFoundResponse();
+    }
+
+    // Sertifikati bor user hujjatni faqat E-IMZO kaliti bilan imzolaydi
+    let eimzoSignature: VerifiedDocumentSignature | null = null;
+    if (await isEimzoRequired(userId)) {
+      const body = (await request.json().catch(() => null)) as { eimzo?: unknown } | null;
+      try {
+        eimzoSignature = await verifyDocumentSignRequest(request, userId, id, body?.eimzo);
+      } catch (e) {
+        if (e instanceof DocumentSignError) {
+          return NextResponse.json({ message: e.message, code: e.code }, { status: e.status });
+        }
+        throw e;
+      }
     }
 
     const docView = serializeDocumentForApi(document) as unknown as DocumentType;
@@ -187,6 +208,7 @@ export async function POST(
           forwardedById: mutableDoc.forwardedById ?? undefined,
           status: mutableDoc.status,
         });
+        if (eimzoSignature) await saveDocumentSignature(id, userId, eimzoSignature);
         return NextResponse.json(
           {
             message: 'Komandir hujjatni imzoladi',
@@ -304,6 +326,7 @@ export async function POST(
     }
 
     const updated = await updateDocument(id, patch);
+    if (eimzoSignature) await saveDocumentSignature(id, userId, eimzoSignature);
 
     const statusMsg =
       updated.status === DocumentStatus.IN_PROGRESS ?

@@ -2,6 +2,7 @@
 
 import { toast } from '@/components/ui/sonner';
 import { useRouter } from 'next/navigation';
+import { requestEimzoSignature } from '@/lib/eimzo/signRequest';
 import { useCallback } from 'react';
 
 const jsonHeaders: HeadersInit = { 'Content-Type': 'application/json' };
@@ -18,9 +19,22 @@ export function useDocumentActionHandlers(
 
   const onSign = useCallback(async () => {
     try {
+      // Sertifikati bor user uchun avval E-IMZO kaliti bilan imzolash oynasi ochiladi
+      const pre = await fetch(`/api/documents/${documentId}/sign-challenge`, { cache: 'no-store' });
+      const preData = await pre.json().catch(() => ({}));
+      if (!pre.ok) return toast.error(preData.message || 'Xatolik!');
+
+      let body: string | undefined;
+      if (preData.required) {
+        const eimzo = await requestEimzoSignature(preData);
+        if (!eimzo) return; // foydalanuvchi bekor qildi
+        body = JSON.stringify({ eimzo });
+      }
+
       const res = await fetch(`/api/documents/${documentId}/signed`, {
         method: 'POST',
         headers: jsonHeaders,
+        body,
       });
       const data = await res.json();
       if (!res.ok) return toast.error(data.message || 'Xatolik!');

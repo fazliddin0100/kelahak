@@ -5,6 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FileKey2, KeyRound, Loader2, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  EimzoClientError,
+  isEimzoSupported,
+  readCertificateFile,
+  signWithKeyFile,
+} from '@/lib/eimzo/client';
 
 /**
  * E-IMZO bosqichi. Fleshkadagi `.crt` (ochiq sertifikat) va `.mzk` (parol bilan
@@ -14,73 +20,6 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
  */
 
 export type EimzoChallenge = { challengeId: string; nonce: string; expiresAt: string };
-
-type KeyFile = {
-  format: 'mezon-key/v1';
-  algorithm: 'ECDSA-P256';
-  kdf: { name: 'PBKDF2'; hash: 'SHA-256'; iterations: number; salt: string };
-  cipher: { name: 'AES-GCM'; iv: string };
-  data: string;
-};
-
-class StepError extends Error {}
-
-const b64ToBytes = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-const bytesToB64 = (bytes: ArrayBuffer) => {
-  let s = '';
-  for (const b of new Uint8Array(bytes)) s += String.fromCharCode(b);
-  return btoa(s);
-};
-
-async function readCertificate(file: File): Promise<string> {
-  const text = await file.text();
-  if (text.includes('BEGIN CERTIFICATE')) return text;
-  // DER (.cer) bo'lsa PEM ga o'tkaziladi
-  const der = bytesToB64(await file.arrayBuffer());
-  return `-----BEGIN CERTIFICATE-----\n${der.match(/.{1,64}/g)?.join('\n')}\n-----END CERTIFICATE-----\n`;
-}
-
-async function readKeyFile(file: File): Promise<KeyFile> {
-  let parsed: KeyFile;
-  try {
-    parsed = JSON.parse(await file.text());
-  } catch {
-    throw new StepError('Kalit fayli noto‘g‘ri (.mzk fayl kerak).');
-  }
-  if (parsed?.format !== 'mezon-key/v1' || parsed.algorithm !== 'ECDSA-P256') {
-    throw new StepError('Kalit fayli formati qo‘llab-quvvatlanmaydi.');
-  }
-  return parsed;
-}
-
-/** Parol bilan kalitni ochadi va challenge'ni imzolaydi. Yopiq kalit xotiradan tozalanadi. */
-async function signChallenge(keyFile: KeyFile, password: string, message: string): Promise<string> {
-  const subtle = window.crypto.subtle;
-  const enc = new TextEncoder();
-  const base = await subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
-  const aesKey = await subtle.deriveKey(
-    { name: 'PBKDF2', salt: b64ToBytes(keyFile.kdf.salt), iterations: keyFile.kdf.iterations, hash: 'SHA-256' },
-    base,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['decrypt']
-  );
-
-  let pkcs8: ArrayBuffer;
-  try {
-    pkcs8 = await subtle.decrypt({ name: 'AES-GCM', iv: b64ToBytes(keyFile.cipher.iv) }, aesKey, b64ToBytes(keyFile.data));
-  } catch {
-    throw new StepError('Kalit paroli noto‘g‘ri.');
-  }
-
-  try {
-    const privateKey = await subtle.importKey('pkcs8', pkcs8, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
-    const signature = await subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, enc.encode(message));
-    return bytesToB64(signature);
-  } finally {
-    new Uint8Array(pkcs8).fill(0);
-  }
-}
 
 export default function EimzoKeyStep({
   challenge,
@@ -109,7 +48,7 @@ export default function EimzoKeyStep({
   }, [challenge.expiresAt]);
 
   const expired = secondsLeft === 0;
-  const secure = typeof window !== 'undefined' && window.isSecureContext && !!window.crypto?.subtle;
+  const secure = isEimzoSupported();
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -120,10 +59,10 @@ export default function EimzoKeyStep({
     }
     setBusy(true);
     try {
-      const [certPem, key] = await Promise.all([readCertificate(certFile), readKeyFile(keyFile)]);
+      const certPem = await readCertificateFile(certFile);
       const origin = window.location.origin;
-      const signature = await signChallenge(
-        key,
+      const signature = await signWithKeyFile(
+        keyFile,
         password,
         `mezon-login|${challenge.challengeId}|${challenge.nonce}|${origin}`
       );
@@ -143,7 +82,7 @@ export default function EimzoKeyStep({
       formRef.current?.reset();
       onSuccess(data);
     } catch (err) {
-      setError(err instanceof StepError ? err.message : 'Kalitni ochib bo‘lmadi. Fayllarni tekshiring.');
+      setError(err instanceof EimzoClientError ? err.message : 'Kalitni ochib bo‘lmadi. Fayllarni tekshiring.');
     } finally {
       setBusy(false);
     }

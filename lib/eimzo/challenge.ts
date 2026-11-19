@@ -45,19 +45,27 @@ export function isAllowedOrigin(request: NextRequest, origin: unknown): origin i
   }
 }
 
-/** Parol to'g'ri bo'lgach chaqiriladi: sessiya o'rniga E-IMZO bosqichini boshlaydi. */
-export async function startEimzoChallenge(userId: string, kind: EimzoLoginKind): Promise<NextResponse> {
+/**
+ * Bir martalik challenge yaratadi (2 daqiqa). `kind`: kirish turi yoki `sign:<hujjatId>`.
+ * Eskirgan yozuvlar vaqti-vaqti bilan tozalanadi.
+ */
+export async function createChallenge(userId: string, kind: string) {
   await connectToDatabase();
   const now = Date.now();
   if (now - lastCleanupAt > 10 * 60 * 1000) {
     lastCleanupAt = now;
     await prisma.loginChallenge.deleteMany({ where: { expiresAt: { lt: new Date(now - 60 * 60 * 1000) } } });
   }
-
   const id = randomUUID();
   const nonce = randomBytes(32).toString('base64url');
   const expiresAt = new Date(now + CHALLENGE_TTL_MS);
   await prisma.loginChallenge.create({ data: { id, userId, nonce, kind, expiresAt } });
+  return { id, nonce, expiresAt };
+}
+
+/** Parol to'g'ri bo'lgach chaqiriladi: sessiya o'rniga E-IMZO bosqichini boshlaydi. */
+export async function startEimzoChallenge(userId: string, kind: EimzoLoginKind): Promise<NextResponse> {
+  const { id, nonce, expiresAt } = await createChallenge(userId, kind);
 
   const response = Response.json(
     { step: 'eimzo', challengeId: id, nonce, expiresAt: expiresAt.toISOString() },

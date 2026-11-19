@@ -43,14 +43,15 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  personal        Personal?
-  auth            Auth?
-  job             Job?
-  devices         UserDevice[]
-  sessions        UserSession[]
-  pendingUploads  PendingUpload[]
-  certificates    UserCertificate[]
-  loginChallenges LoginChallenge[]
+  personal           Personal?
+  auth               Auth?
+  job                Job?
+  devices            UserDevice[]
+  sessions           UserSession[]
+  pendingUploads     PendingUpload[]
+  certificates       UserCertificate[]
+  documentSignatures DocumentSignature[]
+  loginChallenges    LoginChallenge[]
 
   ownedDocuments     Document[]            @relation("DocumentOwner")
   forwardedDocuments Document[]            @relation("DocumentForwardedBy")
@@ -254,6 +255,7 @@ model Document {
   allowedUsers DocumentAllowedUser[]
   attachments  DocumentAttachment[]  @relation("DocAttachments")
   attachedTo   DocumentAttachment[]  @relation("DocAttachmentTarget")
+  signatures   DocumentSignature[]
 
   @@index([ownerId])
   @@index([status])
@@ -507,7 +509,8 @@ model UserCertificate {
   revokedReason  String?
   createdAt      DateTime  @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signatures DocumentSignature[]
 
   @@index([userId, status])
   @@map("user_certificates")
@@ -528,4 +531,27 @@ model LoginChallenge {
   @@index([userId])
   @@index([expiresAt])
   @@map("login_challenges")
+}
+
+/// Hujjatga qo'yilgan E-IMZO imzosi: hujjat mazmunining SHA-256 xeshi ustida ECDSA P-256.
+/// Hujjat keyin o'zgarsa, joriy xesh imzolangan xeshga mos kelmaydi — bu ko'rinib turadi.
+model DocumentSignature {
+  id             String   @id
+  documentId     String
+  userId         String
+  certificateId  String
+  fingerprint256 String
+  contentHash    String
+  signature      String
+  /// Aynan imzolangan matn — imzoni istalgan vaqtda qayta tekshirish uchun
+  signedMessage  String
+  signedAt       DateTime @default(now())
+
+  document    Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  certificate UserCertificate @relation(fields: [certificateId], references: [id])
+
+  @@index([documentId, signedAt])
+  @@index([userId])
+  @@map("document_signatures")
 }
