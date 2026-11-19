@@ -1,4 +1,4 @@
-import { isValidDbId } from '@/lib/db/user';
+import { isValidDbId } from '@/lib/dbId';
 
 /** API / formadan kelgan ilova ID larini string massiviga */
 export function parseAttachmentTextIds(input: unknown): string[] {

@@ -6,12 +6,7 @@ export type UserWithRelations = NonNullable<
   Awaited<ReturnType<typeof findUserById>>
 >;
 
-const DB_ID_RE = /^[a-f0-9]{24}$/i;
-
-/** Database IDs use a 24-character hexadecimal string format. */
-export function isValidDbId(id: string): boolean {
-  return DB_ID_RE.test(id);
-}
+export { isValidDbId } from '@/lib/dbId';
 
 export async function authLoginExists(login: string): Promise<boolean> {
   await connectToDatabase();
