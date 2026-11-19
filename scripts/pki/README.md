@@ -44,6 +44,11 @@ Shu bo'limda **Bekor qilish** — sabab yoziladi, userning sessiyalari yopiladi.
 Yozuv o'chirilmaydi (eski imzolarni tekshirish uchun). Userga yangi kalit beriladi (2-qadam).
 Bekor qilingan sertifikatli user yangi sertifikat biriktirilmaguncha kira olmaydi.
 
+## 5. Server (TLS) sertifikatlari
+
+`issue-server.sh` — Nginx uchun HTTPS sertifikati va viloyat serverlari uchun mTLS mijoz
+sertifikati (`CLIENT=1`). Batafsil: `deploy/README.md`.
+
 ## Sozlamalar (.env)
 
 - `EIMZO_CA_CERT_FILE` — CA sertifikati yo'li (standart: `secrets/pki/ca.crt`)
