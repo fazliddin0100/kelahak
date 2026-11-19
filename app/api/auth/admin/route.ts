@@ -1,8 +1,8 @@
 // app/api/auth/admin/route.ts — superAdmin / tasdiqlangan admin uchun ref_token
-import type { SignOptions } from 'jsonwebtoken';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { setAuthCookies, signAuthToken } from '@/lib/authTokens';
+import { isEimzoRequired, startEimzoChallenge } from '@/lib/eimzo/challenge';
+import { issueLoginSession } from '@/lib/loginSession';
 import {
   logLoginDenied,
   logLoginSuccess,
@@ -12,13 +12,8 @@ import {
   canLoginWithoutApproval,
   PENDING_ACCESS_MESSAGE,
 } from '@/lib/userAccess';
-import { signSuperAdminToken } from '@/lib/superadminAuth';
-import { createUserSession } from '@/lib/sessionFiles';
 
 const PATH = '/api/auth/admin';
-const SESSION_SECONDS = 8 * 60 * 60;
-const JWT_REFRESH_DAY = (process.env.JWT_REFRESH_DAY ||
-  '8h') as SignOptions['expiresIn'];
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,35 +50,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const sessionId = await createUserSession(user.id, SESSION_SECONDS * 1000);
-    const adminToken = signAuthToken(
-      'admin',
-      {
-        userId: user.id,
-        department: job.department,
-        role: role.role,
-        accessApproved: true,
-        sessionId,
-      },
-      JWT_REFRESH_DAY
-    );
+    if (await isEimzoRequired(user.id)) {
+      return startEimzoChallenge(user.id, 'admin');
+    }
 
     logLoginSuccess(ip, PATH, login);
-
-    const response = NextResponse.json(
-      { role: role.role, department: job.department },
-      { status: 200 }
-    );
-    return setAuthCookies(
-      response,
-      {
-        admin: adminToken,
-        ...(role.role === 'superAdmin' ?
-          { superadmin: signSuperAdminToken(user.id, sessionId) }
-        : {}),
-      },
-      SESSION_SECONDS
-    );
+    return issueLoginSession('admin', user as Parameters<typeof issueLoginSession>[1]);
   } catch (error) {
     console.error('Admin login xatosi:', error);
     return NextResponse.json(

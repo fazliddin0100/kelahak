@@ -1,4 +1,5 @@
 'use client';
+import EimzoKeyStep, { type EimzoChallenge } from '@/components/EimzoKeyStep';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -39,6 +40,13 @@ export default function LoginPage() {
     return null;
   });
 
+  const [eimzo, setEimzo] = useState<EimzoChallenge | null>(null);
+
+  const finishLogin = (data: Record<string, unknown>) => {
+    toast.success('Xush kelibsiz!');
+    window.location.replace(getPostLoginPath(data as Parameters<typeof getPostLoginPath>[0]));
+  };
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { login: '', password: '' },
@@ -58,10 +66,15 @@ export default function LoginPage() {
       });
 
       const data = await res.json();
+      if (res.ok && data.step === 'eimzo') {
+        // Parol to'g'ri — E-IMZO kaliti bilan tasdiqlash bosqichi
+        form.reset({ login: sanitizedData.login, password: '' });
+        setResponseMessage(null);
+        setEimzo(data);
+        return;
+      }
       if (res.ok) {
-        toast.success('Xush kelibsiz!');
-        const target = getPostLoginPath(data);
-        window.location.replace(target);
+        finishLogin(data);
         return;
       } else {
         const errorMsg =
@@ -110,6 +123,13 @@ export default function LoginPage() {
           </p>
         )}
 
+        {eimzo ?
+          <EimzoKeyStep
+            challenge={eimzo}
+            onSuccess={finishLogin}
+            onCancel={() => setEimzo(null)}
+          />
+        : <>
         {/* Forma */}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
@@ -174,6 +194,8 @@ export default function LoginPage() {
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
+        </>
+        }
       </div>
     </div>
   );

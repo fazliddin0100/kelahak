@@ -43,19 +43,21 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  personal Personal?
-  auth     Auth?
-  job      Job?
-  devices  UserDevice[]
-  sessions UserSession[]
-  pendingUploads PendingUpload[]
+  personal        Personal?
+  auth            Auth?
+  job             Job?
+  devices         UserDevice[]
+  sessions        UserSession[]
+  pendingUploads  PendingUpload[]
+  certificates    UserCertificate[]
+  loginChallenges LoginChallenge[]
 
-  ownedDocuments       Document[]           @relation("DocumentOwner")
-  forwardedDocuments   Document[]           @relation("DocumentForwardedBy")
-  allowedOnDocuments   DocumentAllowedUser[]
-  uploadedFiles        File[]
-  ownedNomeklatura     Nomeklatura[]        @relation("NomeklaturaOwner")
-  createdNomeklatura   Nomeklatura[]        @relation("NomeklaturaCreator")
+  ownedDocuments     Document[]            @relation("DocumentOwner")
+  forwardedDocuments Document[]            @relation("DocumentForwardedBy")
+  allowedOnDocuments DocumentAllowedUser[]
+  uploadedFiles      File[]
+  ownedNomeklatura   Nomeklatura[]         @relation("NomeklaturaOwner")
+  createdNomeklatura Nomeklatura[]         @relation("NomeklaturaCreator")
 
   @@map("users")
 }
@@ -199,13 +201,13 @@ model Document {
   copyTotal  Int?
 
   // Imzolovchi / yo‘naltirish snapshotlari (JSONB — tez o‘qish)
-  approvers       Json @default("[]")
+  approvers       Json  @default("[]")
   sender          Json?
-  receiver        Json @default("[]")
+  receiver        Json  @default("[]")
   author          Json?
   bosSigned       Json?
   forwardedSigner Json?
-  forwardedTo     Json @default("[]")
+  forwardedTo     Json  @default("[]")
   ownerAcceptedBy Json?
 
   ownerId String
@@ -213,12 +215,12 @@ model Document {
 
   status String @default("yangi")
 
-  sharedWithAdmin        Boolean @default(false)
-  sentToCommander        Boolean @default(false)
+  sharedWithAdmin        Boolean   @default(false)
+  sentToCommander        Boolean   @default(false)
   sentToCommanderAt      DateTime?
-  submittedToKotibiyat   Boolean @default(false)
+  submittedToKotibiyat   Boolean   @default(false)
   submittedToKotibiyatAt DateTime?
-  createdByKotibiyat     Boolean @default(false)
+  createdByKotibiyat     Boolean   @default(false)
 
   nomenclatureId String?
   nomenclature   Nomeklatura? @relation(fields: [nomenclatureId], references: [id])
@@ -234,12 +236,12 @@ model Document {
 
   isCopy Boolean @default(false)
 
-  forwardedById String?
-  forwardedBy   User?     @relation("DocumentForwardedBy", fields: [forwardedById], references: [id])
-  forwardedAt   DateTime?
+  forwardedById    String?
+  forwardedBy      User?     @relation("DocumentForwardedBy", fields: [forwardedById], references: [id])
+  forwardedAt      DateTime?
   forwardedComment String?
 
-  currentViewIndex Int     @default(0)
+  currentViewIndex Int        @default(0)
   replyToId        String?
   replyTo          Document?  @relation("DocumentReply", fields: [replyToId], references: [id])
   replies          Document[] @relation("DocumentReply")
@@ -248,10 +250,10 @@ model Document {
   ownerAccepted   Boolean   @default(false)
   ownerAcceptedAt DateTime?
 
-  content              DocumentContent?
-  allowedUsers         DocumentAllowedUser[]
-  attachments          DocumentAttachment[]  @relation("DocAttachments")
-  attachedTo           DocumentAttachment[]  @relation("DocAttachmentTarget")
+  content      DocumentContent?
+  allowedUsers DocumentAllowedUser[]
+  attachments  DocumentAttachment[]  @relation("DocAttachments")
+  attachedTo   DocumentAttachment[]  @relation("DocAttachmentTarget")
 
   @@index([ownerId])
   @@index([status])
@@ -386,18 +388,18 @@ model NomeklaturaBolinma {
 // ─── Fayllar ─────────────────────────────────────────────────────────────────
 
 model File {
-  id             String   @id
-  nomi           String
-  raqami         String
-  maxfiylik      String
-  sanasi         String
-  ownerRegion    String
-  userUploadId   String
-  filePath       String?
-  mimeType       String?
+  id               String   @id
+  nomi             String
+  raqami           String
+  maxfiylik        String
+  sanasi           String
+  ownerRegion      String
+  userUploadId     String
+  filePath         String?
+  mimeType         String?
   encryptedContent Bytes?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   uploader      User           @relation(fields: [userUploadId], references: [id])
   pendingUpload PendingUpload?
@@ -484,4 +486,46 @@ model BlockedIp {
 
   @@index([active])
   @@map("blocked_ips")
+}
+
+// ─── E-IMZO (ichki PKI) ─────────────────────────────────────────────────────
+
+/// Userga biriktirilgan ochiq sertifikat. Yopiq kalit serverga hech qachon kelmaydi.
+/// Bekor qilingan sertifikat o'chirilmaydi — eski imzolarni tekshirish uchun saqlanadi.
+model UserCertificate {
+  id             String    @id
+  userId         String
+  fingerprint256 String    @unique
+  serialNumber   String
+  subject        String
+  issuer         String
+  notBefore      DateTime
+  notAfter       DateTime
+  pem            String
+  status         String    @default("active")
+  revokedAt      DateTime?
+  revokedReason  String?
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("user_certificates")
+}
+
+/// Kirishda E-IMZO bilan imzolanadigan bir martalik so'rov (2 daqiqa).
+model LoginChallenge {
+  id        String    @id
+  userId    String
+  nonce     String
+  kind      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("login_challenges")
 }

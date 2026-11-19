@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import EimzoKeyStep, { type EimzoChallenge } from '@/components/EimzoKeyStep';
 import { toast } from '@/components/ui/sonner';
 import mexonLogo from '@/public/mexon-mark.png';
 import { PENDING_ACCESS_MESSAGE } from '@/lib/authConstants';
@@ -27,6 +28,7 @@ const formSchema = z.object({
 
 export default function Login() {
   const [responseMessage, setResponseMessage] = useState<string | null>(null);
+  const [eimzo, setEimzo] = useState<EimzoChallenge | null>(null);
   const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -48,18 +50,14 @@ export default function Login() {
       });
 
       const data = await res.json();
+      if (res.ok && data.step === 'eimzo') {
+        form.reset({ login: sanitizedData.login, password: '' });
+        setResponseMessage(null);
+        setEimzo(data);
+        return;
+      }
       if (res.ok) {
-        toast.success('Xush kelibsiz!');
-        if (data.role === 'superAdmin') {
-          setTimeout(() => router.push('/superadmin/panel'), 200);
-        } else if (
-          data.role === 'admin' ||
-          data.department === 'kotibiyat'
-        ) {
-          setTimeout(() => router.push('/admin/navbar'), 200);
-        } else {
-          setTimeout(() => router.push('/sign-in'), 200);
-        }
+        goToPanel(data);
       } else {
         const errorMsg =
           data.code === 'PENDING_APPROVAL' ?
@@ -72,6 +70,20 @@ export default function Login() {
       toast.error('Server bilan bog‘liq xatolik yuz berdi');
     }
   };
+
+  function goToPanel(data: { role?: unknown; department?: unknown }) {
+        toast.success('Xush kelibsiz!');
+        if (data.role === 'superAdmin') {
+          setTimeout(() => router.push('/superadmin/panel'), 200);
+        } else if (
+          data.role === 'admin' ||
+          data.department === 'kotibiyat'
+        ) {
+          setTimeout(() => router.push('/admin/navbar'), 200);
+        } else {
+          setTimeout(() => router.push('/sign-in'), 200);
+        }
+  }
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-linear-to-br from-gray-50 to-gray-100 p-4">
@@ -111,7 +123,9 @@ export default function Login() {
         )}
 
         {/* Forma */}
-        <Form {...form}>
+        {eimzo ?
+          <EimzoKeyStep challenge={eimzo} onSuccess={goToPanel} onCancel={() => setEimzo(null)} />
+        : <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
               control={form.control}
@@ -157,6 +171,7 @@ export default function Login() {
             </Button>
           </form>
         </Form>
+        }
       </div>
     </div>
   );

@@ -38,6 +38,7 @@ const PUBLIC_AUTH_API = [
   '/api/superadmin/register',
   '/api/superadmin/setup-status',
   '/api/shahobcha',
+  '/api/auth/eimzo/verify',
 ];
 
 /** public/ ildizidagi rasm fayllari (faqat bitta daraja, papkasiz) */

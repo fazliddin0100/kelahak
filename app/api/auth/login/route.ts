@@ -1,8 +1,8 @@
 // app/api/auth/login/route.ts
-import type { SignOptions } from 'jsonwebtoken';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { setAuthCookies, signAuthToken } from '@/lib/authTokens';
+import { isEimzoRequired, startEimzoChallenge } from '@/lib/eimzo/challenge';
+import { issueLoginSession } from '@/lib/loginSession';
 import {
   logLoginDenied,
   logLoginSuccess,
@@ -12,12 +12,8 @@ import {
   canLoginWithoutApproval,
   PENDING_ACCESS_MESSAGE,
 } from '@/lib/userAccess';
-import { createUserSession } from '@/lib/sessionFiles';
 
 const PATH = '/api/auth/login';
-const SESSION_SECONDS = 5 * 60 * 60;
-const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN ||
-  '5h') as SignOptions['expiresIn'];
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,26 +43,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const sessionId = await createUserSession(user.id, SESSION_SECONDS * 1000);
-    const token = signAuthToken(
-      'access',
-      {
-        userId: user.id,
-        department: job.department,
-        role: role.role,
-        accessApproved: true,
-        sessionId,
-      },
-      JWT_EXPIRES_IN
-    );
+    // Faol sertifikati bor userga parolning o'zi yetarli emas — E-IMZO bosqichi
+    if (await isEimzoRequired(user.id)) {
+      return startEimzoChallenge(user.id, 'access');
+    }
 
     logLoginSuccess(ip, PATH, login);
-
-    const response = NextResponse.json(
-      { department: job.department, role: role.role },
-      { status: 200 }
-    );
-    return setAuthCookies(response, { access: token }, SESSION_SECONDS);
+    return issueLoginSession('access', user as Parameters<typeof issueLoginSession>[1]);
   } catch (error) {
     console.error('Login xatosi:', error);
     return NextResponse.json(

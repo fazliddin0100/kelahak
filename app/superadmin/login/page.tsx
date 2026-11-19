@@ -1,5 +1,6 @@
 'use client';
 
+import EimzoKeyStep, { type EimzoChallenge } from '@/components/EimzoKeyStep';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/sonner';
@@ -13,6 +14,12 @@ export default function SuperAdminLoginPage() {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [eimzo, setEimzo] = useState<EimzoChallenge | null>(null);
+
+  const finish = () => {
+    toast.success('Xush kelibsiz, SuperAdmin!');
+    router.push('/superadmin/panel');
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,8 +36,12 @@ export default function SuperAdminLoginPage() {
         toast.error(data.message || 'Kirish muvaffaqiyatsiz');
         return;
       }
-      toast.success('Xush kelibsiz, SuperAdmin!');
-      router.push('/superadmin/panel');
+      if (data.step === 'eimzo') {
+        setPassword('');
+        setEimzo(data);
+        return;
+      }
+      finish();
     } catch {
       toast.error('Server xatosi');
     } finally {
@@ -49,7 +60,9 @@ export default function SuperAdminLoginPage() {
           <p className="mt-1 text-sm text-slate-500">Tizim boshqaruv paneli</p>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
+        {eimzo ?
+          <EimzoKeyStep challenge={eimzo} onSuccess={finish} onCancel={() => setEimzo(null)} />
+        : <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
               Login
@@ -82,6 +95,7 @@ export default function SuperAdminLoginPage() {
             {loading ? 'Kirish...' : 'Kirish'}
           </Button>
         </form>
+        }
 
         <p className="mt-6 text-center text-sm text-slate-500">
           Hisobingiz yo‘qmi?{' '}

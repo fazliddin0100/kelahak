@@ -7,6 +7,7 @@ import SuperAdminUsers from './users';
 import SuperAdminGuide from './guide';
 import SuperAdminSecurity from './security';
 import SuperAdminShahobchalar from './shahobchalar';
+import SuperAdminCertificates from './certificates';
 
 export default function SuperAdminPanelPage() {
   const [page, setPage] = useState('dashboard');
@@ -19,6 +20,7 @@ export default function SuperAdminPanelPage() {
         {page === 'security' && <SuperAdminSecurity />}
         {page === 'shahobchalar' && <SuperAdminShahobchalar />}
         {page === 'users' && <SuperAdminUsers />}
+        {page === 'certificates' && <SuperAdminCertificates />}
         {page === 'guide' && <SuperAdminGuide />}
       </main>
     </div>

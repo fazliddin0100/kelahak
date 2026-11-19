@@ -1,15 +1,13 @@
-import { setAuthCookies } from '@/lib/authTokens';
+import { isEimzoRequired, startEimzoChallenge } from '@/lib/eimzo/challenge';
+import { issueLoginSession } from '@/lib/loginSession';
 import {
   logLoginDenied,
   logLoginSuccess,
   verifyLoginRequest,
 } from '@/lib/loginFlow';
-import { signSuperAdminToken } from '@/lib/superadminAuth';
 import { NextRequest, NextResponse } from 'next/server';
-import { createUserSession } from '@/lib/sessionFiles';
 
 const PATH = '/api/superadmin/login';
-const SESSION_SECONDS = 8 * 60 * 60;
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,20 +35,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const sessionId = await createUserSession(user.id, SESSION_SECONDS * 1000);
-    const token = signSuperAdminToken(user.id, sessionId);
+    if (await isEimzoRequired(user.id)) {
+      return startEimzoChallenge(user.id, 'superadmin');
+    }
 
     logLoginSuccess(ip, PATH, login);
-
-    const response = NextResponse.json(
-      {
-        role: 'superAdmin',
-        message: 'SuperAdmin paneliga xush kelibsiz',
-      },
-      { status: 200 }
-    );
-
-    return setAuthCookies(response, { superadmin: token }, SESSION_SECONDS);
+    return issueLoginSession('superadmin', user as Parameters<typeof issueLoginSession>[1]);
   } catch {
     return NextResponse.json({ message: 'Server xatosi' }, { status: 500 });
   }
