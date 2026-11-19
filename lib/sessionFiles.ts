@@ -8,6 +8,9 @@ export const SESSION_IDLE_MS = 30 * 60 * 1000;
 const stagingRoot = process.env.FILE_STAGING_DIR ?? '/var/lib/mexon/staging';
 const SESSION_ID_PATTERN = /^[0-9a-f-]{36}$/i;
 let lastSweepAt = 0;
+/** Faollik vaqti bazaga ko'pi bilan daqiqada bir marta yoziladi (har so'rovda emas). */
+const lastTouchedAt = new Map<string, number>();
+const TOUCH_INTERVAL_MS = 60_000;
 
 export async function createUserSession(userId: string, lifetimeMs: number) {
   const id = randomUUID();
@@ -52,10 +55,15 @@ export async function touchUserSession(sessionId: string, userId: string) {
     select: { id: true },
   });
   if (!active) return false;
-  await prisma.userSession.updateMany({
-    where: { id: sessionId, lastActivityAt: { lte: new Date(now.getTime() - 60_000) } },
-    data: { lastActivityAt: now },
-  });
+  const last = lastTouchedAt.get(sessionId) ?? 0;
+  if (now.getTime() - last >= TOUCH_INTERVAL_MS) {
+    lastTouchedAt.set(sessionId, now.getTime());
+    if (lastTouchedAt.size > 10_000) lastTouchedAt.clear();
+    await prisma.userSession.updateMany({
+      where: { id: sessionId, lastActivityAt: { lte: new Date(now.getTime() - TOUCH_INTERVAL_MS) } },
+      data: { lastActivityAt: now },
+    });
+  }
 
   return true;
 }
@@ -85,9 +93,10 @@ export async function stageEncryptedUpload(
   if (!SESSION_ID_PATTERN.test(sessionId)) {
     throw new Error('Sessiya identifikatori noto‘g‘ri.');
   }
-  const directory = path.join(stagingRoot, sessionId);
+  // Ish vaqtidagi papka (FILE_STAGING_DIR) — build fayllarni kuzatmasin
+  const directory = path.join(/*turbopackIgnore: true*/ stagingRoot, sessionId);
   await mkdir(directory, { recursive: true, mode: 0o700 });
-  const storagePath = path.join(directory, `${randomUUID()}.mxf`);
+  const storagePath = path.join(/*turbopackIgnore: true*/ directory, `${randomUUID()}.mxf`);
   await writeFile(storagePath, encryptDocumentFile(bytes, fileId), {
     mode: 0o600,
     flag: 'wx',

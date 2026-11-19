@@ -1,6 +1,30 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+
+/**
+ * Brauzerda hech narsa saqlanmasin: TinyMCE oxirgi tanlangan ranglarni
+ * localStorage'ga (`tinymce-*`) yozadi. Bu kalitlar yozilmaydi, eskilari o'chiriladi.
+ */
+if (typeof window !== 'undefined') {
+  const marker = '__mezonTinyStorageBlocked';
+  const w = window as unknown as Record<string, boolean>;
+  if (!w[marker]) {
+    w[marker] = true;
+    try {
+      const originalSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key: string, value: string) {
+        if (typeof key === 'string' && key.startsWith('tinymce-')) return;
+        return originalSetItem.call(this, key, value);
+      };
+      for (const key of Object.keys(window.localStorage)) {
+        if (key.startsWith('tinymce-')) window.localStorage.removeItem(key);
+      }
+    } catch {
+      // storage o'chirilgan bo'lishi mumkin (private mode)
+    }
+  }
+}
 import { normalizeDocumentContent } from '@/lib/normalizeDocumentContent';
 import {
   forwardRef,

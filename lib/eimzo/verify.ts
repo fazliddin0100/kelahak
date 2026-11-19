@@ -31,7 +31,7 @@ export class EimzoError extends Error {
 let caCache: { file: string; cert: X509Certificate } | undefined;
 
 function caFile(): string {
-  return process.env.EIMZO_CA_CERT_FILE || path.join(process.cwd(), 'secrets', 'pki', 'ca.crt');
+  return process.env.EIMZO_CA_CERT_FILE || path.join(/*turbopackIgnore: true*/ process.cwd(), 'secrets', 'pki', 'ca.crt');
 }
 
 export function loadTrustedCa(): X509Certificate {

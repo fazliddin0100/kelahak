@@ -1,3 +1,4 @@
+import { logAdminAction, loginOf } from '@/lib/auditLog';
 import {
   createShahobchaWithAdmin,
   listShahobchalarForSuperAdmin,
@@ -28,6 +29,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'So‘rov tanasi noto‘g‘ri' }, { status: 400 });
     }
     const created = await createShahobchaWithAdmin(body);
+    await logAdminAction(
+      request,
+      check.userId,
+      `Shahobcha yaratildi: «${created.name}» (${created.province}), admin: ${await loginOf(created.adminUserId)}`
+    );
     return NextResponse.json(
       { message: 'Shahobcha va uning admini yaratildi', shahobcha: created },
       { status: 201 }

@@ -135,6 +135,23 @@ export async function findUserById(userId: string) {
   });
 }
 
+/**
+ * Har bir API so'rovidagi autentifikatsiya uchun: findUserById bilan bir xil,
+ * faqat qurilmalar (devices) JOIN qilinmaydi — ular autentifikatsiyada ishlatilmaydi.
+ */
+export async function findUserForAuth(userId: string): Promise<UserWithRelations | null> {
+  await connectToDatabase();
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      personal: true,
+      auth: true,
+      job: { include: { role: true } },
+    },
+  });
+  return user ? { ...user, devices: [] } : null;
+}
+
 export async function findUserByLogin(login: string) {
   await connectToDatabase();
   return prisma.auth.findUnique({

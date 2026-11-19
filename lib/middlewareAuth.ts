@@ -1,3 +1,4 @@
+import { AUTH_COOKIE } from '@/lib/authCookies';
 import { NextRequest } from 'next/server';
 
 export function readBearerToken(req: NextRequest): string | null {
@@ -11,10 +12,10 @@ export function readBearerToken(req: NextRequest): string | null {
 
 /** token / sa_token (cookie yoki mos Bearer) */
 export function readMainToken(req: NextRequest): string | null {
-  const sa = req.cookies.get('sa_token')?.value;
-  const tok = req.cookies.get('token')?.value;
+  const sa = req.cookies.get(AUTH_COOKIE.superadmin)?.value;
+  const tok = req.cookies.get(AUTH_COOKIE.access)?.value;
   const bearer = readBearerToken(req);
-  const ref = req.cookies.get('ref_token')?.value;
+  const ref = req.cookies.get(AUTH_COOKIE.admin)?.value;
 
   if (sa && (!bearer || bearer === sa)) return sa;
   if (tok && (!bearer || bearer === tok)) return tok;
@@ -24,10 +25,10 @@ export function readMainToken(req: NextRequest): string | null {
 
 /** ref_token — admin panel API chaqiriqlari */
 export function readRefToken(req: NextRequest): string | null {
-  const ref = req.cookies.get('ref_token')?.value;
+  const ref = req.cookies.get(AUTH_COOKIE.admin)?.value;
   const bearer = readBearerToken(req);
   if (ref) return ref;
-  if (bearer && !req.cookies.get('token')?.value && !req.cookies.get('sa_token')?.value) {
+  if (bearer && !req.cookies.get(AUTH_COOKIE.access)?.value && !req.cookies.get(AUTH_COOKIE.superadmin)?.value) {
     return bearer;
   }
   return null;

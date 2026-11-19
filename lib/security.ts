@@ -1,3 +1,4 @@
+import { AUTH_COOKIE } from '@/lib/authCookies';
 // lib/security.ts
 import type {NextRequest} from "next/server";
 import {NextResponse} from "next/server";
@@ -20,7 +21,7 @@ export async function securityMiddleware(req: NextRequest) {
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.startsWith("Bearer ")
         ? authHeader.split(" ")[1]
-        : req.cookies.get("token")?.value;
+        : req.cookies.get(AUTH_COOKIE.access)?.value;
 
     if (!token) {
         return NextResponse.json({message: "Token mavjud emas!"}, {status: 401});

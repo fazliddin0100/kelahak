@@ -4,6 +4,7 @@ import {
   commanderLocalInboxWhere,
   findDocuments,
   serializeDocumentsForApi,
+  INBOX_LIST_LIMIT,
 } from '@/lib/db/document';
 import { isCommanderRole } from '@/lib/roles';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
       commanderLocalInboxWhere(user.personal.province),
       {
         orderBy: [{ sentToCommanderAt: 'desc' }, { updatedAt: 'desc' }],
+        take: INBOX_LIST_LIMIT,
       }
     );
 

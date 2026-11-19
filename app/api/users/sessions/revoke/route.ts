@@ -1,5 +1,6 @@
 // api/users/sessions/revoke/route.ts
 
+import { logAdminAction, loginOf } from '@/lib/auditLog';
 import {
   findUserById,
   isValidDbId,
@@ -78,6 +79,8 @@ export async function POST(request: NextRequest) {
         data: { revokedAt: new Date() },
       });
     }
+
+    await logAdminAction(request, adminId, `Ruxsat olindi, sessiyalar yopildi: ${user.auth?.login ?? userId}`);
 
     return NextResponse.json(
       {

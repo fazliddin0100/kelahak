@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 
 /**
- * TinyMCE eval talab qiladi.
- * SPA: /user dan /document ga o‘tganda birinchi sahifaning CSP qoladi —
- * shuning uchun barcha ishchi kabinet yo‘llarida unsafe-eval beriladi.
+ * Ish kabinetlari yo'llari (CSP_EDITOR_UNSAFE_EVAL=true bo'lganda unsafe-eval shu yerda).
+ * SPA: /user dan /document ga o‘tganda birinchi sahifaning CSP qoladi — shuning uchun hammasi.
  */
 const UNSAFE_EVAL_ROUTE_PREFIXES = [
   '/document',
@@ -28,10 +27,15 @@ export function isEditorRoute(pathname: string): boolean {
   return UNSAFE_EVAL_ROUTE_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
-/** TinyMCE va webpack dev uchun script-src ga unsafe-eval */
+/**
+ * unsafe-eval faqat dev (HMR) uchun. Productionda TinyMCE ham usiz ishlashi tekshirilgan
+ * (matn, jadval, formatlash, dialoglar). Zarurat bo'lsa: CSP_EDITOR_UNSAFE_EVAL=true —
+ * u holda faqat ish kabinetlari yo'llarida beriladi.
+ */
 export function needsUnsafeEval(pathname: string): boolean {
   if (process.env.NODE_ENV === 'development') return true;
-  return isEditorRoute(pathname);
+  if (process.env.CSP_EDITOR_UNSAFE_EVAL === 'true') return isEditorRoute(pathname);
+  return false;
 }
 
 export function buildContentSecurityPolicy(

@@ -4,6 +4,7 @@
 // uning rolini hamda huquqlarini (checkbox orqali tanlangan) yozadi.
 // Allaqachon ruxsat berilgan userning huquqlarini yangilash uchun ham ishlatiladi.
 
+import { logAdminAction, loginOf } from '@/lib/auditLog';
 import { canAdminManage } from '@/lib/adminScope';
 import { commanderExistsInUnit } from '@/lib/commanderSlot';
 import { findUserById, isValidDbId } from '@/lib/db/user';
@@ -112,6 +113,12 @@ export async function POST(request: NextRequest) {
         });
       }
     });
+
+    await logAdminAction(
+      request,
+      adminId,
+      `${user.job.isUserTrue ? 'Huquqlar o‘zgartirildi' : 'Ruxsat berildi'}: ${user.auth?.login ?? userId} → ${role}; huquqlar: ${permissions.join(', ')}`
+    );
 
     return NextResponse.json(
       {

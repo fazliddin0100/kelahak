@@ -2,7 +2,7 @@ import {
   canLoginWithoutApproval,
   PENDING_ACCESS_MESSAGE,
 } from '@/lib/authConstants';
-import { findUserById, type UserWithRelations } from '@/lib/db/user';
+import { findUserForAuth, type UserWithRelations } from '@/lib/db/user';
 import connectToDatabase from '@/lib/prisma';
 import { readRequestIdentity } from '@/lib/userid';
 import type { DbRole } from '@/lib/roles';
@@ -64,7 +64,7 @@ export async function requireApiAuth(
   }
 
   await connectToDatabase();
-  const user = await findUserById(identity.userId);
+  const user = await findUserForAuth(identity.userId);
 
   if (!user?.job?.role) {
     return NextResponse.json(

@@ -1,3 +1,4 @@
+import { logAdminAction, loginOf } from '@/lib/auditLog';
 import { isValidDbId } from '@/lib/dbId';
 import connectToDatabase, { prisma } from '@/lib/prisma';
 import { requireSuperAdmin } from '@/lib/superadminAuth';
@@ -38,6 +39,11 @@ export async function DELETE(request: NextRequest, { params }: Ctx) {
         data: { revokedAt: now },
       }),
     ]);
+    await logAdminAction(
+      request,
+      check.userId,
+      `E-IMZO sertifikati bekor qilindi: ${await loginOf(cert.userId)}; sabab: ${reason}`
+    );
     return NextResponse.json({ message: 'Sertifikat bekor qilindi, userning sessiyalari yopildi.' });
   } catch (e) {
     console.error('Sertifikatni bekor qilish xatosi:', e);

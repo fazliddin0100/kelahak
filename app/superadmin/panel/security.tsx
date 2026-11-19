@@ -37,6 +37,7 @@ const TYPE_LABELS: Record<string, string> = {
   suspicious: 'Shubhali',
   waf_block: 'IP blok',
   ddos: 'DDoS',
+  admin_action: 'Admin amali',
 };
 
 const TYPE_CLASS: Record<string, string> = {
@@ -46,6 +47,7 @@ const TYPE_CLASS: Record<string, string> = {
   suspicious: 'bg-orange-100 text-orange-800 ring-orange-200',
   ddos: 'bg-red-200 text-red-900 ring-red-300',
   waf_block: 'bg-violet-100 text-violet-800 ring-violet-200',
+  admin_action: 'bg-sky-100 text-sky-800 ring-sky-200',
 };
 
 function formatTime(iso: string) {

@@ -1,7 +1,9 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import connectToDatabase from '@/lib/prisma';
 import { canForwardReviewerSign, hasPendingForwardSignatures } from '@/lib/forwardQueue';
-import { findDocuments, serializeDocumentsForApi } from '@/lib/db/document';
+import { findDocuments, serializeDocumentsForApi,
+  INBOX_LIST_LIMIT,
+} from '@/lib/db/document';
 import { DocumentType } from '@/types/document';
 import { DocumentStatus } from '@/types/document-status.enum';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -28,6 +30,7 @@ export async function GET(request: NextRequest) {
       },
     }, {
       orderBy: { updatedAt: 'desc' },
+      take: INBOX_LIST_LIMIT,
     });
 
     const serialized = await serializeDocumentsForApi(candidates, {

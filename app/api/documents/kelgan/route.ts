@@ -4,6 +4,7 @@ import {
   commanderExternalInboxWhere,
   findDocuments,
   serializeDocumentsForApi,
+  INBOX_LIST_LIMIT,
 } from '@/lib/db/document';
 import { isCommanderExternalInboxDocument } from '@/lib/documentWorkflow';
 import { isCommanderRole } from '@/lib/roles';
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest) {
       {
         includeAllowedUsers: true,
         orderBy: [{ sentToCommanderAt: 'desc' }, { updatedAt: 'desc' }],
+        take: INBOX_LIST_LIMIT,
       }
     );
 

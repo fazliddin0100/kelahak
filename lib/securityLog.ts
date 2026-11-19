@@ -31,6 +31,7 @@ export const SECURITY_EVENT_TYPES: readonly SecurityEventType[] = [
   'suspicious',
   'waf_block',
   'ddos',
+  'admin_action',
 ];
 
 function pushMemory(

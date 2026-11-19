@@ -685,6 +685,9 @@ const TERMINAL_STATUSES: DocumentStatus[] = [
 
 const PENDING_LIST_LIMIT = 500;
 
+/** Navbat/kiruvchi ro'yxatlar uchun yuqori chegara: eng yangi N ta hujjat (server butun tarixni o'qimaydi). */
+export const INBOX_LIST_LIMIT = 500;
+
 export function commanderLocalInboxWhere(province: string): Prisma.DocumentWhereInput {
   return {
     ownerRegion: provinceFilter(province),

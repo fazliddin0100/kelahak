@@ -1,3 +1,4 @@
+import { logAdminAction, loginOf } from '@/lib/auditLog';
 import { createDbId } from '@/lib/db/document';
 import { EimzoError, loadTrustedCa, parseAndValidateCertificate } from '@/lib/eimzo/verify';
 import connectToDatabase, { prisma } from '@/lib/prisma';
@@ -103,6 +104,11 @@ export async function POST(request: NextRequest) {
       },
       select: { id: true },
     });
+    await logAdminAction(
+      request,
+      check.userId,
+      `E-IMZO sertifikati biriktirildi: ${login}; SHA-256 ${parsed.fingerprint256.slice(0, 23)}…`
+    );
     return NextResponse.json(
       {
         message: `Sertifikat «${login}» ga biriktirildi. Endi u E-IMZO kaliti bilan kiradi.`,

@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import {
   AUTH_AUDIENCE,
   AUTH_COOKIE,
+  AUTH_COOKIE_OPTIONS,
+  expireAuthCookie,
   AUTH_ISSUER,
   AUTH_KIND_ORDER,
   roleAllowedForKind,
@@ -93,14 +95,11 @@ export function setAuthCookies(
     const token = tokens[kind];
     if (token) {
       response.cookies.set(AUTH_COOKIE[kind], token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
+        ...AUTH_COOKIE_OPTIONS,
         maxAge: maxAgeSeconds,
       });
     } else {
-      response.cookies.delete(AUTH_COOKIE[kind]);
+      expireAuthCookie(response, AUTH_COOKIE[kind]);
     }
   }
   return response;
@@ -108,7 +107,7 @@ export function setAuthCookies(
 
 export function clearAuthCookies(response: NextResponse): NextResponse {
   for (const kind of AUTH_KIND_ORDER) {
-    response.cookies.delete(AUTH_COOKIE[kind]);
+    expireAuthCookie(response, AUTH_COOKIE[kind]);
   }
   response.cookies.delete('csrf-token');
   return response;

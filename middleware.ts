@@ -1,6 +1,7 @@
 import {
   AUTH_AUDIENCE,
   AUTH_COOKIE,
+  expireAuthCookie,
   AUTH_ISSUER,
   AUTH_KIND_ORDER,
   INTERNAL_IDENTITY_HEADERS,
@@ -230,7 +231,7 @@ async function resolveIdentity(req: NextRequest): Promise<Identity | null> {
 
 function clearAuthCookies(response: NextResponse): NextResponse {
   for (const kind of AUTH_KIND_ORDER) {
-    response.cookies.delete(AUTH_COOKIE[kind]);
+    expireAuthCookie(response, AUTH_COOKIE[kind]);
   }
   return response;
 }

@@ -1,3 +1,4 @@
+import { logAdminAction, loginOf } from '@/lib/auditLog';
 import connectToDatabase, { prisma } from '@/lib/prisma';
 import { requireSuperAdmin } from '@/lib/superadminAuth';
 import { NextRequest, NextResponse } from 'next/server';
@@ -54,6 +55,8 @@ export async function POST(request: NextRequest) {
       where: { userId: user.id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+
+    await logAdminAction(request, check.userId, `SuperAdmin ruxsatni oldi, sessiyalar yopildi: ${await loginOf(user.id)}`);
 
     return NextResponse.json({
       success: true,

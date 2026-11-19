@@ -11,6 +11,7 @@ import {
   kotibiyatRegionalCopyInboxWhere,
   kotibiyatRegistrationQueueWhere,
   serializeDocumentsForApi,
+  INBOX_LIST_LIMIT,
 } from '@/lib/db/document';
 import { DocumentType } from '@/types/document';
 import { DocumentStatus } from '@/types/document-status.enum';
@@ -99,6 +100,7 @@ export async function GET(request: NextRequest) {
           {
             includeAllowedUsers: true,
             orderBy: [{ submittedToKotibiyatAt: 'desc' }, { updatedAt: 'desc' }],
+            take: INBOX_LIST_LIMIT,
           }
         ),
         findDocuments(
@@ -112,15 +114,18 @@ export async function GET(request: NextRequest) {
           {
             includeAllowedUsers: true,
             orderBy: { updatedAt: 'desc' },
+            take: INBOX_LIST_LIMIT,
           }
         ),
         findDocuments(kotibiyatRegistrationQueueWhere(province), {
           includeAllowedUsers: true,
           orderBy: [{ submittedToKotibiyatAt: 'desc' }, { updatedAt: 'desc' }],
+          take: INBOX_LIST_LIMIT,
         }),
         findDocuments(kotibiyatRegionalCopyInboxWhere(province), {
           includeAllowedUsers: true,
           orderBy: [{ submittedToKotibiyatAt: 'desc' }, { updatedAt: 'desc' }],
+          take: INBOX_LIST_LIMIT,
         }),
       ]);
 

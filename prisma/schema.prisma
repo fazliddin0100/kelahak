@@ -34,6 +34,7 @@ enum SecurityEventType {
   suspicious
   waf_block
   ddos
+  admin_action
 }
 
 // ─── Foydalanuvchi grafik ───────────────────────────────────────────────────

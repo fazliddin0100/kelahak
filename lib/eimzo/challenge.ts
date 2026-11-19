@@ -7,7 +7,8 @@ import connectToDatabase, { prisma } from '@/lib/prisma';
 export type EimzoLoginKind = 'access' | 'admin' | 'superadmin';
 
 export const CHALLENGE_TTL_MS = 2 * 60 * 1000;
-export const PENDING_COOKIE = 'eimzo_pending';
+// __Secure-: brauzer faqat HTTPS da o'rnatadi (Path cheklangani uchun __Host- emas)
+export const PENDING_COOKIE = `${process.env.NODE_ENV === 'production' ? '__Secure-' : ''}eimzo_pending`;
 const PENDING_COOKIE_PATH = '/api/auth/eimzo';
 
 let lastCleanupAt = 0;
@@ -82,7 +83,13 @@ export async function startEimzoChallenge(userId: string, kind: EimzoLoginKind):
 }
 
 export function clearPendingCookie(response: NextResponse): NextResponse {
-  response.cookies.set(PENDING_COOKIE, '', { path: PENDING_COOKIE_PATH, maxAge: 0 });
+  response.cookies.set(PENDING_COOKIE, '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: PENDING_COOKIE_PATH,
+    maxAge: 0,
+  });
   return response;
 }
 
