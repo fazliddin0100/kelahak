@@ -29,6 +29,8 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-mysayt}:${POSTGRES_PASSWORD:-mysayt_secret}@postgres:5432/${POSTGRES_DB:-mysayt}
       POOL_MODE: transaction
+      # Postgres 16 SCRAM ishlatadi; md5 bilan PgBouncer serverga ulana olmaydi
+      AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: 200
       DEFAULT_POOL_SIZE: 25
     ports:

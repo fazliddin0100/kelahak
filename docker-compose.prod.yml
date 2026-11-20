@@ -32,6 +32,8 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       POOL_MODE: transaction
+      # Postgres 16 SCRAM ishlatadi; md5 bilan PgBouncer serverga ulana olmaydi
+      AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: 500
       DEFAULT_POOL_SIZE: 50
     networks:
@@ -61,6 +63,8 @@ services:
       dockerfile: Dockerfile
       target: backup
     container_name: mysayt-backup-init-prod
+    # Bir martalik zaxira (migratsiyadan oldin) — tugaydi; kunlik jadval 'backup' xizmatida
+    command: ['/usr/local/bin/backup-once.sh']
     security_opt:
       - no-new-privileges:true
     environment:
@@ -122,10 +126,13 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgbouncer:5432/${POSTGRES_DB}?pgbouncer=true&schema=public
       APP_ENCRYPTION_KEY_FILE: /run/secrets/app_encryption_key
-      # Nginx shu xostda ishlaydi va X-Forwarded-For ga mijoz IP sini qo‘shadi.
+      # E-IMZO: ishonchli CA (faqat ochiq sertifikat; CA kaliti oflayn)
+      EIMZO_CA_CERT_FILE: /run/secrets/eimzo_ca_cert
+      # Nginx (pastdagi konteyner) X-Forwarded-For ga mijoz IP sini qo‘shadi.
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
     secrets:
       - app_encryption_key
+      - eimzo_ca_cert
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -150,6 +157,30 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - mysayt-prod
+
+  # HTTPS (TLS 1.3) — foydalanuvchilar shu orqali kiradi. Sertifikat: ichki CA (deploy/README.md)
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: mysayt-nginx-prod
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - '${HTTPS_BIND_ADDRESS:-0.0.0.0}:${HTTPS_PORT:-443}:443'
+      - '${HTTPS_BIND_ADDRESS:-0.0.0.0}:${HTTP_PORT:-80}:80'
+    volumes:
+      - ./deploy/nginx/docker.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${TLS_DIR:-./secrets/pki-servers/server}:/etc/mezon/tls:ro
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', '--no-check-certificate', 'https://127.0.0.1/api/superadmin/setup-status']
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - mysayt-prod
 
@@ -197,6 +228,8 @@ secrets:
     file: ./secrets/app-encryption-key
   backup_repository_password:
     file: ./secrets/backup-repository-password
+  eimzo_ca_cert:
+    file: ./secrets/pki/ca.crt
 
 networks:
   mysayt-prod:
