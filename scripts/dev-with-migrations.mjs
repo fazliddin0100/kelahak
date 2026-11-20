@@ -51,7 +51,10 @@ function fail(message) {
   throw new Error(message);
 }
 
-async function assertDevPortAvailable(port = 3001) {
+/** Dev server porti: PORT muhit o'zgaruvchisi (standart 3001). */
+const DEV_PORT = String(Number.parseInt(process.env.PORT ?? '', 10) || 3001);
+
+async function assertDevPortAvailable(port = Number(DEV_PORT)) {
   await new Promise((resolve, reject) => {
     const server = net.createServer();
     server.once('error', (error) => {
@@ -435,7 +438,7 @@ async function main() {
   console.info(`   Bundler: ${bundlerFlag.slice(2)}`);
   const child = spawn(
     process.execPath,
-    [nextCli, 'dev', bundlerFlag, '-H', '127.0.0.1', '-p', '3001'],
+    [nextCli, 'dev', bundlerFlag, '-H', '127.0.0.1', '-p', DEV_PORT],
     { cwd: root, env: process.env, stdio: 'inherit', windowsHide: false }
   );
   const stop = () => child.kill('SIGINT');

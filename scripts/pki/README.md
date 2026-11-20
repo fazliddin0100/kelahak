@@ -22,7 +22,22 @@ bash scripts/pki/create-ca.sh secrets/pki-ca
 `secrets/pki/ca.crt` serverga avtomatik nusxalanadi. Keyin `secrets/pki-ca/ca.key` ni
 oflayn joyga ko'chiring va serverdan o'chiring. Boshqa joyda bo'lsa: `EIMZO_CA_CERT_FILE`.
 
-## 2. Userga kalit va sertifikat berish
+## 2. Userga kalit va sertifikat berish (tavsiya: panel + oflayn CA)
+
+1. SuperAdmin panel → **E-IMZO sertifikatlar** → «1. Kalit va so'rov yaratish»: login, F.I.Sh,
+   tashkilot va kalit paroli kiritiladi. Brauzer ikki fayl beradi:
+   `login.mzk` (shifrlangan kalit, userning fleshkasiga) va `login.csr` (so'rov).
+   Kalit serverga yuborilmaydi.
+2. `login.csr` ni **oflayn CA kompyuteriga** olib boring va imzolang:
+   ```bash
+   CA_DIR=/path/to/pki-ca bash scripts/pki/sign-csr.sh login.csr login
+   ```
+   Skript so'rov imzosini tekshiradi, F.I.Sh/login va ochiq kalit barmoq izini ko'rsatadi
+   (paneldagi bilan solishtiring) va tasdiqdan keyin `login.crt` beradi.
+3. `login.crt` ni panelda «2. Sertifikatni biriktirish» orqali userga biriktiring.
+
+### Muqobil: hammasi oflayn kompyuterda (skript bilan)
+
 
 ```bash
 MZK_PASSWORD='userning kalit paroli' CA_DIR=secrets/pki-ca \
@@ -48,6 +63,19 @@ Bekor qilingan sertifikatli user yangi sertifikat biriktirilmaguncha kira olmayd
 
 `issue-server.sh` — Nginx uchun HTTPS sertifikati va viloyat serverlari uchun mTLS mijoz
 sertifikati (`CLIENT=1`). Batafsil: `deploy/README.md`.
+
+## 6. E-IMZO'ni hamma uchun majburiy qilish
+
+1. SuperAdmin parol bilan kirib, **o'zi uchun** kalit va so'rov yaratadi (2-bo'lim), oflayn imzolatadi
+   va `superadmin01.crt` ni biriktiradi. Chiqib, E-IMZO bilan qayta kirib ko'radi.
+2. Keyin `.env` da `EIMZO_REQUIRED=true` qilib serverni qayta ishga tushiring.
+   Shundan so'ng sertifikati yo'q hech kim (SuperAdmin ham) faqat parol bilan kira olmaydi.
+
+**Favqulodda holat** (SuperAdmin kalitini yo'qotsa): server kompyuterida
+```bash
+node scripts/pki/bind-cert.mjs superadmin01 yangi.crt --revoke-others
+```
+Bu panelsiz, bazaga to'g'ridan-to'g'ri yozadi va xavfsizlik jurnaliga qayd etadi.
 
 ## Sozlamalar (.env)
 
