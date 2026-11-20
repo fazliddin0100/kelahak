@@ -3,6 +3,7 @@ import {Dalolatnoma} from "@/namunalar/dalolatnoma";
 import {Malumotnoma} from "@/namunalar/malumotnoma";
 import {Buyruq} from "@/namunalar/buyruq";
 import {Bildirgi} from "@/namunalar/bildirgi";
+import { Umumiy } from "@/namunalar/umumiy";
 import { DocumentType } from '@/types/document';
 import { ensureSenderFromAuthor } from '@/lib/ensureDocumentParties';
 import { resolveTemplateKeyFromTitle } from '@/lib/resolveDocumentTemplateKey';
@@ -29,10 +30,7 @@ export default function DocumentRenderer({ document, embedded }: DocumentRendere
         case "buyruq":
             return <Buyruq document={doc} embedded={embedded} />;
         default:
-            return (
-              <p className="p-8 text-center text-red-600 font-bold">
-                Hujjat turi topilmadi: &quot;{doc.title || '—'}&quot;
-              </p>
-            );
+            // Shablonsiz ("Yangi hujjat"): tur — user kiritgan sarlavha
+            return <Umumiy document={doc} embedded={embedded} />;
     }
 }

@@ -16,6 +16,11 @@ import { useRoleHook } from '@/hooks/useRoleHook';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { attachmentTextToFormIds } from '@/lib/parseAttachmentTextIds';
 import Inputs from './inputs';
+import {
+  isBlankDocumentType,
+  isCustomTypeDocument,
+  validateCustomDocumentType,
+} from '@/lib/resolveDocumentTemplateKey';
 
 const getFullName = (item: any): string => {
   if (!item?.personal) return '';
@@ -66,6 +71,7 @@ const DocumentPage = () => {
   const [docStatus, setDocStatus] = useState<string | undefined>();
   const [docOwner, setDocOwner] = useState<unknown>();
   const [docAuthor, setDocAuthor] = useState<{ userId?: unknown } | null>(null);
+  const [typeEditable, setTypeEditable] = useState(false);
   const editorRef = useRef<TinyEditorHandle>(null);
 
   const canEdit = useMemo(
@@ -107,12 +113,15 @@ const DocumentPage = () => {
         setDocStatus(doc.status);
         setDocOwner(doc.owner);
         setDocAuthor(doc.author ?? null);
+        // Shablonsiz hujjat: turini user o'zi yozadi ("yangi hujjat" bo'sh hisoblanadi)
+        const customType = isCustomTypeDocument(doc.title);
+        setTypeEditable(customType);
         const senderForm =
           doc.sender?.userId ? doc.sender : authorToFormSender(doc.author);
         setFormValues({
           editorContent: normalizeDocumentContent(doc.content),
           grifi: doc.grif || '',
-          nomi: doc.title || '',
+          nomi: customType && isBlankDocumentType(doc.title) ? '' : doc.title || '',
           selectedRegions: doc.copyNumber || [],
           imzoMain: doc.signerInfo || null,
           imzoAll: doc.approvers || [],
@@ -140,6 +149,13 @@ const DocumentPage = () => {
     if (!canEdit) {
       toast.error('Hujjat ro‘yxatga olingan — tahrirlash mumkin emas');
       return;
+    }
+    if (typeEditable) {
+      const typeError = validateCustomDocumentType(formValues.nomi || '');
+      if (typeError) {
+        toast.error(typeError);
+        return;
+      }
     }
     setIsLoading(true);
     try {
@@ -302,7 +318,7 @@ const DocumentPage = () => {
         </div>
 
         <div className="border-t border-slate-200 bg-muted px-4 py-2.5 sm:px-6">
-          <Inputs formValues={formValues} setFormValues={setFormValues} />
+          <Inputs formValues={formValues} setFormValues={setFormValues} typeEditable={typeEditable} />
         </div>
       </header>
 

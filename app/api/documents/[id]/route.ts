@@ -33,6 +33,11 @@ import {
 } from '@/lib/db/document';
 import { DocumentStatus } from '@/types/document-status.enum';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  isBlankDocumentType,
+  isCustomTypeDocument,
+  validateCustomDocumentType,
+} from '@/lib/resolveDocumentTemplateKey';
 
 const MAX_TITLE_LENGTH = 500;
 const MAX_GRIF_LENGTH = 100;
@@ -116,10 +121,22 @@ export async function PUT(
       );
     }
 
+    // Hujjat turi: shablonli hujjatda o'zgarmaydi; "Yangi hujjat" da user yozadi
+    let nextTitle = document.title || undefined;
+    if (isCustomTypeDocument(document.title)) {
+      if (title && !isBlankDocumentType(title)) {
+        const typeError = validateCustomDocumentType(title);
+        if (typeError) {
+          return NextResponse.json({ message: typeError }, { status: 400 });
+        }
+        nextTitle = title;
+      }
+    }
+
     const updatePayload: Parameters<typeof updateDocument>[1] = {
       grif,
       copyNumber: cleanCopyNumber(body.copyNumber),
-      title: title || document.title || undefined,
+      title: nextTitle,
     };
 
     if (body.content !== undefined) {

@@ -22,6 +22,8 @@ import { updateForm } from '@/utils/updateForm';
 interface InputsProps {
   formValues: DocumentFormValues;
   setFormValues: React.Dispatch<React.SetStateAction<DocumentFormValues>>;
+  /** Faqat shablonsiz "Yangi hujjat" da user hujjat turini o'zi yozadi */
+  typeEditable?: boolean;
 }
 
 const toolBtn =
@@ -30,7 +32,7 @@ const toolBtn =
 const fieldClass =
   'h-9 border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus-visible:border-gold focus-visible:ring-gold/30';
 
-const Inputs = ({ formValues, setFormValues }: InputsProps) => {
+const Inputs = ({ formValues, setFormValues, typeEditable = false }: InputsProps) => {
   const [isImzoModalOpen, setImzoModalOpen] = React.useState(false);
   const [isBuyruqModalOpen, setBuyruqModalOpen] = React.useState(false);
   const [isXatModalOpen, setXatModalOpen] = React.useState(false);
@@ -130,13 +132,16 @@ const Inputs = ({ formValues, setFormValues }: InputsProps) => {
           />
         </div>
 
-        <div className="relative min-w-[140px] flex-1 sm:max-w-[200px]">
+        <div className="relative min-w-[160px] flex-1 sm:max-w-[240px]">
           <Type className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-500" />
           <Input
-            className={cn(fieldClass, 'pl-8')}
-            placeholder="Nomi..."
+            className={cn(fieldClass, 'pl-8', typeEditable && !formValues.nomi?.trim() && 'border-amber-400')}
+            placeholder={typeEditable ? 'Hujjat turi (masalan: Taqdimnoma)' : 'Hujjat turi'}
+            aria-label="Hujjat turi"
+            title={typeEditable ? 'Yangi hujjat turini kiriting' : 'Shablon hujjati turi o‘zgarmaydi'}
             value={formValues.nomi ?? ''}
-            disabled={!!formValues.nomi}
+            disabled={!typeEditable}
+            maxLength={120}
             onChange={(e) =>
               setFormValues((prev) =>
                 updateForm(prev, { nomi: e.target.value })
