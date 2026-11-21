@@ -1,5 +1,7 @@
 'use client';
 
+import type React from 'react';
+
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -45,6 +47,8 @@ type Props = {
   permissions: DocumentActionPermissions;
   handlers: DocumentActionHandlers;
   showRegister?: boolean;
+  /** Qo'shimcha tugmalar (masalan, chop etish so'rovi) */
+  extra?: React.ReactNode;
 };
 
 export function ActionToolbar({
@@ -52,6 +56,7 @@ export function ActionToolbar({
   permissions,
   handlers,
   showRegister = false,
+  extra,
 }: Props) {
   const homeHref = getDocumentActionsHomeHref(roleGroup);
   const shareOnly = permissions.workFileShareOnly;
@@ -152,6 +157,7 @@ export function ActionToolbar({
             </TooltipContent>
           </Tooltip>
         ))}
+        {extra}
       </div>
     </TooltipProvider>
   );

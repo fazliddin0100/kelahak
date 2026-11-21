@@ -3,7 +3,7 @@
 import UserProfile from '@/components/UserProfile';
 import InstitutionalNavigation from '@/components/InstitutionalNavigation';
 import { useTashkilot } from '@/hooks/useTashkilot';
-import { BookMarked, CalendarClock, FileText, Inbox, Library, MessageCircleMore, NotebookPen } from 'lucide-react';
+import { BookMarked, CalendarClock, FileText, Inbox, Library, MessageCircleMore, NotebookPen, Printer } from 'lucide-react';
 import { useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { page: 'controlni', label: 'Nazorat', Icon: CalendarClock },
   { page: 'buyruq', label: 'Buyruq', Icon: BookMarked },
   { page: 'chat', label: 'Chat', Icon: MessageCircleMore },
+  { page: 'print', label: 'Chop etish', Icon: Printer },
 ] as const;
 
 const NavbarKotibiyat = ({ setPage, organ }: NavbarKotibiyatProps) => {

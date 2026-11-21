@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { headers } from 'next/headers';
 import React from 'react';
 import Providers from '../providers/providers';
+import DocumentProtection from '@/components/DocumentProtection';
 import './globals.css';
 
 const geistSans = Geist({
@@ -65,6 +66,7 @@ export default async function RootLayout({
             },
           }}
         />
+        <DocumentProtection />
         <Providers>{children}</Providers>
       </body>
     </html>

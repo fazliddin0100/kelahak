@@ -473,3 +473,24 @@ body {
 .document-view-a4 .document-container {
   min-height: 297mm;
 }
+
+/* ─── Hujjatni nusxalash va chop etishdan himoya (components/DocumentProtection.tsx) ─── */
+[data-protected],
+[data-protected] * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  body::after {
+    visibility: visible;
+    content: "Chop etish taqiqlangan. Hujjatni chop etish faqat kotibiyat orqali (Chop etish so'rovi).";
+    position: fixed;
+    inset: 40% 10% auto;
+    text-align: center;
+    font: 16pt 'Times New Roman', serif;
+  }
+}

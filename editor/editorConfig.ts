@@ -38,7 +38,6 @@ export const EDITOR_PLUGINS = [
   'media',
   'nonbreaking',
   'pagebreak',
-  'preview',
   'quickbars',
   'searchreplace',
   'table',
@@ -57,13 +56,12 @@ export const EDITOR_TOOLBAR = [
   'lineheight firstlineindent paragraphdialog',
   'numlist bullist outdent indent',
   'table image link pagebreak charmap docfields',
-  'searchreplace visualchars fullscreen preview print',
+  'searchreplace visualchars fullscreen',
 ].join(' | ');
 
 export const EDITOR_MENU = {
-  file: { title: 'File', items: 'preview print' },
   edit: { title: 'Edit', items: 'undo redo | cut copy paste pastetext | selectall | searchreplace' },
-  view: { title: 'View', items: 'visualaid visualchars visualblocks | preview fullscreen | wordcount' },
+  view: { title: 'View', items: 'visualaid visualchars visualblocks | fullscreen | wordcount' },
   insert: {
     title: 'Insert',
     items: 'image link media table | charmap emoticons hr nonbreaking pagebreak | anchor accordion codesample | insertdatetime docfields',
@@ -206,18 +204,8 @@ export const EDITOR_CONTENT_STYLE = `
     direction: ltr !important;
   }
   @page { size: A4; margin: ${PAGE_MARGINS.top} ${PAGE_MARGINS.right} ${PAGE_MARGINS.bottom} ${PAGE_MARGINS.left}; }
-  @media print {
-    html, body { background: #fff !important; }
-    body {
-      width: auto !important;
-      min-height: 0 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      box-shadow: none !important;
-      background-image: none !important;
-    }
-    .mezon-pagebreak { border: 0; margin: 0; break-after: page; page-break-after: always; }
-  }
+  /* Chop etish taqiqlangan: faqat kotibiyat orqali Word fayl */
+  @media print { body { display: none !important; } }
 `;
 
 /** init ga qo'shiladigan imkoniyatlar (TinyEditor o'zining LTR sozlamalarini ustidan yozadi) */
@@ -229,7 +217,7 @@ export const EDITOR_OPTIONS: Omit<
   toolbar: EDITOR_TOOLBAR,
   toolbar_mode: 'wrap',
   toolbar_sticky: true,
-  menubar: 'file edit view insert format table tools help',
+  menubar: 'edit view insert format table tools help',
   menu: EDITOR_MENU,
   language: 'uz',
   browser_spellcheck: true,
@@ -278,6 +266,63 @@ export function preprocessPaste(_editor: unknown, args: { content: string }) {
   }
 }
 
+/**
+ * Nusxa olishdan himoya: muharrir ichida ko'chirish/kesish/qo'yish ishlaydi (ichki bufer),
+ * lekin tizim clipboard'iga matn chiqmaydi. Ctrl/Cmd+P va Ctrl/Cmd+S bloklanadi.
+ */
+function registerClipboardGuard(editor: MezonEditor) {
+  let buffer: string | null = null;
+
+  const onCopy = (ev: unknown) => {
+    const e = ev as ClipboardEvent;
+    const html = (editor as unknown as { selection: { getContent: () => string } }).selection.getContent();
+    if (!html) return;
+    buffer = html;
+    e.preventDefault();
+    e.clipboardData?.setData('text/plain', '');
+    e.clipboardData?.setData('text/html', '');
+    if (e.type === 'cut') {
+      editor.undoManager.transact(() => editor.execCommand('Delete'));
+    }
+  };
+  editor.on('copy', onCopy);
+  editor.on('cut', onCopy);
+
+  editor.on('paste', (ev) => {
+    const e = ev as ClipboardEvent;
+    const text = e.clipboardData?.getData('text/plain');
+    const html = e.clipboardData?.getData('text/html');
+    // Clipboard bo'sh — demak oxirgi nusxa muharrirning o'zidan
+    if (buffer && !text && !html) {
+      e.preventDefault();
+      editor.insertContent(buffer);
+    }
+  });
+
+  // TinyMCE'ning o'z chop etish buyrug'i va Ctrl+P yorlig'i o'chiriladi
+  editor.on('init', () => {
+    const ed = editor as unknown as {
+      addCommand: (name: string, fn: () => void) => void;
+      shortcuts: { remove: (pattern: string) => boolean };
+    };
+    ed.addCommand('mcePrint', () => {});
+    ed.shortcuts.remove('meta+p');
+  });
+
+  editor.on('keydown', (ev) => {
+    const e = ev as KeyboardEvent;
+    const key = e.key?.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && (key === 'p' || key === 's')) {
+      e.preventDefault();
+      editor.notificationManager.open({
+        text: 'Chop etish faqat kotibiyat orqali (hujjat ro‘yxatga olingandan keyin «Chop etish» so‘rovi).',
+        type: 'warning',
+        timeout: 3500,
+      });
+    }
+  });
+}
+
 /** O'zimizning plaginlarni ro'yxatdan o'tkazish (setup ichida chaqiriladi) */
 export function registerMezonPlugins(
   editor: MezonEditor,
@@ -293,6 +338,7 @@ export function registerMezonPlugins(
     editor.execCommand('mceInsertClipboardContent', false, { html: cleanWordHtml(html) });
   });
 
+  registerClipboardGuard(editor);
   registerParagraphTools(editor);
   registerChangeCase(editor);
   registerDocumentFields(editor, getFields);

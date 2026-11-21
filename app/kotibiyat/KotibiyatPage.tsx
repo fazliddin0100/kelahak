@@ -7,6 +7,7 @@ import File from './(navbar)/file';
 import Jurnal from './(navbar)/jurnal/jurnal';
 import KelDocument from './(navbar)/kel-document';
 import Nomeklatura from './(navbar)/nomeklatura';
+import PrintRequests from './(navbar)/print-requests';
 
 interface Props {
   page: string;
@@ -22,6 +23,7 @@ export function KotibiyatPage({ page }: Props) {
       {page === 'controlni' && <Controlni />}
       {page === 'buyruq' && <Buyruq />}
       {page === 'chat' && <Chat />}
+      {page === 'print' && <PrintRequests />}
     </div>
   );
 }

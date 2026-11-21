@@ -580,6 +580,8 @@ export type UpdateDocumentInput = {
   sentToCommanderAt?: Date | null;
   nomenclatureId?: string | null;
   resolvedAt?: Date | null;
+  registeredById?: string | null;
+  registeredAt?: Date | null;
   attachmentIds?: string[];
   allowedUserIds?: string[];
 };

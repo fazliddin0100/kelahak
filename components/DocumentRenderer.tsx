@@ -14,7 +14,16 @@ interface DocumentRendererProps {
     embedded?: boolean;
 }
 
-export default function DocumentRenderer({ document, embedded }: DocumentRendererProps) {
+export default function DocumentRenderer(props: DocumentRendererProps) {
+    // Hujjat matnini belgilash/nusxalash taqiqlangan (components/DocumentProtection.tsx)
+    return (
+        <div data-protected className="contents">
+            <DocumentTemplate {...props} />
+        </div>
+    );
+}
+
+function DocumentTemplate({ document, embedded }: DocumentRendererProps) {
     const doc = ensureSenderFromAuthor(document as unknown as Record<string, unknown>) as unknown as DocumentType;
     const templateKey = resolveTemplateKeyFromTitle(doc.title);
 
@@ -30,7 +39,7 @@ export default function DocumentRenderer({ document, embedded }: DocumentRendere
         case "buyruq":
             return <Buyruq document={doc} embedded={embedded} />;
         default:
-            // Shablonsiz ("Yangi hujjat"): tur — user kiritgan sarlavha
+            // Shablonsiz ("Yangi hujjat"): nomini user matnda o'zi yozadi
             return <Umumiy document={doc} embedded={embedded} />;
     }
 }

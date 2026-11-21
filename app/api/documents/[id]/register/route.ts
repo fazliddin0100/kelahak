@@ -128,6 +128,8 @@ export async function POST(
       year,
       ownerRegion: personal.province,
       status: DocumentStatus.REGISTERED,
+      registeredById: auth.userId,
+      registeredAt: new Date(),
       copyIndex,
       copyTotal,
       allowedUserIds: [document.ownerId],
