@@ -1,6 +1,7 @@
 'use client';
 
 import ShareUserModal from '@/components/modals/ShareUserModal';
+import ReturnToAuthorModal from '@/components/modals/ReturnToAuthorModal';
 import { isDocumentInWorkFile } from '@/lib/documentLifecycle';
 import { useRoleHook } from '@/hooks/useRoleHook';
 import { useState } from 'react';
@@ -12,6 +13,7 @@ import type { DocumentActionsProps } from '../shared/types';
 
 function useCommanderActionState(document: DocumentActionsProps['document'], onRefresh?: DocumentActionsProps['onRefresh']) {
   const [shareOpen, setShareOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
   const { userId, province } = useRoleHook();
   const handlers = useDocumentActionHandlers(document._id, onRefresh);
   const permissions = useDocumentActionPermissions({
@@ -25,19 +27,20 @@ function useCommanderActionState(document: DocumentActionsProps['document'], onR
     onEdit: handlers.onEdit,
     onSign: handlers.onSign,
     onRegister: handlers.onRegister,
-    onBack: handlers.onBack,
+    // Boshliq qaytarganda sababi yoziladi
+    onBack: () => setReturnOpen(true),
     onSend: () => setShareOpen(true),
     onLinkNomeklatura: handlers.onLinkNomeklatura,
   };
 
-  return { shareOpen, setShareOpen, permissions, toolbarHandlers, documentId: document._id };
+  return { shareOpen, setShareOpen, returnOpen, setReturnOpen, permissions, toolbarHandlers, documentId: document._id };
 }
 
 export function CommanderDocumentToolbar({
   document,
   onRefresh,
 }: DocumentActionsProps) {
-  const { shareOpen, setShareOpen, permissions, toolbarHandlers, documentId } =
+  const { shareOpen, setShareOpen, returnOpen, setReturnOpen, permissions, toolbarHandlers, documentId } =
     useCommanderActionState(document, onRefresh);
 
   return (
@@ -52,6 +55,12 @@ export function CommanderDocumentToolbar({
         onClose={() => setShareOpen(false)}
         documentId={documentId}
         onShared={onRefresh}
+      />
+      <ReturnToAuthorModal
+        open={returnOpen}
+        onClose={() => setReturnOpen(false)}
+        documentId={documentId}
+        onReturned={onRefresh}
       />
     </>
   );

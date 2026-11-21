@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import mexonLogo from '@/public/mexon-mark.png';
 import { DocumentStatus } from '@/types/document-status.enum';
 import StatusBadge from '@/components/StatusBadge';
+import { DocumentHistoryButton, ReturnNotice } from '@/components/DocumentHistory';
 import DocumentSignaturesButton from '@/components/DocumentSignaturesButton';
 import {
   AlertCircle,
@@ -122,6 +123,10 @@ export default function DocumentClient({ documentId }: { documentId: string }) {
                   documentId={document._id}
                   version={`${document.updatedAt ?? ''}|${document.status ?? ''}`}
                 />
+                <DocumentHistoryButton
+                  documentId={document._id}
+                  version={`${document.updatedAt ?? ''}|${document.status ?? ''}`}
+                />
               </div>
             </div>
           </div>
@@ -133,6 +138,12 @@ export default function DocumentClient({ documentId }: { documentId: string }) {
           />
         </div>
       </header>
+
+      <ReturnNotice
+        documentId={document._id}
+        status={document.status}
+        version={`${document.updatedAt ?? ''}|${document.status ?? ''}`}
+      />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <main className="min-h-0 flex-1 overflow-auto bg-white">

@@ -582,6 +582,9 @@ export type UpdateDocumentInput = {
   resolvedAt?: Date | null;
   registeredById?: string | null;
   registeredAt?: Date | null;
+  pendingTransferToId?: string | null;
+  pendingTransferAt?: Date | null;
+  pendingTransferNote?: string | null;
   attachmentIds?: string[];
   allowedUserIds?: string[];
 };

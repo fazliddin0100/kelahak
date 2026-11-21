@@ -17,6 +17,11 @@ import {
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
+import { isAwaitingCommanderApproval } from '@/lib/documentWorkflow';
+import { requestEimzoSignature } from '@/lib/eimzo/signRequest';
+import { isUserActiveForwardReviewer } from '@/lib/forwardQueue';
+import { isCommanderRole } from '@/lib/roles';
+import { useRoleHook } from '@/hooks/useRoleHook';
 
 type Props = {
   document: DocumentType;
@@ -36,6 +41,11 @@ export function ForwardQueueSidebar({
   const [comment, setComment] = useState(document.forwardedComment ?? '');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const signsOnForward = isAwaitingCommanderApproval(document);
+  const { role, userId } = useRoleHook();
+  // Rezolyutsiya ijrochisi (boshliq emas): tanishib, yana kimgadir yo'naltiradi
+  const isExecutorReforward =
+    !!userId && !isCommanderRole(role ?? '') && isUserActiveForwardReviewer(document, userId);
 
   const existingQueue = Array.isArray(document.forwardedTo) ?
     document.forwardedTo
@@ -71,7 +81,21 @@ export function ForwardQueueSidebar({
     }
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/documents/${document._id}/forward`, {
+      // Boshliq ko'rib chiqayotgan hujjat: rezolyutsiya bilan birga E-IMZO imzosi qo'yiladi
+      let eimzo: unknown;
+      if (signsOnForward) {
+        const pre = await fetch(`/api/documents/${document._id}/sign-challenge`, { cache: 'no-store' });
+        const preData = await pre.json().catch(() => ({}));
+        if (!pre.ok) return toast.error(preData.message || 'Xatolik!');
+        if (preData.required) {
+          eimzo = await requestEimzoSignature(preData);
+          if (!eimzo) return; // bekor qilindi
+        }
+      }
+      if (isExecutorReforward && comment.trim().length < 3) {
+        return toast.error('Rezolyutsiya (topshiriq) matnini yozing');
+      }
+      const res = await fetch(`/api/documents/${document._id}/${isExecutorReforward ? 'reforward' : 'forward'}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,6 +103,7 @@ export function ForwardQueueSidebar({
         body: JSON.stringify({
           comment: comment.trim(),
           userIds: selectedIds,
+          ...(eimzo ? { eimzo } : {}),
         }),
       });
       const data = await res.json();
@@ -272,7 +297,11 @@ export function ForwardQueueSidebar({
           {submitting ?
             <Loader2 className="size-4 animate-spin" />
           : <Send className="size-4" />}
-          Navbat bilan yuborish
+          {signsOnForward ?
+            'Imzolash va rezolyutsiya bilan yuborish'
+          : isExecutorReforward ?
+            'Tanishdim va yo‘naltirish'
+          : 'Navbat bilan yuborish'}
         </Button>
       </div>
     </aside>

@@ -1,10 +1,12 @@
 import DocumentTable from '@/app/kotibiyat/(navbar)/document-table';
 import { TemplateGallery } from '@/components/template-galerey';
+import IncomingTransfers from '@/components/IncomingTransfers';
 import { FilePlus2, Files } from 'lucide-react';
 
 const File = () => {
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-6">
+      <IncomingTransfers />
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-5 py-4">
           <div className="flex size-9 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600">

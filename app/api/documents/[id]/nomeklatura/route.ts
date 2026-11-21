@@ -1,3 +1,4 @@
+import { logDocumentEvent } from '@/lib/documentEvents';
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import connectToDatabase, { prisma } from '@/lib/prisma';
 import {
@@ -173,6 +174,7 @@ export async function POST(
       nomenclatureId: nomeklaturaId,
       status: isOwner ? DocumentStatus.IN_WORK_FILE : document.status,
     });
+    await logDocumentEvent({ documentId: id, actorId: userId, type: 'linked_workfile' });
 
     const populated = await findDocumentById(updated.id, {
       includeNomenclature: true,

@@ -6,7 +6,10 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import connectToDatabase from '@/lib/prisma';
 import {
+  isCommanderSigned,
+  isKotibiyatDirectFlow,
   isKotibiyatRegistrationEligible,
+  isUserAuthorSigned,
   regionsMatch,
 } from '@/lib/documentWorkflow';
 import {
@@ -27,6 +30,7 @@ import {
 import { DocumentType } from '@/types/document';
 import { DocumentStatus } from '@/types/document-status.enum';
 import { getRegistrationIndex } from '@/utils/registrationIndex';
+import { logDocumentEvent } from '@/lib/documentEvents';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
@@ -100,6 +104,22 @@ export async function POST(
       populateAttachments: false,
     }) as unknown as DocumentType;
 
+    // Yangi tartib: boshliqqa yuborilgan hujjat faqat muallif va boshliq imzosidan keyin
+    if (document.sentToCommander && !isKotibiyatDirectFlow(docView)) {
+      if (!isUserAuthorSigned(docView)) {
+        return NextResponse.json(
+          { message: 'Hujjatni avval muallif imzolashi kerak' },
+          { status: 400 }
+        );
+      }
+      if (!isCommanderSigned(docView)) {
+        return NextResponse.json(
+          { message: 'Hujjatni avval boshliq ko‘rib chiqib imzolashi kerak' },
+          { status: 400 }
+        );
+      }
+    }
+
     const kotibiyatStaff = isKotibiyatStaffRole(roleRecord.role);
     if (
       !kotibiyatStaff &&
@@ -158,6 +178,13 @@ export async function POST(
       document.isCopy === true ?
         { created: 0, regions: [], missing: [], skipped: [] }
       : await distributeRegionalCopies(sourceForCopy, personal.province);
+
+    await logDocumentEvent({
+      documentId: document.id,
+      actorId: auth.userId,
+      type: 'registered',
+      note: `№ ${registrationIndex}`,
+    });
 
     const response: Record<string, unknown> = {
       message: "Hujjat muvaffaqiyatli ro'yxatga olindi",

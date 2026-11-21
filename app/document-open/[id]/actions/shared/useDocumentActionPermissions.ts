@@ -108,7 +108,7 @@ export function useDocumentActionPermissions({
         canEdit: false,
         canSign: true,
         signCompleted: false,
-        canSignLabel: 'Ijroga tasdiqlash',
+        canSignLabel: 'Tanishdim (imzolash)',
         canRegister: false,
         canBack: false,
         canSend: true,

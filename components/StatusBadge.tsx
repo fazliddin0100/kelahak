@@ -23,7 +23,8 @@ const STATUS: Record<string, { label: string; tone: string }> = {
   resolved: { label: 'Bajarildi', tone: OK },
   replied: { label: 'Javob berildi', tone: OK },
   deleted: { label: 'O‘chirilgan', tone: NEUTRAL },
-  in_progress: { label: 'Ishlanmoqda', tone: WORK },
+  // Muallif imzolagan, boshliq ko'rib chiqishi kutilmoqda
+  in_progress: { label: 'Boshliqda', tone: WORK },
   in_review: { label: 'Ko‘rib chiqilmoqda', tone: WARN },
   in_reviewed: { label: 'Ko‘rib chiqildi', tone: OK },
   in_progress_review: { label: 'Ko‘rib chiqilmoqda', tone: WARN },

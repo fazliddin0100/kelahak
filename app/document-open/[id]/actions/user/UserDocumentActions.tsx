@@ -4,6 +4,7 @@ import IshJildLinkModal from '@/components/modals/IshJildLinkModal';
 import KotibiyatSendModal from '@/components/modals/KotibiyatSendModal';
 import ShareUserModal from '@/components/modals/ShareUserModal';
 import PrintRequestButton from '@/components/PrintRequestButton';
+import DocumentTransferControls from '@/components/DocumentTransferControls';
 import { isDocumentInWorkFile } from '@/lib/documentLifecycle';
 import { useRoleHook } from '@/hooks/useRoleHook';
 import { useState } from 'react';
@@ -82,7 +83,12 @@ export function UserDocumentToolbar({
         roleGroup="user"
         permissions={permissions}
         handlers={toolbarHandlers}
-        extra={<PrintRequestButton documentId={documentId} />}
+        extra={
+          <>
+            <PrintRequestButton documentId={documentId} />
+            <DocumentTransferControls document={document} onRefresh={refresh} />
+          </>
+        }
       />
       <KotibiyatSendModal
         open={kotibiyatOpen}

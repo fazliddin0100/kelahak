@@ -17,6 +17,11 @@ const FORWARD_REVIEW_STATUSES: DocumentStatus[] = [
   DocumentStatus.IN_PROGRESS_FORWARD_REVIEW,
   DocumentStatus.SIGNED,
   DocumentStatus.FORWARDED,
+  // Boshliq rezolyutsiya bilan imzolagandan keyin ijrochilar navbati davom etadi
+  // (hujjat ro'yxatga olingandan keyin ham)
+  DocumentStatus.APPROVED,
+  DocumentStatus.REGISTERED,
+  DocumentStatus.ACCEPTED,
 ];
 
 export function buildPersonalFullName(personal: {

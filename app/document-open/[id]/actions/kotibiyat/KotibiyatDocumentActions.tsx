@@ -1,5 +1,6 @@
 'use client';
 
+import DocumentTransferControls from '@/components/DocumentTransferControls';
 import ShareUserModal from '@/components/modals/ShareUserModal';
 import { isDocumentInWorkFile } from '@/lib/documentLifecycle';
 import { useRoleHook } from '@/hooks/useRoleHook';
@@ -50,6 +51,7 @@ export function KotibiyatDocumentToolbar({
         permissions={permissions}
         handlers={toolbarHandlers}
         showRegister
+        extra={<DocumentTransferControls document={document} onRefresh={onRefresh} />}
       />
       <ShareUserModal
         open={shareOpen}

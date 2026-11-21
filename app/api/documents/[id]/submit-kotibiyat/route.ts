@@ -1,6 +1,6 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import connectToDatabase from '@/lib/prisma';
-import { hasPendingForwardSignatures } from '@/lib/forwardQueue';
+import { logDocumentEvent } from '@/lib/documentEvents';
 import { assertKotibiyatRecipient } from '@/lib/kotibiyatStaff';
 import {
   canUserSubmitToKotibiyat,
@@ -98,15 +98,6 @@ export async function POST(
           { status: 400 }
         );
       }
-      if (hasPendingForwardSignatures(docView)) {
-        return NextResponse.json(
-          {
-            message:
-              'Komandir yo‘naltirgan barcha xodimlar tasdiqlaguncha kuting',
-          },
-          { status: 400 }
-        );
-      }
       if (document.status !== DocumentStatus.APPROVED) {
         return NextResponse.json(
           {
@@ -139,6 +130,12 @@ export async function POST(
     patch.allowedUserIds = [...new Set([userId, kotibiyatUserId, document.ownerId])];
 
     await updateDocument(id, patch);
+    await logDocumentEvent({
+      documentId: id,
+      actorId: userId,
+      type: 'submitted_kotibiyat',
+      targetUserId: kotibiyatUserId,
+    });
 
     return NextResponse.json(
       {

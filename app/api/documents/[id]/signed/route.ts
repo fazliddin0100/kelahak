@@ -9,7 +9,7 @@ import {
   findQueueEntryForUser,
 } from '@/lib/forwardQueue';
 import { DocumentType } from '@/types/document';
-import { isCommanderRole } from '@/lib/roles';
+import { isCommanderRole, isKotibiyatStaffRole } from '@/lib/roles';
 import {
   actorProvince,
   documentNotFoundResponse,
@@ -36,6 +36,7 @@ import {
 } from '@/lib/db/document';
 import { resolveIdReference } from '@/lib/resolveIdReference';
 import { DocumentStatus } from '@/types/document-status.enum';
+import { logDocumentEvent } from '@/lib/documentEvents';
 import { NextRequest, NextResponse } from 'next/server';
 
 type SignerJson = {
@@ -131,7 +132,8 @@ export async function POST(
       document.forwardedTo,
     ].some((field) => hasUnsignedEntry(field, userId));
 
-    if (document.status === DocumentStatus.APPROVED) {
+    // Boshliq tasdiqlagan hujjatni faqat rezolyutsiya ijrochisi «Tanishdim» deb imzolaydi
+    if (document.status === DocumentStatus.APPROVED && !pendingForwardSign) {
       return NextResponse.json(
         { message: 'Hujjat allaqachon komandir tomonidan tasdiqlangan!' },
         { status: 400 }
@@ -209,6 +211,7 @@ export async function POST(
           status: mutableDoc.status,
         });
         if (eimzoSignature) await saveDocumentSignature(id, userId, eimzoSignature);
+        await logDocumentEvent({ documentId: id, actorId: userId, type: 'commander_signed' });
         return NextResponse.json(
           {
             message: 'Komandir hujjatni imzoladi',
@@ -285,7 +288,7 @@ export async function POST(
     const isDocOwner = document.ownerId === userId;
     if (
       isDocOwner &&
-      roleName === 'user' &&
+      (roleName === 'user' || isKotibiyatStaffRole(roleName)) &&
       patch.author &&
       typeof patch.author === 'object' &&
       !Array.isArray(patch.author) &&
@@ -327,12 +330,17 @@ export async function POST(
 
     const updated = await updateDocument(id, patch);
     if (eimzoSignature) await saveDocumentSignature(id, userId, eimzoSignature);
+    await logDocumentEvent({
+      documentId: id,
+      actorId: userId,
+      type: isForwardReviewerSign ? 'acknowledged' : 'author_signed',
+    });
 
     const statusMsg =
       updated.status === DocumentStatus.IN_PROGRESS ?
-        "Imzo qo'yildi. Hujjat komandir ko'rib chiqishi uchun yuborildi (jarayonda)."
-      : updated.status === DocumentStatus.APPROVED && isForwardReviewerSign ?
-        "Navbat yakunlandi. Hujjat ro'yxatga olish uchun tayyor (imzolandi)."
+        "Imzo qo'yildi. Hujjat boshliq ko'rib chiqishi uchun yuborildi."
+      : isForwardReviewerSign ?
+        "Hujjat bilan tanishdingiz (imzolandi)."
       : updated.status === DocumentStatus.APPROVED ?
         'Hujjat tasdiqlandi (imzolandi)'
       : signedCondition ?

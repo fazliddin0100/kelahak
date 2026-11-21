@@ -17,6 +17,17 @@ import {
 } from '@/lib/db/document';
 import { findUserById, findUsersByIds } from '@/lib/db/user';
 import { DocumentStatus } from '@/types/document-status.enum';
+import type { DocumentType } from '@/types/document';
+import { isAwaitingCommanderApproval } from '@/lib/documentWorkflow';
+import { applyCommanderDocumentSign } from '@/lib/commanderSignDocument';
+import { isEimzoRequired } from '@/lib/eimzo/challenge';
+import {
+  DocumentSignError,
+  saveDocumentSignature,
+  verifyDocumentSignRequest,
+  type VerifiedDocumentSignature,
+} from '@/lib/eimzo/documentSign';
+import { logDocumentEvent } from '@/lib/documentEvents';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const MAX_COMMENT_LENGTH = 2000;
@@ -154,18 +165,65 @@ export async function POST(
       allowedUserIds: Array.from(allowedSet),
     };
 
+    // Boshliq ko'rib chiqayotgan hujjat: rezolyutsiya = boshliq imzosi (E-IMZO bilan).
+    // Hujjat darhol tasdiqlanadi, keyin ijrochilarga navbat bilan boradi.
+    const docView = serializeDocumentForApi(document) as unknown as DocumentType;
+    const signingNow = isAwaitingCommanderApproval(docView);
+    let eimzoSignature: VerifiedDocumentSignature | null = null;
+    if (signingNow) {
+      if (await isEimzoRequired(currentUserId)) {
+        try {
+          eimzoSignature = await verifyDocumentSignRequest(request, currentUserId, id, body?.eimzo);
+        } catch (e) {
+          if (e instanceof DocumentSignError) {
+            return NextResponse.json({ message: e.message, code: e.code }, { status: e.status });
+          }
+          throw e;
+        }
+      }
+      const signDoc = {
+        sentToCommander: document.sentToCommander,
+        status: document.status,
+        forwardedById: null,
+        forwardedTo: [],
+        bosSigned: document.bosSigned,
+        forwardedSigner: document.forwardedSigner,
+      };
+      const signed = await applyCommanderDocumentSign(
+        signDoc as Parameters<typeof applyCommanderDocumentSign>[0],
+        currentUserId
+      );
+      if (!signed.ok) {
+        return NextResponse.json({ message: signed.message }, { status: signed.status });
+      }
+      patch.bosSigned = signDoc.bosSigned;
+      patch.status = DocumentStatus.APPROVED;
+    }
+
     await applyCommanderCommentSignature(patch, currentUserId, comment);
     await updateDocument(id, patch);
+    if (eimzoSignature) await saveDocumentSignature(id, currentUserId, eimzoSignature);
+    if (signingNow) {
+      await logDocumentEvent({ documentId: id, actorId: currentUserId, type: 'commander_signed' });
+    }
+    await logDocumentEvent({
+      documentId: id,
+      actorId: currentUserId,
+      type: 'resolution',
+      note: [comment, `Ijrochilar: ${queue.map((q) => q.fullName).join(', ')}`].filter(Boolean).join('; '),
+    });
 
-    const docView = serializeDocumentForApi(
+    const savedView = serializeDocumentForApi(
       (await findDocumentById(id))!
     );
 
     return NextResponse.json(
       {
-        message: 'Hujjat navbat bilan yuborildi',
+        message: signingNow ?
+          'Hujjat imzolandi va rezolyutsiya bo‘yicha navbat bilan yuborildi'
+        : 'Hujjat navbat bilan yuborildi',
         forwardedTo: queue,
-        forwardedComment: docView.forwardedComment,
+        forwardedComment: savedView.forwardedComment,
       },
       { status: 200 }
     );

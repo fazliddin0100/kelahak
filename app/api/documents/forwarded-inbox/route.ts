@@ -19,13 +19,21 @@ export async function GET(request: NextRequest) {
 
 
     const candidates = await findDocuments({
-      allowedUsers: { some: { userId } },
+      // Navbatdagi ijrochi: forwardedTo ichida (ro'yxatga olingandan keyin allowedUsers tozalanadi)
+      OR: [
+        { forwardedTo: { array_contains: [{ userId }] } },
+        { allowedUsers: { some: { userId } } },
+      ],
       status: {
         in: [
           DocumentStatus.IN_PROGRESS_FORWARD,
           DocumentStatus.IN_PROGRESS_FORWARD_REVIEW,
           DocumentStatus.SIGNED,
           DocumentStatus.FORWARDED,
+          // Boshliq rezolyutsiya bilan imzolagan hujjatlar (ro'yxatga olinganidan keyin ham)
+          DocumentStatus.APPROVED,
+          DocumentStatus.REGISTERED,
+          DocumentStatus.ACCEPTED,
         ],
       },
     }, {

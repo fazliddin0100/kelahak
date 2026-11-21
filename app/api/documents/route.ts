@@ -133,15 +133,9 @@ export async function POST(request: NextRequest) {
       approvers,
       sender: sender ?? authorPayload,
       receiver,
-      ...(isKotibiyatStaff ?
-        {
-          createdByKotibiyat: true,
-          submittedToKotibiyat: true,
-          submittedToKotibiyatAt: now,
-          sharedWithAdmin: true,
-          sentToCommander: false,
-        }
-      : isOrdinaryUser ?
+      // Har qanday yaratilgan hujjat (user ham, kotibiyat ham) avval boshliqdan o'tadi:
+      // muallif imzolaydi -> boshliq ko'rib chiqadi -> keyin kotibiyatga yuboriladi.
+      ...(isOrdinaryUser || isKotibiyatStaff ?
         {
           sentToCommander: true,
           sentToCommanderAt: now,

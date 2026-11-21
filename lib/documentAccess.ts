@@ -29,7 +29,7 @@ type AccessDocument = Pick<
   | 'sharedWithAdmin'
   | 'createdByKotibiyat'
   | 'registrationIndex'
-> & { allowedUsers?: { userId: string }[] };
+> & { allowedUsers?: { userId: string }[]; pendingTransferToId?: string | null };
 
 export function actorProvince(auth: ApiAuthSession): string {
   return auth.user.personal?.province ?? '';
@@ -88,6 +88,8 @@ export function canViewDocumentDirect(
 ): boolean {
   const { userId } = auth;
   if (doc.ownerId === userId || doc.forwardedById === userId) return true;
+  // Hujjat unga topshirilgan — qabul qilishdan oldin ko'rib chiqadi
+  if (doc.pendingTransferToId && doc.pendingTransferToId === userId) return true;
   if (doc.allowedUsers?.some((row) => row.userId === userId)) return true;
   if (isDocumentParticipant(doc, userId)) return true;
 

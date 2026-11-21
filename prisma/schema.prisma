@@ -255,6 +255,10 @@ model Document {
   /// Hujjatni ro'yxatga olgan kotibiyat xodimi (chop etish so'rovlari unga boradi)
   registeredById  String?
   registeredAt    DateTime?
+  /// Hujjatni boshqa xodimga topshirish: qabul qilguncha kutadi (qabul qilsa egasi o'zgaradi)
+  pendingTransferToId String?
+  pendingTransferAt   DateTime?
+  pendingTransferNote String?
   ownerAccepted   Boolean   @default(false)
   ownerAcceptedAt DateTime?
 
@@ -264,8 +268,10 @@ model Document {
   attachedTo   DocumentAttachment[]  @relation("DocAttachmentTarget")
   signatures   DocumentSignature[]
   printRequests PrintRequest[]
+  events        DocumentEvent[]
 
   @@index([ownerId])
+  @@index([pendingTransferToId])
   @@index([status])
   @@index([ownerRegion])
   @@index([ownerRegion, year])
@@ -615,4 +621,25 @@ model PrintRequest {
   @@index([documentId])
   @@index([requesterId])
   @@map("print_requests")
+}
+
+/// Hujjat tarixi (jurnal): kim, qachon, nima qildi — imzolash, qaytarish, rezolyutsiya,
+/// tanishish, kotibiyatga yuborish, ro'yxatga olish, topshirish va qabul qilish.
+model DocumentEvent {
+  id           String   @id
+  documentId   String
+  actorId      String?
+  actorName    String
+  /// author_signed | returned | commander_signed | resolution | acknowledged | reforwarded |
+  /// submitted_kotibiyat | registered | transfer_requested | transfer_accepted | transfer_cancelled | linked_workfile
+  type         String
+  note         String?
+  targetUserId String?
+  targetName   String?
+  createdAt    DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, createdAt])
+  @@map("document_events")
 }

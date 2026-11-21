@@ -192,7 +192,7 @@ export function canUserSubmitToKotibiyat(doc: WorkflowDocument): boolean {
   if (isMarkedForKotibiyat(doc)) return false;
   if (!isUserAuthorSigned(doc)) return false;
   if (!isCommanderSigned(doc)) return false;
-  if (!isForwardQueueComplete(doc)) return false;
+  // Rezolyutsiya ijrochilari navbati parallel davom etadi — kutish shart emas
   if (doc.status !== DocumentStatus.APPROVED) return false;
   return doc.sentToCommander === true;
 }
