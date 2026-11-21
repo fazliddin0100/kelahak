@@ -16,6 +16,7 @@ import {
   resolveSignerList,
 } from '@/lib/documentSigners';
 import { sanitizeDocumentContent } from '@/lib/purify';
+import { getUserTemplate } from '@/lib/userTemplates';
 import { parseAttachmentTextIds } from '@/lib/parseAttachmentTextIds';
 import { isKotibiyatStaffRole } from '@/lib/roles';
 import { DocumentStatus } from '@/types/document-status.enum';
@@ -59,7 +60,23 @@ export async function POST(request: NextRequest) {
     const personal = user.personal;
 
     const body = await request.json();
-    const title = typeof body.title === 'string' ? body.title.trim() : '';
+
+    // Shaxsiy namunadan yaratish: nom va shakl serverdagi namunadan olinadi
+    const template =
+      typeof body.templateId === 'string' && body.templateId ?
+        await getUserTemplate(userId, body.templateId)
+      : null;
+    if (typeof body.templateId === 'string' && body.templateId && !template) {
+      return NextResponse.json(
+        { message: 'Hujjat namunasi topilmadi' },
+        { status: 404 }
+      );
+    }
+
+    const title =
+      template ? template.title
+      : typeof body.title === 'string' ? body.title.trim()
+      : '';
     const grif = typeof body.grif === 'string' ? body.grif.trim() : '';
 
     if (!title) {
@@ -80,7 +97,8 @@ export async function POST(request: NextRequest) {
     const isKotibiyatStaff = isKotibiyatStaffRole(roleName);
     const now = new Date();
 
-    const cleanContent = sanitizeDocumentContent(body.content) || {};
+    const cleanContent =
+      sanitizeDocumentContent(template ? template.content : body.content) || {};
 
     const authorPayload = {
       userId,

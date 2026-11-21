@@ -52,6 +52,7 @@ model User {
   pendingUploads     PendingUpload[]
   certificates       UserCertificate[]
   documentSignatures DocumentSignature[]
+  documentTemplates  DocumentTemplate[]
   loginChallenges    LoginChallenge[]
 
   ownedDocuments     Document[]            @relation("DocumentOwner")
@@ -555,4 +556,26 @@ model DocumentSignature {
   @@index([documentId, signedAt])
   @@index([userId])
   @@map("document_signatures")
+}
+
+/// Userning shaxsiy hujjat namunalari: "Yangi hujjat" da kiritilgan tur va shakl.
+/// Galereyada ko'rinadi, bosilganda shu nom va shakl bilan yangi hujjat yaratiladi.
+model DocumentTemplate {
+  id               String   @id
+  ownerId          String
+  title            String
+  /// Takrorlanishni oldini olish uchun: trim + kichik harf
+  titleKey         String
+  /// Shifrlangan HTML (documentContentEncryption, kontekst: tpl_<id>)
+  content          Json
+  /// Namunani yaratgan hujjat — faqat shu hujjat saqlanganda namuna yangilanadi
+  sourceDocumentId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, titleKey])
+  @@index([sourceDocumentId])
+  @@map("document_templates")
 }

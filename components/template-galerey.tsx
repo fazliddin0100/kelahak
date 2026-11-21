@@ -10,25 +10,42 @@ import {
 } from '@/components/ui/carousel';
 import { templates } from '@/helpers/templates';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { Loader2, Trash2, X } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/sonner';
+
+type UserTemplate = { id: string; title: string; updatedAt: string };
 
 // Hujjat yaratish funksiyasi
 const create = async ({
   title,
   content,
   attachmentText = [],
+  templateId,
 }: {
   title: string;
   content: string;
   attachmentText?: string[];
+  /** Shaxsiy namuna: nom va shakl serverda namunadan olinadi */
+  templateId?: string;
 }) => {
   if (typeof window === 'undefined') throw new Error('Client-side only');
 
   try {
     const response = await axios.post(
       '/api/documents',
-      { title, content, attachmentText },
+      { title, content, attachmentText, templateId },
       {
         headers: {
           'Content-Type': 'application/json',
@@ -50,32 +67,66 @@ interface TemplateGalleryProps {
   className?: string;
 }
 
+const tileClass = cn(
+  'relative flex h-[96px] w-[68px] items-center justify-center rounded-md border border-slate-200 bg-white transition-colors duration-150',
+  'hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold'
+);
+
 export const TemplateGallery = ({ className }: TemplateGalleryProps) => {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
+  const [userTemplates, setUserTemplates] = useState<UserTemplate[]>([]);
+  const [toDelete, setToDelete] = useState<UserTemplate | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const onTemplateClick = async (templateLabel: string) => {
+  useEffect(() => {
+    let active = true;
+    axios
+      .get<{ templates: UserTemplate[] }>('/api/document-templates')
+      .then(({ data }) => {
+        if (active) setUserTemplates(Array.isArray(data.templates) ? data.templates : []);
+      })
+      // Namunalar ochilmasa ham standart shablonlar ishlayveradi
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const openNew = async (params: { title: string; templateId?: string }) => {
     setIsCreating(true);
     try {
-      // title = template.label, content = ""
-      const documentId = await create({ title: templateLabel, content: '' });
-
-      // Hujjat yaratilib bo‘lgach yangi sahifaga yo‘naltirish
+      const documentId = await create({ ...params, content: '' });
       router.push(`/document/${documentId}`);
     } catch (err) {
       console.error(err);
-      alert('Hujjat yaratishda xatolik yuz berdi');
-    } finally {
+      toast.error(
+        err instanceof Error ? err.message : 'Hujjat yaratishda xatolik yuz berdi'
+      );
       setIsCreating(false);
     }
   };
 
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      await axios.delete(`/api/document-templates/${toDelete.id}`);
+      setUserTemplates((list) => list.filter((t) => t.id !== toDelete.id));
+      toast.success(`«${toDelete.title}» namunasi o‘chirildi`);
+      setToDelete(null);
+    } catch {
+      toast.error('Namunani o‘chirib bo‘lmadi');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <div
-      className={cn('bg-transparent', className)}>
+    <div className={cn('bg-transparent', className)}>
       <div className="mx-auto max-w-7xl px-2 py-2 sm:px-3">
         <Carousel>
-          <CarouselContent className="ml-0 gap-2">
+          <CarouselContent className="ml-0 gap-2 pt-1.5">
             {templates.map((template) => (
               <CarouselItem
                 key={template.id}
@@ -86,19 +137,17 @@ export const TemplateGallery = ({ className }: TemplateGalleryProps) => {
                     isCreating && 'pointer-events-none opacity-50'
                   )}>
                   <button
+                    type="button"
                     disabled={isCreating}
-                    onClick={() => onTemplateClick(template.label)}
+                    onClick={() => openNew({ title: template.label })}
                     style={{
                       backgroundImage: `url(${template.imageUrl.src})`,
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                       backgroundRepeat: 'no-repeat',
                     }}
-                    className={cn(
-                      'relative flex h-[96px] w-[68px] items-center justify-center rounded-md border border-slate-200 bg-white transition-colors duration-150',
-                      'hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold'
-                    )}
-                    aria-label={`Create new document from ${template.label} template`}>
+                    className={tileClass}
+                    aria-label={`«${template.label}» shablonidan yangi hujjat yaratish`}>
                     {isCreating && (
                       <span className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                     )}
@@ -112,11 +161,86 @@ export const TemplateGallery = ({ className }: TemplateGalleryProps) => {
                 </div>
               </CarouselItem>
             ))}
+
+            {userTemplates.map((template) => (
+              <CarouselItem
+                key={template.id}
+                className="basis-[82px] pl-0 sm:basis-[88px]">
+                <div
+                  className={cn(
+                    'group relative flex flex-col items-center gap-1.5',
+                    isCreating && 'pointer-events-none opacity-50'
+                  )}>
+                  <button
+                    type="button"
+                    disabled={isCreating}
+                    onClick={() =>
+                      openNew({ title: template.title, templateId: template.id })
+                    }
+                    className={cn(tileClass, 'flex-col justify-start gap-1 px-1.5 pt-3')}
+                    aria-label={`«${template.title}» namunasidan yangi hujjat yaratish`}>
+                    <span className="line-clamp-3 w-full break-words text-center text-[8px] font-bold leading-tight text-slate-800">
+                      {template.title}
+                    </span>
+                    <span className="mt-1 block h-px w-10 bg-slate-200" />
+                    <span className="block h-px w-12 bg-slate-200" />
+                    <span className="block h-px w-9 bg-slate-200" />
+                    <span className="block h-px w-11 bg-slate-200" />
+                    {isCreating && (
+                      <span className="absolute top-1/2 size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setToDelete(template)}
+                    className="absolute -top-1.5 right-0.5 flex size-5 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-opacity hover:border-red-300 hover:text-red-600 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold sm:opacity-0 sm:group-hover:opacity-100"
+                    aria-label={`«${template.title}» namunasini o‘chirish`}
+                    title="Namunani o‘chirish">
+                    <X className="size-3" />
+                  </button>
+
+                  <p
+                    className="w-full truncate text-center text-[10px] font-medium text-slate-700"
+                    title={template.title}>
+                    {template.title}
+                  </p>
+                </div>
+              </CarouselItem>
+            ))}
           </CarouselContent>
           <CarouselPrevious className="-left-1 size-7 border-slate-200 bg-white shadow-none hover:bg-slate-50" />
           <CarouselNext className="-right-1 size-7 border-slate-200 bg-white shadow-none hover:bg-slate-50" />
         </Carousel>
       </div>
+
+      <AlertDialog
+        open={!!toDelete}
+        onOpenChange={(open) => !open && !deleting && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="size-5 text-red-600" />
+              Namunani o‘chirasizmi?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              «{toDelete?.title}» namunasi galereyadan olib tashlanadi. Shu
+              namunadan yaratilgan hujjatlar o‘zgarmaydi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Orqaga</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+              className="gap-2">
+              {deleting && <Loader2 className="size-4 animate-spin" />}
+              Ha, o‘chirish
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

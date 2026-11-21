@@ -24,6 +24,7 @@ import {
 } from '@/lib/documentSigners';
 import type { WorkflowDocument } from '@/lib/documentWorkflow';
 import { sanitizeDocumentContent } from '@/lib/purify';
+import { syncTemplateFromDocument } from '@/lib/userTemplates';
 import {
   findDocumentById,
   findDocuments,
@@ -169,6 +170,23 @@ export async function PUT(
     if (author) updatePayload.author = author;
 
     const updated = await updateDocument(id, updatePayload);
+
+    // "Yangi hujjat" turi va shakli egasining shaxsiy namunalariga qo'shiladi
+    if (document.ownerId === userId && isCustomTypeDocument(nextTitle)) {
+      try {
+        await syncTemplateFromDocument({
+          ownerId: userId,
+          documentId: id,
+          title: nextTitle,
+          content:
+            typeof updatePayload.content === 'string' ?
+              updatePayload.content
+            : undefined,
+        });
+      } catch (err) {
+        console.error('Hujjat namunasini saqlashda xato:', err);
+      }
+    }
 
     return NextResponse.json(
       {
