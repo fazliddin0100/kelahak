@@ -28,9 +28,16 @@ if (typeof window !== 'undefined') {
 import { normalizeDocumentContent } from '@/lib/normalizeDocumentContent';
 import {
   forwardRef,
+  useEffect,
   useImperativeHandle,
   useRef,
 } from 'react';
+import {
+  EDITOR_OPTIONS,
+  preprocessPaste,
+  registerMezonPlugins,
+} from './editorConfig';
+import type { EditorDocumentFields, MezonEditor } from './plugins/types';
 
 export type TinyEditorHandle = {
   getHtml: () => string;
@@ -41,66 +48,14 @@ interface TnyEditorProps {
   initialContent?: unknown;
   editorKey?: string;
   readOnly?: boolean;
+  /** "Maydonlar" menyusi uchun hujjat ma'lumotlari */
+  documentFields?: EditorDocumentFields;
 }
 
 const Editor = dynamic(
   () => import('@tinymce/tinymce-react').then((m) => m.Editor),
   { ssr: false }
 );
-
-const TABLE_CONTENT_CSS = `
-  table {
-    border-collapse: collapse !important;
-    table-layout: fixed !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    direction: ltr !important;
-  }
-  table td, table th {
-    border: 1px solid #333 !important;
-    padding: 4px 6px !important;
-    vertical-align: top !important;
-    word-wrap: break-word !important;
-    direction: ltr !important;
-  }
-`;
-
-const A4_CONTENT_STYLE = `
-  html {
-    direction: ltr !important;
-  }
-  html, body {
-    background: #edf1f6 !important;
-    margin: 0 !important;
-    box-sizing: border-box !important;
-  }
-  body {
-    width: 210mm !important;
-    min-height: 297mm !important;
-    max-width: 210mm !important;
-    margin: 0 auto !important;
-    padding: 2cm !important;
-    background: #ffffff !important;
-    box-shadow: 0 2px 8px rgba(16, 44, 80, 0.12) !important;
-    font-family: 'Times New Roman', Times, serif !important;
-    font-size: 14pt !important;
-    line-height: 1.5 !important;
-    direction: ltr !important;
-    text-align: left;
-    unicode-bidi: normal !important;
-    writing-mode: horizontal-tb !important;
-  }
-  body.mce-content-body {
-    direction: ltr !important;
-    unicode-bidi: normal !important;
-  }
-  body p, body div, body span, body li,
-  body td, body th, body h1, body h2, body h3, body h4, body h5, body h6 {
-    direction: ltr !important;
-    unicode-bidi: normal !important;
-  }
-  ${TABLE_CONTENT_CSS}
-`;
 
 /** Yuklanadigan HTML dan RTL ni olib tashlash */
 function normalizeLtrHtml(value: unknown): string {
@@ -156,10 +111,21 @@ function applyLtrToEditorBody(editor: TinyEditorInstance) {
 
 const TinyEditor = forwardRef<TinyEditorHandle, TnyEditorProps>(
   function TinyEditor(
-    { setEditorContent, initialContent = '', editorKey, readOnly = false },
+    {
+      setEditorContent,
+      initialContent = '',
+      editorKey,
+      readOnly = false,
+      documentFields,
+    },
     ref
   ) {
     const editorRef = useRef<TinyEditorInstance | null>(null);
+    // Menyu bosilgan paytdagi eng so'nggi qiymatlar (init faqat bir marta o'qiladi)
+    const fieldsRef = useRef<EditorDocumentFields | undefined>(documentFields);
+    useEffect(() => {
+      fieldsRef.current = documentFields;
+    }, [documentFields]);
     const ltrInitial = normalizeLtrHtml(initialContent);
 
     useImperativeHandle(ref, () => ({
@@ -195,21 +161,15 @@ const TinyEditor = forwardRef<TinyEditorHandle, TnyEditorProps>(
               applyLtrToEditorBody(editorRef.current);
             }}
             init={{
+              ...EDITOR_OPTIONS,
               height: '100%',
               resize: false,
               statusbar: true,
-              toolbar_mode: 'sliding',
               branding: false,
               promotion: false,
-              language: 'en',
-              plugins:
-                'anchor autolink charmap codesample directionality emoticons image link lists media table visualblocks',
-              toolbar:
-                'undo redo | ltr rtl | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | alignleft aligncenter alignright alignjustify | numlist bullist indent outdent | removeformat',
-              menubar: 'edit view insert format tools table help',
               skin: 'oxide',
               content_css: 'default',
-              content_style: A4_CONTENT_STYLE,
+              paste_preprocess: preprocessPaste,
               body_attrs: {
                 dir: 'ltr',
                 style: 'direction: ltr; text-align: left; unicode-bidi: normal;',
@@ -219,8 +179,6 @@ const TinyEditor = forwardRef<TinyEditorHandle, TnyEditorProps>(
                 dir: 'ltr',
                 style: 'text-align: left; direction: ltr;',
               },
-              table_toolbar:
-                'tableprops tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol',
               table_resize_bars: true,
               table_column_resizing: 'resizetable',
               table_use_colgroups: true,
@@ -240,6 +198,10 @@ const TinyEditor = forwardRef<TinyEditorHandle, TnyEditorProps>(
               verify_html: false,
               setup: (editor) => {
                 const ed = editor as TinyEditorInstance;
+                registerMezonPlugins(
+                  editor as unknown as MezonEditor,
+                  () => fieldsRef.current ?? {}
+                );
 
                 editor.on('init', () => {
                   applyLtrToEditorBody(ed);

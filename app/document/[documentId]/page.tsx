@@ -72,6 +72,21 @@ const DocumentPage = () => {
   const [docOwner, setDocOwner] = useState<unknown>();
   const [docAuthor, setDocAuthor] = useState<{ userId?: unknown } | null>(null);
   const [typeEditable, setTypeEditable] = useState(false);
+
+  // Muharrirdagi "Maydonlar" menyusi: hujjat muallifi va tashkilot
+  const documentFields = useMemo(() => {
+    const a = (docAuthor ?? {}) as {
+      fullName?: string;
+      position?: string;
+      militaryRank?: string;
+    };
+    return {
+      fullName: a.fullName,
+      position: a.position,
+      militaryRank: a.militaryRank,
+      organization: tashkilotData?.organ,
+    };
+  }, [docAuthor, tashkilotData]);
   const editorRef = useRef<TinyEditorHandle>(null);
 
   const canEdit = useMemo(
@@ -328,6 +343,7 @@ const DocumentPage = () => {
           editorKey={documentId}
           readOnly={!canEdit}
           initialContent={formValues.editorContent}
+          documentFields={documentFields}
           setEditorContent={(val) =>
             setFormValues((prev) => ({ ...prev, editorContent: val }))
           }

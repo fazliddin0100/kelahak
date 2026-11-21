@@ -256,10 +256,14 @@ body {
 }
 
 .document-editor-fullscreen .tox .tox-tbtn {
-  width: 27px !important;
   height: 27px !important;
   margin: 1px !important;
   border-radius: 4px !important;
+}
+
+/* Faqat ikonka tugmalari ixcham; ro'yxatlar (shrift, o'lcham, uslub) va matnli tugmalar o'z kengligida */
+.document-editor-fullscreen .tox .tox-tbtn:not(.tox-tbtn--select):not(.tox-tbtn--bespoke):not(:has(.tox-tbtn__select-label)) {
+  width: 27px !important;
 }
 
 .document-editor-fullscreen .tox .tox-tbtn__select-label {
@@ -322,6 +326,120 @@ body {
 
 .document-html-content colgroup col {
   width: auto;
+}
+
+/* Muharrirdagi formatlash ko'rishda ham bir xil chiqsin (Tailwind preflight'ni qaytarish) */
+.document-html-content p {
+  margin: 0 0 0.35em;
+}
+.document-html-content td p,
+.document-html-content th p {
+  margin: 0;
+}
+.document-html-content ul,
+.document-html-content ol {
+  margin: 0 0 0.35em;
+  padding-left: 1.6em;
+}
+.document-html-content ul {
+  list-style: disc;
+}
+.document-html-content ul ul {
+  list-style: circle;
+}
+.document-html-content ul ul ul {
+  list-style: square;
+}
+.document-html-content ol {
+  list-style: decimal;
+}
+.document-html-content ol[type='a'] {
+  list-style-type: lower-alpha;
+}
+.document-html-content ol[type='A'] {
+  list-style-type: upper-alpha;
+}
+.document-html-content ol[type='i'] {
+  list-style-type: lower-roman;
+}
+.document-html-content ol[type='I'] {
+  list-style-type: upper-roman;
+}
+.document-html-content h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin: 0.4em 0;
+}
+.document-html-content h2 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 0.4em 0;
+}
+.document-html-content h3 {
+  font-size: 1.17em;
+  font-weight: 700;
+  margin: 0.4em 0;
+}
+.document-html-content h4,
+.document-html-content h5,
+.document-html-content h6 {
+  font-weight: 700;
+  margin: 0.4em 0;
+}
+.document-html-content blockquote {
+  margin: 0.4em 0 0.4em 1.5em;
+  padding-left: 0.8em;
+  border-left: 3px solid #cbd5e1;
+}
+.document-html-content sup,
+.document-html-content sub {
+  font-size: 0.75em;
+  line-height: 0;
+  position: relative;
+}
+.document-html-content sup {
+  top: -0.5em;
+}
+.document-html-content sub {
+  bottom: -0.25em;
+}
+.document-html-content mark {
+  background: #fef08a;
+}
+.document-html-content hr {
+  border: 0;
+  border-top: 1px solid #333;
+  margin: 0.6em 0;
+}
+.document-html-content a {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+.document-html-content img {
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
+}
+.document-html-content details {
+  margin: 0.4em 0;
+}
+.document-html-content summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+/* Sahifa uzilishi: ekranda chiziq, chop etishda yangi varaq */
+.document-html-content .mezon-pagebreak {
+  height: 0;
+  margin: 1em 0;
+  border-top: 1px dashed #94a3b8;
+}
+@media print {
+  .document-html-content .mezon-pagebreak {
+    border: 0;
+    margin: 0;
+    break-after: page;
+    page-break-after: always;
+  }
 }
 
 /* Hujjat ko‘rish — faqat A4 sahifa, tashqi fon yo‘q */
