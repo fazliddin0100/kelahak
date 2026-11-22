@@ -17,7 +17,8 @@
     "docker:down": "docker compose down",
     "docker:prod": "docker compose --env-file .env.production.local -f docker-compose.prod.yml up -d --build",
     "docker:prod:down": "docker compose --env-file .env.production.local -f docker-compose.prod.yml down",
-    "docker:offline": "docker compose --env-file .env.production.local -f docker-compose.prod.yml up -d --no-build"
+    "docker:offline": "docker compose --env-file .env.production.local -f docker-compose.prod.yml up -d --no-build",
+    "ship": "powershell -ExecutionPolicy Bypass -File scripts/ship.ps1"
   },
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^7.1.0",

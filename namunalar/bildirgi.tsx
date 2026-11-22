@@ -190,7 +190,7 @@ export const Bildirgi: React.FC<BildirgiProps> = ({
         {/* Rezolyutsiya: qabul qiluvchi ism-familiyasidan 2 qator (14pt, interval 1,5 = 21pt)
             pastda va hujjat matni («Bildirgi») dan 4 qator yuqorida */}
         {renderCommanderLeft() && (
-          <div className="max-w-[55%] font-bold" style={{ marginTop: '30pt', marginBottom: '54pt' }}>
+          <div className="max-w-[55%] font-bold" style={{ marginTop: '14pt', marginBottom: '30pt' }}>
             {renderCommanderLeft()}
           </div>
         )}
