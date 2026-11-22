@@ -140,10 +140,12 @@ export async function POST(
       );
     }
 
+    // Userning imzolanmagan joyi (masalan, yuboruvchi) qolgan bo'lsa — imzolashga ruxsat
     if (
       isAwaitingCommanderApproval(docView) &&
       !pendingForwardSign &&
-      !isCommander
+      !isCommander &&
+      !canSignAsParticipant
     ) {
       return NextResponse.json(
         {
@@ -158,7 +160,8 @@ export async function POST(
       document.status === DocumentStatus.SIGNED &&
       !pendingForwardSign &&
       !isCommander &&
-      isUserAuthorSigned(docView)
+      isUserAuthorSigned(docView) &&
+      !canSignAsParticipant
     ) {
       return NextResponse.json(
         {

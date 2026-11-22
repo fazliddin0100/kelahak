@@ -12,7 +12,6 @@ import {
   isDocumentInWorkFile,
 } from '@/lib/documentLifecycle';
 import {
-  isAwaitingCommanderApproval,
   isDocumentLinkedToNomeklatura,
   isUserAuthorSigned,
 } from '@/lib/documentWorkflow';
@@ -70,6 +69,22 @@ export function useDocumentActionPermissions({
         resolveIdReference(signer.userId ?? signer.user?.userId) === currentUserId
       );
     };
+    /** Joriy user imzolashi kerak bo'lgan, lekin hali imzolanmagan joy bormi (muallif, yuboruvchi, kelishuvchi...) */
+    const hasUnsignedPartyForCurrentUser = (value: unknown): boolean => {
+      if (!currentUserId || !value) return false;
+      if (Array.isArray(value)) return value.some(hasUnsignedPartyForCurrentUser);
+      if (typeof value !== 'object') return false;
+      const signer = value as { userId?: unknown; user?: { userId?: unknown }; hasSigned?: boolean };
+      return (
+        signer.hasSigned !== true &&
+        resolveIdReference(signer.userId ?? signer.user?.userId) === currentUserId
+      );
+    };
+    const currentUserHasUnsigned =
+      hasUnsignedPartyForCurrentUser(document.author) ||
+      hasUnsignedPartyForCurrentUser(document.sender) ||
+      hasUnsignedPartyForCurrentUser(document.approvers);
+
     const currentUserHasSigned =
       !!forwardQueueEntry?.hasSigned ||
       hasSignedPartyForCurrentUser(document.author) ||
@@ -77,8 +92,9 @@ export function useDocumentActionPermissions({
       hasSignedPartyForCurrentUser(document.approvers) ||
       hasSignedPartyForCurrentUser(document.receiver) ||
       (roleGroup === 'kotibiyat' && commanderBosSigned);
+    // Imzo tugadi = user imzolashi kerak bo'lgan hamma joyda imzosi bor
     const signCompleted =
-      roleGroup === 'commander' ? commanderBosSigned : currentUserHasSigned;
+      roleGroup === 'commander' ? commanderBosSigned : currentUserHasSigned && !currentUserHasUnsigned;
 
     const canForwardReviewSign =
       !!currentUserId &&
@@ -131,8 +147,8 @@ export function useDocumentActionPermissions({
     if (roleGroup === 'kotibiyat') {
       return {
         canEdit: canEditOwn,
-        canSign: !terminal && !currentUserHasSigned,
-        signCompleted: currentUserHasSigned,
+        canSign: !terminal && (currentUserHasUnsigned || !currentUserHasSigned),
+        signCompleted: signCompleted,
         canSignLabel: 'Imzolash',
         canRegister:
           status !== DocumentStatus.REGISTERED &&
@@ -157,13 +173,15 @@ export function useDocumentActionPermissions({
       !isCommanderApproved(document) &&
       !terminal;
 
+    // Egasi: imzolashi kerak bo'lgan barcha joylarda imzosi bo'lguncha tugma faol
     const defaultSign =
       isOwner &&
-      !isUserAuthorSigned(document) &&
-      !isAwaitingCommanderApproval(document) &&
-      (draftEdit ||
-        status === DocumentStatus.CREATED ||
-        status === DocumentStatus.YANGI);
+      !terminal &&
+      !commanderBosSigned &&
+      !isCommanderApproved(document) &&
+      ((!isUserAuthorSigned(document) &&
+        (draftEdit || status === DocumentStatus.CREATED || status === DocumentStatus.YANGI)) ||
+        currentUserHasUnsigned);
 
     const commanderCanEdit =
       roleGroup === 'commander' &&

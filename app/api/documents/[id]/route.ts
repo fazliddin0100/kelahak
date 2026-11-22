@@ -163,11 +163,28 @@ export async function PUT(
       resolveSigner(body.author),
     ]);
 
+    // Qayta saqlashda imzolar yo'qolmasin: o'sha xodim avval imzolagan bo'lsa, belgisi saqlanadi
+    type SignerLike = Record<string, unknown> & { userId?: unknown; hasSigned?: boolean; signedAt?: unknown };
+    const keepSigned = <T,>(next: T, prev: unknown): T => {
+      const n = next as unknown as SignerLike;
+      const p = prev as SignerLike | null | undefined;
+      if (!n || !p || typeof p !== 'object') return next;
+      if (String(n.userId ?? '') && String(n.userId) === String(p.userId ?? '') && p.hasSigned) {
+        return { ...n, hasSigned: true, signedAt: p.signedAt ?? n.signedAt } as unknown as T;
+      }
+      return next;
+    };
+    const prevApprovers = (Array.isArray(document.approvers) ? document.approvers : []) as SignerLike[];
+
     if (bosSigned) updatePayload.bosSigned = bosSigned;
-    if (approvers) updatePayload.approvers = approvers;
-    if (sender) updatePayload.sender = sender;
+    if (approvers) {
+      updatePayload.approvers = approvers.map((a) =>
+        keepSigned(a, prevApprovers.find((p) => String(p?.userId ?? '') === String((a as SignerLike).userId ?? '')))
+      );
+    }
+    if (sender) updatePayload.sender = keepSigned(sender, document.sender);
     if (receiver) updatePayload.receiver = receiver;
-    if (author) updatePayload.author = author;
+    if (author) updatePayload.author = keepSigned(author, document.author);
 
     const updated = await updateDocument(id, updatePayload);
 
