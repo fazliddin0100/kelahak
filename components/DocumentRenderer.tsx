@@ -17,7 +17,7 @@ interface DocumentRendererProps {
 export default function DocumentRenderer(props: DocumentRendererProps) {
     // Hujjat matnini belgilash/nusxalash taqiqlangan (components/DocumentProtection.tsx)
     return (
-        <div data-protected className="contents">
+        <div data-protected className="contents mezon-document-font">
             <DocumentTemplate {...props} />
         </div>
     );

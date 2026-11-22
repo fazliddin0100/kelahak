@@ -328,6 +328,17 @@ body {
   width: auto;
 }
 
+/* Hujjat ko'rinishi muharrir bilan bir xil: sukut bo'yicha Times New Roman 14pt, interval 1,5.
+   User tanlagan shrift/o'lcham matn ichida (inline style) yoziladi va bundan ustun turadi. */
+.mezon-document-font {
+  font-family: 'Times New Roman', Times, serif;
+}
+.document-html-content {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 14pt;
+  line-height: 1.5;
+}
+
 /* Muharrirdagi formatlash ko'rishda ham bir xil chiqsin (Tailwind preflight'ni qaytarish) */
 .document-html-content p {
   margin: 0 0 0.35em;
