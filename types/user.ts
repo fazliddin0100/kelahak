@@ -29,6 +29,8 @@ export interface IJob {
 
 export interface IUserPopulated {
   userId: string;
+  /** Tizimga kirish logini (admin ro'yxatida) */
+  login?: string;
   personal: IPersonal;
   job: IJob;
   auth?: any;

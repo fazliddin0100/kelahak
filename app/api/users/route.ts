@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
 
     const result = users.map((u) => ({
       userId: u.id,
+      login: u.auth?.login ?? '',
       personal: u.personal ? serializePersonal(u.personal) : null,
       job:
         u.job ?

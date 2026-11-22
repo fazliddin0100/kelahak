@@ -1,6 +1,7 @@
 'use client';
 
 import GrantAccessModal from '@/components/modals/GrantAccessModal';
+import EditUserModal from '@/components/modals/EditUserModal';
 import useGrantUser from '@/hooks/useGrantUserHook';
 import { isAssignableRole, ROLE_LABELS } from '@/lib/roles';
 import type { IUserPopulated } from '@/types/user';
@@ -11,6 +12,7 @@ import { cn } from '@/lib/utils';
 import {
   CircleUserRound,
   ShieldCheck,
+  Pencil,
   Search,
   UserRoundCheck,
   UserRoundX,
@@ -25,6 +27,7 @@ const UsersPage = () => {
   const { revokeUser, loadingIds } = useRevokeUser(refetch);
   const { grantUser, loadingIds: grantLoadingIds } = useGrantUser(refetch);
   const [grantTarget, setGrantTarget] = useState<IUserPopulated | null>(null);
+  const [editTarget, setEditTarget] = useState<IUserPopulated | null>(null);
 
   const filteredUsers = users?.filter((user) => {
     const fullName =
@@ -32,7 +35,9 @@ const UsersPage = () => {
     const organ = user.job?.organ?.toLowerCase() || '';
     const department = user.job?.department?.toLowerCase() || '';
     const position = user.job?.position?.toLowerCase() || '';
+    const login = user.login?.toLowerCase() || '';
     return (
+      login.includes(searchTerm.toLowerCase()) ||
       fullName.includes(searchTerm.toLowerCase()) ||
       organ.includes(searchTerm.toLowerCase()) ||
       department.includes(searchTerm.toLowerCase()) ||
@@ -87,7 +92,7 @@ const UsersPage = () => {
                 <div className="px-3 py-3" />
                 <div className="px-3 py-3">Shahobcha</div>
                 <div className="px-3 py-3">Unvon</div>
-                <div className="px-3 py-3">F.I.Sh</div>
+                <div className="px-3 py-3">F.I.Sh / login</div>
                 <div className="px-3 py-3">Bo‘lim</div>
                 <div className="px-3 py-3">Lavozim</div>
                 <div className="px-3 py-3">Holat</div>
@@ -117,8 +122,29 @@ const UsersPage = () => {
                         <div className="px-3 py-3 text-sm">
                           {user.job?.militaryRank}
                         </div>
-                        <div className="px-3 py-3 text-sm font-medium text-slate-800">
-                          {user.personal?.name} {user.personal?.fName}
+                        <div className="px-3 py-3 text-sm">
+                          <div className="flex items-start gap-1.5">
+                            <div className="min-w-0">
+                              <p className="font-medium text-slate-800">
+                                {user.personal?.fName} {user.personal?.name} {user.personal?.sName}
+                              </p>
+                              {user.login ?
+                                <p className="truncate font-mono text-xs text-slate-500" title="Login">
+                                  {user.login}
+                                </p>
+                              : null}
+                            </div>
+                            {user.job?.roleName !== 'admin' && user.job?.roleName !== 'superAdmin' ?
+                              <button
+                                type="button"
+                                onClick={() => setEditTarget(user)}
+                                className="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+                                aria-label="Ma’lumotlarni tahrirlash"
+                                title="Ma’lumotlarni tahrirlash">
+                                <Pencil className="size-3.5" />
+                              </button>
+                            : null}
+                          </div>
                         </div>
                         <div className="px-3 py-3 text-sm">
                           {user.job?.department}
@@ -192,6 +218,7 @@ const UsersPage = () => {
         onSubmit={grantUser}
         busy={!!grantTarget && grantLoadingIds.has(grantTarget.userId)}
       />
+      <EditUserModal user={editTarget} onClose={() => setEditTarget(null)} onSaved={refetch} />
     </SectionShell>
   );
 };

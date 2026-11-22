@@ -33,6 +33,7 @@ export async function findUsersForAdmin(admin: UserWithRelations) {
     include: {
       personal: true,
       job: { include: { role: true, shahobcha: { select: { name: true } } } },
+      auth: { select: { login: true } },
     },
     orderBy: { createdAt: 'desc' },
   });
