@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/sonner';
 import type { IUserPopulated } from '@/types/user';
+import UserCredentialsSection from './UserCredentialsSection';
 
 type Form = {
   fName: string;
@@ -90,15 +91,14 @@ export default function EditUserModal({
           onClose();
         }
       }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserRoundPen className="size-5 text-primary" />
             Foydalanuvchi ma’lumotlari
           </DialogTitle>
           <DialogDescription>
-            Login: <span className="font-mono font-medium text-slate-700">{user?.login || '—'}</span> (o‘zgarmaydi —
-            E-IMZO sertifikati loginga bog‘langan). Rol va huquqlar «Huquqlar» oynasida.
+            Shaxsiy va ish ma’lumotlari, pastda — login va parol. Rol va huquqlar «Huquqlar» oynasida.
           </DialogDescription>
         </DialogHeader>
         {form && (
@@ -117,13 +117,21 @@ export default function EditUserModal({
             ))}
           </div>
         )}
+        {user && (
+          <UserCredentialsSection
+            key={user.userId}
+            userId={user.userId}
+            currentLogin={user.login ?? ''}
+            onSaved={onSaved}
+          />
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>
-            Bekor qilish
+            Yopish
           </Button>
           <Button onClick={save} disabled={saving} className="gap-2">
             {saving && <Loader2 className="size-4 animate-spin" />}
-            Saqlash
+            Ma’lumotlarni saqlash
           </Button>
         </DialogFooter>
       </DialogContent>
