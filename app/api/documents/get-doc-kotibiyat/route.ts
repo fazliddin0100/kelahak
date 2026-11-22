@@ -166,9 +166,13 @@ export async function GET(request: NextRequest) {
       isKotibiyatQueueVisible(doc as unknown as DocumentType, province)
     );
 
-    const regionalCopies = regionalSerialized.filter((doc) =>
-      isKotibiyatRegionalCopyInboxItem(doc as unknown as DocumentType)
-    );
+    // Korxonaga yuborilgan nusxa — faqat o'sha korxona kotibiyatiga
+    const myShahobchaId = authUser.job?.shahobchaId ?? null;
+    const regionalCopies = regionalSerialized.filter((doc) => {
+      const target = (doc as { targetShahobchaId?: string | null }).targetShahobchaId;
+      if (target && target !== myShahobchaId) return false;
+      return isKotibiyatRegionalCopyInboxItem(doc as unknown as DocumentType);
+    });
 
     const documents = mergeUniqueById(
       mergeUniqueById(assigned, fromProvince),

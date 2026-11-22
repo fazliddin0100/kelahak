@@ -259,6 +259,8 @@ model Document {
   pendingTransferToId String?
   pendingTransferAt   DateTime?
   pendingTransferNote String?
+  /// Nusxa aynan shu korxona (shahobcha) kotibiyatiga yuborilgan; null — eski viloyat nusxasi
+  targetShahobchaId   String?
   ownerAccepted   Boolean   @default(false)
   ownerAcceptedAt DateTime?
 

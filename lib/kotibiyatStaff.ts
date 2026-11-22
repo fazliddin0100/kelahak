@@ -47,6 +47,23 @@ export async function findKotibiyatStaffUserIds(
   return ids;
 }
 
+/** Aynan shu korxona (shahobcha) kotibiyat xodimlari */
+export async function findKotibiyatStaffByShahobcha(shahobchaId: string): Promise<string[]> {
+  if (!shahobchaId) return [];
+  await connectToDatabase();
+  const users = await prisma.user.findMany({
+    where: { job: { shahobchaId, isUserTrue: true } },
+    include: { job: { include: { role: true } } },
+  });
+  return users
+    .filter((u) => {
+      const roleName = u.job?.role?.role ?? '';
+      const dept = (u.job?.department ?? '').toLowerCase();
+      return isKotibiyatStaffRole(roleName) || dept.includes('kotibiyat');
+    })
+    .map((u) => u.id);
+}
+
 export async function isKotibiyatStaffInProvince(
   userId: string,
   province: string

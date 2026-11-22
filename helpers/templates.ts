@@ -1,8 +1,4 @@
 import blank from "../public/blank-document.svg";
-import malumotnoma from "../public/malumotnoma.png";
-import xat from "../public/xat.png";
-import buyruq from "../public/buyruq.png";
-import bildirgi from "../public/bildirgi.png";
 import {StaticImageData} from "next/image";
 
 export type Template = {
@@ -11,11 +7,12 @@ export type Template = {
     imageUrl: StaticImageData;
 };
 
+/**
+ * Galereyada faqat bo'sh «Yangi hujjat» (+) qoladi; qolganlari — userning
+ * o'zi yaratgan shaxsiy namunalari (DocumentTemplate, galereyada dinamik).
+ * Eski rasmli shablonlar (ma'lumotnoma, xat, ...) olib tashlandi; mavjud hujjatlar
+ * o'z nomi bo'yicha avvalgidek ko'rsatiladi.
+ */
 export const templates: Template[] = [
     {id: "blank", label: "yangi hujjat", imageUrl: blank},
-    {id: "malumotnoma", label: "malumotnoma", imageUrl: malumotnoma},
-    {id: "xat", label: "xat", imageUrl: xat},
-    {id: "dalolatnoma", label: "dalolatnoma", imageUrl: xat}, // agar boshqa rasm bo‘lsa, o‘zgartiring
-    {id: "buyruq", label: "buyruq", imageUrl: buyruq},
-    {id: "bildirgi", label: "bildirgi", imageUrl: bildirgi},
 ];

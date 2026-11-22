@@ -25,6 +25,8 @@ type PeerJob = {
   organ?: string;
   department?: string;
   isUserTrue?: boolean;
+  /** Superadmin ro'yxatga olgan korxona (shahobcha) — bo'lsa, aynan shu bo'yicha solishtiriladi */
+  shahobchaId?: string | null;
 };
 
 type PeerPersonal = {
@@ -41,6 +43,11 @@ export function isSameUnitAsCommander(
   const cmdProvince = normalizeUnitText(commanderPersonal.province);
   const tgtProvince = normalizeUnitText(targetPersonal.province);
   if (!cmdProvince || cmdProvince !== tgtProvince) return false;
+
+  // Ikkalasi ham korxonaga biriktirilgan bo'lsa — faqat bir xil korxona
+  if (commanderJob.shahobchaId && targetJob.shahobchaId) {
+    return commanderJob.shahobchaId === targetJob.shahobchaId;
+  }
 
   const cmdOrgan = normalizeUnitText(commanderJob.organ);
   const tgtOrgan = normalizeUnitText(targetJob.organ);

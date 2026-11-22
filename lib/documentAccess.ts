@@ -29,7 +29,11 @@ type AccessDocument = Pick<
   | 'sharedWithAdmin'
   | 'createdByKotibiyat'
   | 'registrationIndex'
-> & { allowedUsers?: { userId: string }[]; pendingTransferToId?: string | null };
+> & {
+  allowedUsers?: { userId: string }[];
+  pendingTransferToId?: string | null;
+  targetShahobchaId?: string | null;
+};
 
 export function actorProvince(auth: ApiAuthSession): string {
   return auth.user.personal?.province ?? '';
@@ -102,8 +106,12 @@ export function canViewDocumentDirect(
       doc.submittedToKotibiyat ||
       doc.sharedWithAdmin ||
       registered;
+    // Korxonaga manzillangan nusxani boshqa korxona kotibiyati ochmaydi
+    const otherOrganization =
+      !!doc.targetShahobchaId && doc.targetShahobchaId !== (auth.user.job?.shahobchaId ?? null);
     if (
       inKotibiyatChannel &&
+      !otherOrganization &&
       (regionsMatch(doc.ownerRegion, province) ||
         (registered && regionsMatch(doc.sourceRegion, province)))
     ) {

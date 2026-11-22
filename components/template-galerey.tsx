@@ -127,6 +127,7 @@ export const TemplateGallery = ({ className }: TemplateGalleryProps) => {
       <div className="mx-auto max-w-7xl px-2 py-2 sm:px-3">
         <Carousel>
           <CarouselContent className="ml-0 gap-2 pt-1.5">
+            {/* Faqat «Yangi hujjat» (+) va shaxsiy (yaqinda yaratilgan) namunalar */}
             {templates.map((template) => (
               <CarouselItem
                 key={template.id}

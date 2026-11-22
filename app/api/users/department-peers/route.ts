@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
     const anchorJob = {
       organ: job?.organ ?? '',
       department: job?.department ?? '',
+      shahobchaId: job?.shahobchaId ?? null,
     };
 
     const result = users
@@ -93,7 +94,7 @@ export async function GET(request: NextRequest) {
           anchorPersonal,
           anchorJob,
           { province: p.province ?? '' },
-          { organ: j.organ, department: j.department }
+          { organ: j.organ, department: j.department, shahobchaId: j.shahobchaId }
         );
       })
       .map((u) => {

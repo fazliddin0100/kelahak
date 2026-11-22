@@ -17,7 +17,7 @@ const File = () => {
               Yangi hujjat yaratish
             </h2>
             <p className="text-xs text-slate-500">
-              Shablonni tanlang va hujjatni tahrirlashga o&apos;ting
+              Yangi hujjat yoki o&apos;zingiz avval yaratgan namunani tanlang
             </p>
           </div>
         </div>

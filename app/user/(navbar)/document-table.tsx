@@ -11,7 +11,8 @@ import {
 import LoadingState from '@/components/LoadingState';
 import { useDocuments } from '@/hooks/useDocuments';
 import NotData from '@/utils/not-data';
-import StatusBadge from '@/components/StatusBadge';
+import DocumentProgress from '@/components/DocumentProgress';
+import DeleteDraftButton from '@/components/DeleteDraftButton';
 import { ErrorState } from '@/components/EmptyState';
 import { toDate } from '@/lib/dateLike';
 import {
@@ -96,7 +97,7 @@ const DocumentTable = ({ userId }: { userId?: string }) => {
                 </TableHead>
                 <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <span className="inline-flex items-center gap-1">
-                    <Tag className="size-3.5" /> Holat
+                    <Tag className="size-3.5" /> Qayerda
                   </span>
                 </TableHead>
                 <TableHead className="w-20 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -131,10 +132,13 @@ const DocumentTable = ({ userId }: { userId?: string }) => {
                       : '—'}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={doc.status} />
+                      <DocumentProgress document={doc} />
                     </TableCell>
                     <TableCell className="text-center">
-                      <AmallarButtons document={doc} onRefresh={refetch} />
+                      <div className="flex items-center justify-center gap-1">
+                        <AmallarButtons document={doc} onRefresh={refetch} />
+                        <DeleteDraftButton document={doc} onDeleted={refetch} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

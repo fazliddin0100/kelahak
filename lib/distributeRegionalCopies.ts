@@ -12,7 +12,8 @@ import {
 import { DocumentStatus } from '@/types/document-status.enum';
 import { encryptDocumentContent } from '@/lib/documentContentEncryption';
 import { regionsMatch } from './documentWorkflow';
-import { findKotibiyatStaffUserIds } from './kotibiyatStaff';
+import { findKotibiyatStaffByShahobcha, findKotibiyatStaffUserIds } from './kotibiyatStaff';
+import { parseDocumentAddress } from './documentAddress';
 
 export type SourceDocument = {
   _id: string;
@@ -66,32 +67,70 @@ export async function distributeRegionalCopies(
   const missing: string[] = [];
   const skipped: string[] = [];
 
+  // Manba korxonasi: o'z korxonasiga nusxa yuborilmaydi
+  const sourceOwnerJob = await prisma.job.findUnique({
+    where: { userId: source.owner },
+    select: { shahobchaId: true },
+  });
+
   for (let index = 0; index < targets.length; index++) {
-    const targetRegion = targets[index];
+    const target = targets[index];
+    const address = parseDocumentAddress(target);
     const copyIndex = index + 1;
 
-    if (regionsMatch(targetRegion, sourceProvince)) {
-      skipped.push(targetRegion);
-      continue;
+    // Yangi tartib: tizimda ro'yxatdan o'tgan korxona — nusxa faqat uning kotibiyatiga
+    let targetRegion = address.province;
+    let targetShahobchaId: string | null = null;
+    let staffIds: string[];
+
+    if (address.kind === 'organization') {
+      const org = await prisma.shahobcha.findUnique({
+        where: { province_name: { province: address.province, name: address.name } },
+        select: { id: true, province: true },
+      });
+      if (!org) {
+        missing.push(target);
+        continue;
+      }
+      if (org.id === sourceOwnerJob?.shahobchaId) {
+        skipped.push(target);
+        continue;
+      }
+      targetRegion = org.province;
+      targetShahobchaId = org.id;
+      const exists = await prisma.document.findFirst({
+        where: { parentId: source._id, isCopy: true, targetShahobchaId: org.id },
+        select: { id: true },
+      });
+      if (exists) {
+        skipped.push(target);
+        continue;
+      }
+      staffIds = await findKotibiyatStaffByShahobcha(org.id);
+    } else {
+      // Eski tartib: faqat viloyat nomi — viloyat kotibiyatiga
+      if (regionsMatch(targetRegion, sourceProvince)) {
+        skipped.push(target);
+        continue;
+      }
+      const alreadyExists = await prisma.document.findFirst({
+        where: {
+          parentId: source._id,
+          isCopy: true,
+          targetShahobchaId: null,
+          ownerRegion: provinceFilter(targetRegion),
+        },
+        select: { id: true },
+      });
+      if (alreadyExists) {
+        skipped.push(target);
+        continue;
+      }
+      staffIds = await findKotibiyatStaffUserIds(targetRegion);
     }
 
-    const alreadyExists = await prisma.document.findFirst({
-      where: {
-        parentId: source._id,
-        isCopy: true,
-        ownerRegion: provinceFilter(targetRegion),
-      },
-      select: { id: true },
-    });
-
-    if (alreadyExists) {
-      skipped.push(targetRegion);
-      continue;
-    }
-
-    const staffIds = await findKotibiyatStaffUserIds(targetRegion);
     if (staffIds.length === 0) {
-      missing.push(targetRegion);
+      missing.push(target);
       continue;
     }
 
@@ -108,13 +147,14 @@ export async function distributeRegionalCopies(
           sender: (source.sender ?? undefined) as object | undefined,
           receiver: (source.receiver ?? []) as object,
           approvers: (source.approvers ?? []) as object,
-          copyNumber: [targetRegion],
+          copyNumber: [target],
           copyIndex,
           copyTotal,
           ownerId: source.owner,
           parentId: source._id,
           isCopy: true,
           ownerRegion: targetRegion,
+          targetShahobchaId,
           sourceRegion: sourceProvince,
           year: source.year,
           registrationIndex: source.registrationIndex,
@@ -151,7 +191,7 @@ export async function distributeRegionalCopies(
     await syncAllowedUsers(copyId, allowedUserIds);
 
     created += 1;
-    regions.push(targetRegion);
+    regions.push(target);
   }
 
   return { created, regions, missing, skipped };

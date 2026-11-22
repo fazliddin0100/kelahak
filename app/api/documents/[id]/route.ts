@@ -1,6 +1,6 @@
 // app/api/documents/[id]/route.ts
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
-import connectToDatabase from '@/lib/prisma';
+import connectToDatabase, { prisma } from '@/lib/prisma';
 import { parseAttachmentTextIds } from '@/lib/parseAttachmentTextIds';
 import {
   canCommanderReviewEdit,
@@ -268,5 +268,45 @@ export async function GET(
       { message: 'Hujjatni olishda xatolik' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Adashib yaratilgan qoralamani o'chirish: faqat egasi va faqat hech kim imzolamagan
+ * («yangi»/«created», muallif imzosi yo'q, E-IMZO imzolari yo'q) hujjat.
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await connectToDatabase();
+    const auth = await requireApiAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { id } = await params;
+    if (!isValidDbId(id)) return documentNotFoundResponse();
+
+    const document = await findDocumentById(id);
+    if (!document || document.ownerId !== auth.userId) return documentNotFoundResponse();
+
+    const author = (document.author ?? {}) as { hasSigned?: boolean };
+    const draft =
+      (document.status === DocumentStatus.YANGI || document.status === DocumentStatus.CREATED) &&
+      !author.hasSigned &&
+      document.registrationIndex == null &&
+      !document.isCopy;
+    const signatures = await prisma.documentSignature.count({ where: { documentId: id } });
+    if (!draft || signatures > 0) {
+      return NextResponse.json(
+        { message: 'Faqat hali imzolanmagan qoralamani o‘chirish mumkin' },
+        { status: 400 }
+      );
+    }
+
+    await prisma.document.delete({ where: { id } });
+    return NextResponse.json({ message: 'Hujjat o‘chirildi' });
+  } catch (error) {
+    console.error('Hujjatni o‘chirishda xato:', error);
+    return NextResponse.json({ message: 'Server xatosi' }, { status: 500 });
   }
 }
