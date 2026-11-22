@@ -27,6 +27,27 @@ if (-not (Test-Path $dockerDesktop)) { $dockerDesktop = 'C:\Program Files\Docker
 
 function Step($text) { Write-Host "`n==> $text" -ForegroundColor Cyan }
 
+# Bir vaqtda faqat bitta deploy: ikkinchi nusxa birinchisi tugashini kutadi
+# (ikki deploy bir konteynerni birga yangilasa "container name is already in use" xatosi chiqadi)
+$mutex = New-Object System.Threading.Mutex($false, 'Global\MezonDeploy')
+if (-not $mutex.WaitOne(0)) {
+  Write-Host 'Boshqa deploy ishlayapti - u tugashini kutyapman...' -ForegroundColor Yellow
+  if (-not $mutex.WaitOne([TimeSpan]::FromMinutes(20))) {
+    throw "Oldingi deploy 20 daqiqada tugamadi. Boshqa terminallarni tekshiring."
+  }
+}
+
+# Yarim yo'lda to'xtagan yangilashdan qolgan vaqtinchalik konteynerlar (masalan: aa2ea8b39570_mysayt-app-prod)
+function Remove-StaleContainers {
+  $names = & docker ps -a --format '{{.Names}}' | Where-Object { $_ -match '^[0-9a-f]{12}_mysayt-' }
+  foreach ($n in $names) {
+    Write-Host "Qolib ketgan vaqtinchalik konteyner olib tashlanmoqda: $n" -ForegroundColor Yellow
+    & docker rm -f $n | Out-Null
+  }
+}
+
+try {
+
 function Test-DockerReady {
   $job = Start-Job { docker info --format '{{.ServerVersion}}' 2>$null }
   if (Wait-Job $job -Timeout 8) { $out = Receive-Job $job } else { $out = $null }
@@ -67,7 +88,15 @@ if (-not $NoBuild) {
 
 # 3) Yangilash: zaxira -> migratsiya -> ilova
 Step 'Stack yangilanmoqda (avval zaxira, keyin migratsiya)'
+Remove-StaleContainers
 & docker @compose up -d --remove-orphans
+if ($LASTEXITCODE -ne 0) {
+  # Bir marta qayta urinish: qolib ketgan konteynerni tozalab
+  Write-Host 'Birinchi urinish muvaffaqiyatsiz - tozalab qayta urinilmoqda...' -ForegroundColor Yellow
+  Start-Sleep -Seconds 3
+  Remove-StaleContainers
+  & docker @compose up -d --remove-orphans
+}
 if ($LASTEXITCODE -ne 0) {
   & docker @compose ps
   throw "Stack ko'tarilmadi. Loglar: docker compose -f docker-compose.prod.yml logs migrate app"
@@ -85,4 +114,9 @@ if ($ok) {
   Write-Host "`nTayyor: $Url javob bermoqda." -ForegroundColor Green
 } else {
   throw "Sayt javob bermadi ($Url). Loglar: docker compose -f docker-compose.prod.yml logs --tail 50 app nginx"
+}
+
+} finally {
+  $mutex.ReleaseMutex()
+  $mutex.Dispose()
 }
