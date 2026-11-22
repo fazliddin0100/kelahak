@@ -102,6 +102,15 @@ if ($LASTEXITCODE -ne 0) {
   throw "Stack ko'tarilmadi. Loglar: docker compose -f docker-compose.prod.yml logs migrate app"
 }
 
+# Yangi ilova konteyneri boshqa IP olishi mumkin - nginx eski manzilni eslab qoladi (502).
+# Qayta yuklash (reload) ulanishlarni uzmaydi va manzillarni yangidan aniqlaydi.
+Step "nginx qayta yuklanmoqda (yangi ilova manzili)"
+& docker @compose exec -T nginx nginx -s reload
+if ($LASTEXITCODE -ne 0) {
+  Write-Host 'nginx reload bo''lmadi - qayta ishga tushirilmoqda...' -ForegroundColor Yellow
+  & docker @compose restart nginx
+}
+
 # 4) Tekshiruv
 Step 'Sayt tekshirilmoqda'
 $ok = $false
