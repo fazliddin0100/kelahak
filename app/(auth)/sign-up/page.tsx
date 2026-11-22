@@ -338,7 +338,7 @@ export default function RegistrationPage() {
                     </FormControl>
                     {provinceValue && !shahobchaLoading && shahobchalar.length === 0 && (
                       <p className="text-xs text-amber-700">
-                        Shahobcha SuperAdmin tomonidan yaratiladi. Administratoringizga murojaat qiling.
+                        Ushbu viloyatda shahobcha yo‘q.
                       </p>
                     )}
                     <FormMessage />
