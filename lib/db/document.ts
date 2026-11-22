@@ -700,10 +700,10 @@ export function commanderLocalInboxWhere(province: string): Prisma.DocumentWhere
     submittedToKotibiyat: { not: true },
     sharedWithAdmin: { not: true },
     sentToCommander: true,
+    // Boshliq hujjatni faqat muallif imzolagandan keyin ko'radi
+    author: { path: ['hasSigned'], equals: true },
     status: {
       in: [
-        DocumentStatus.YANGI,
-        DocumentStatus.CREATED,
         DocumentStatus.IN_PROGRESS,
         DocumentStatus.IN_PROGRESS_FORWARD,
         DocumentStatus.SIGNED,

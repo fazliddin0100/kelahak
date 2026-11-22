@@ -119,10 +119,14 @@ export function canViewDocumentDirect(
     }
   }
 
+  // Boshliq: o'z viloyati hujjatini faqat muallif imzolagandan keyin ko'radi
+  const signedBy = (v: unknown) =>
+    !!v && typeof v === 'object' && (v as { hasSigned?: boolean }).hasSigned === true;
   if (
     isCommanderActor(auth) &&
     doc.sentToCommander === true &&
-    regionsMatch(doc.ownerRegion, province)
+    regionsMatch(doc.ownerRegion, province) &&
+    (signedBy(doc.author) || signedBy(doc.sender) || signedBy(doc.bosSigned))
   ) {
     return true;
   }

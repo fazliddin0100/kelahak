@@ -208,8 +208,6 @@ export function commanderLocalInboxFilter(province: string) {
     sentToCommander: true,
     status: {
       $in: [
-        DocumentStatus.YANGI,
-        DocumentStatus.CREATED,
         DocumentStatus.IN_PROGRESS,
         DocumentStatus.IN_PROGRESS_FORWARD,
         DocumentStatus.SIGNED,
