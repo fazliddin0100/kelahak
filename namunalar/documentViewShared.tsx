@@ -322,6 +322,16 @@ export function getCommanderCommentMeta(doc: DocumentType) {
   return { text, signerName, date, showQr };
 }
 
+/** Boshliq rezolyutsiyasi bo'yicha ijrochilar — qisqa ism bilan (masalan: N.N. Nabiyev) */
+export function commanderExecutors(doc: DocumentType): string[] {
+  const queue = Array.isArray(doc.forwardedTo) ? doc.forwardedTo : [];
+  return queue
+    .filter((q): q is { fullName?: string; order?: number } => !!q && typeof q === 'object')
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((q) => formatShortName(q.fullName ?? ''))
+    .filter(Boolean);
+}
+
 /** Komandir imzolagan, lekin izoh qoldirmagan */
 export function isCommanderSignedWithoutComment(doc: DocumentType): boolean {
   if (doc.forwardedComment?.trim()) return false;
@@ -384,6 +394,11 @@ export function DocumentTopHeader({
               <p className="commander-comment-hand whitespace-pre-wrap">
                 {commander.text}
               </p>
+              {commanderExecutors(document).length > 0 ?
+                <p className="commander-comment-hand mt-1 whitespace-pre-wrap">
+                  {commanderExecutors(document).join(', ')}
+                </p>
+              : null}
               <div
                 className="mt-1.5 max-w-[min(100%,280px)] border-b-[2.5px] border-slate-800"
                 aria-hidden

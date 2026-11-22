@@ -1,8 +1,5 @@
 import { buildForwardedSignerFromUserId } from '@/lib/documentForwardedSigner';
-import {
-  isCommanderReviewStatus,
-  isForwardQueueComplete,
-} from '@/lib/documentWorkflow';
+import { isCommanderReviewStatus } from '@/lib/documentWorkflow';
 import { resolveIdReference } from '@/lib/resolveIdReference';
 import { DocumentType } from '@/types/document';
 import { DocumentStatus } from '@/types/document-status.enum';
@@ -51,18 +48,8 @@ export async function applyCommanderDocumentSign(
     };
   }
 
-  if (
-    directReview &&
-    !isForwarder &&
-    !isForwardQueueComplete(document as DocumentType)
-  ) {
-    return {
-      ok: false,
-      message:
-        'Komandir yo‘naltirgan barcha xodimlar tasdiqlaguncha imzolab bo‘lmaydi',
-      status: 400,
-    };
-  }
+  // Yangi tartib: rezolyutsiya ijrochilari boshliq imzosidan KEYIN navbat bilan ishlaydi,
+  // shuning uchun navbat tugashini kutish shart emas.
 
   const bosUserId = resolveIdReference(document.bosSigned?.userId);
   if (document.bosSigned?.hasSigned && bosUserId === userId) {

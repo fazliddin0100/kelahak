@@ -39,7 +39,14 @@ export function ForwardQueueSidebar({
   const { users, province, organ, department, loading: peersLoading } =
     useDepartmentPeers();
   const [comment, setComment] = useState(document.forwardedComment ?? '');
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // Boshliq izoh bilan saqlagan (hali imzolanmagan) ijrochilar oldindan tanlangan bo'ladi
+  const [selectedIds, setSelectedIds] = useState<string[]>(() =>
+    isAwaitingCommanderApproval(document) && Array.isArray(document.forwardedTo) ?
+      (document.forwardedTo as { userId?: unknown; hasSigned?: boolean }[])
+        .filter((q) => q && !q.hasSigned && typeof q.userId === 'string')
+        .map((q) => q.userId as string)
+    : []
+  );
   const [submitting, setSubmitting] = useState(false);
   const signsOnForward = isAwaitingCommanderApproval(document);
   const { role, userId } = useRoleHook();
@@ -125,7 +132,8 @@ export function ForwardQueueSidebar({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text: comment }),
+        // Tanlangan xodimlar ham saqlanadi — hujjatda izoh ostida ko'rinadi
+        body: JSON.stringify({ text: comment, userIds: selectedIds }),
       });
       const data = await res.json();
       if (!res.ok) return toast.error(data.message || 'Xatolik!');

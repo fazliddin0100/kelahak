@@ -5,7 +5,10 @@ import {
   loadViewableDocument,
 } from '@/lib/documentAccess';
 import { isDocumentEditableStatus } from '@/lib/documentEditRules';
-import { applyCommanderCommentSignature } from '@/lib/documentForwardedSigner';
+import { buildForwardedSignerFromUserId } from '@/lib/documentForwardedSigner';
+import { buildPersonalFullName } from '@/lib/forwardQueue';
+import { isSameUnitAsCommander } from '@/lib/unitPeerMatch';
+import { findUserById, findUsersByIds } from '@/lib/db/user';
 import connectToDatabase from '@/lib/prisma';
 import { isValidDbId, updateDocument } from '@/lib/db/document';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -35,7 +38,8 @@ export async function POST(
       );
     }
 
-    const { text } = await request.json();
+    const body = await request.json();
+    const text = body?.text;
     const comment =
       typeof text === 'string' ? text.trim().slice(0, MAX_COMMENT_LENGTH) : '';
     if (!comment) {
@@ -57,8 +61,50 @@ export async function POST(
       );
     }
 
-    const patch: Parameters<typeof updateDocument>[1] = {};
-    await applyCommanderCommentSignature(patch, userId, comment);
+    // Izoh — hali imzo EMAS: boshliq imzosi faqat «Imzolash» da qo'yiladi.
+    // Ism va sana hujjatda izoh ostida ko'rinishi uchun saqlanadi (hasSigned: false).
+    const patch: Parameters<typeof updateDocument>[1] = {
+      forwardedComment: comment,
+      forwardedAt: new Date(),
+    };
+    const alreadySigned =
+      !!(document.forwardedSigner as { hasSigned?: boolean } | null)?.hasSigned ||
+      !!(document.bosSigned as { hasSigned?: boolean } | null)?.hasSigned;
+    if (!alreadySigned) {
+      const signer = await buildForwardedSignerFromUserId(userId);
+      if (signer) patch.forwardedSigner = { ...signer, hasSigned: false };
+    }
+
+    // Tanlangan xodimlar — rejalashtirilgan ijrochilar (boshliq imzolagach navbat boshlanadi)
+    if (Array.isArray(body?.userIds) && !alreadySigned) {
+      const ids = [
+        ...new Set(
+          (body.userIds as unknown[]).filter(
+            (u): u is string => typeof u === 'string' && isValidDbId(u) && u !== userId
+          )
+        ),
+      ].slice(0, 50);
+      const me = await findUserById(userId);
+      const targets = ids.length ? await findUsersByIds(ids) : [];
+      const byId = new Map(targets.map((t) => [t.id, t]));
+      const queue = [];
+      for (const uid of ids) {
+        const t = byId.get(uid);
+        if (!t?.personal || !t.job || !me?.personal || !me.job) continue;
+        if (!isSameUnitAsCommander(me.personal, me.job, t.personal, t.job)) continue;
+        queue.push({
+          userId: uid,
+          fullName: buildPersonalFullName(t.personal),
+          militaryRank: t.job.militaryRank ?? '',
+          position: t.job.position ?? '',
+          order: queue.length + 1,
+          hasSigned: false,
+        });
+      }
+      patch.forwardedTo = queue;
+      patch.currentViewIndex = 0;
+    }
+
     const updated = await updateDocument(id, patch);
 
     return NextResponse.json(
