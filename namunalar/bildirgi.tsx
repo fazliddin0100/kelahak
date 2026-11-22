@@ -180,19 +180,23 @@ export const Bildirgi: React.FC<BildirgiProps> = ({
           showCommanderLeft={false}
         />
 
-        {(renderCommanderLeft() || renderReceiverBlock()) && (
-          <div className="mt-4 flex flex-row items-start justify-between gap-4 font-bold">
-            <span className="max-w-[55%]">{renderCommanderLeft()}</span>
-            <span className="max-w-[55%] text-right">
-              <span className="inline-block text-left">
-                {renderReceiverBlock()}
-              </span>
-            </span>
+        {/* Kimga (o'ngda) */}
+        {renderReceiverBlock() && (
+          <div className="mt-4 flex justify-end font-bold">
+            <span className="max-w-[55%] text-left">{renderReceiverBlock()}</span>
+          </div>
+        )}
+
+        {/* Rezolyutsiya: qabul qiluvchi ism-familiyasidan 2 qator (14pt, interval 1,5 = 21pt)
+            pastda va hujjat matni («Bildirgi») dan 4 qator yuqorida */}
+        {renderCommanderLeft() && (
+          <div className="max-w-[55%] font-bold" style={{ marginTop: '42pt', marginBottom: '84pt' }}>
+            {renderCommanderLeft()}
           </div>
         )}
 
         <div
-          className="mt-4 w-full wrap-break-words document-html-content"
+          className={`${renderCommanderLeft() ? '' : 'mt-4 '}w-full wrap-break-words document-html-content`}
           dangerouslySetInnerHTML={{
             __html: DOMPurify.sanitize(sanitizeDocumentHtml(document.content)),
           }}
