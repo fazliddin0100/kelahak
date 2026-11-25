@@ -40,6 +40,7 @@ function concat(...parts: Uint8Array[]): Bytes {
 const seq = (...items: Uint8Array[]) => tlv(0x30, concat(...items));
 const set = (...items: Uint8Array[]) => tlv(0x31, concat(...items));
 const utf8String = (s: string) => tlv(0x0c, new TextEncoder().encode(s));
+const printableString = (s: string) => tlv(0x13, new TextEncoder().encode(s));
 
 function oid(dotted: string): Bytes {
   const parts = dotted.split('.').map(Number);
@@ -69,6 +70,7 @@ const OID = {
   commonName: '2.5.4.3',
   organization: '2.5.4.10',
   userId: '0.9.2342.19200300.100.1.1', // UID — login
+  serialNumber: '2.5.4.5', // kompyuter MAC manzili (AA-BB-CC-DD-EE-FF)
   ecdsaWithSha256: '1.2.840.10045.4.3.2',
 };
 
@@ -95,6 +97,8 @@ export type KeyRequestInput = {
   login: string;
   fullName: string;
   organization: string;
+  /** Ro'yxatdan o'tgan kompyuter MAC manzili (normalizeMac bilan tekshirilgan) */
+  mac?: string;
   password: string;
 };
 
@@ -120,7 +124,8 @@ export async function createKeyAndCsr(input: KeyRequestInput): Promise<KeyReques
   const subject = seq(
     rdn(OID.commonName, input.fullName),
     rdn(OID.userId, input.login),
-    rdn(OID.organization, input.organization)
+    rdn(OID.organization, input.organization),
+    ...(input.mac ? [set(seq(oid(OID.serialNumber), printableString(input.mac)))] : [])
   );
   const info = seq(tlv(0x02, new Uint8Array([0])), subject, spki, new Uint8Array([0xa0, 0x00]));
 

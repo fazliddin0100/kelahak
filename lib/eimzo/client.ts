@@ -47,12 +47,14 @@ async function readKeyFile(file: File): Promise<KeyFile> {
   return parsed;
 }
 
-/** Parol bilan kalitni ochadi va matnni imzolaydi (ECDSA P-256 / SHA-256, base64 r||s). */
-export async function signWithKeyFile(keyFileInput: File, password: string, message: string): Promise<string> {
+/**
+ * Parol bilan kalitni ochadi. Natija — chiqarib olib bo'lmaydigan (extractable: false) CryptoKey:
+ * uni faqat imzolash uchun ishlatish mumkin, baytlarini o'qib yoki saqlab bo'lmaydi.
+ */
+export async function unlockKeyFile(keyFileInput: File, password: string): Promise<CryptoKey> {
   const keyFile = await readKeyFile(keyFileInput);
   const subtle = window.crypto.subtle;
-  const enc = new TextEncoder();
-  const base = await subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  const base = await subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
   const aesKey = await subtle.deriveKey(
     { name: 'PBKDF2', salt: b64ToBytes(keyFile.kdf.salt), iterations: keyFile.kdf.iterations, hash: 'SHA-256' },
     base,
@@ -67,12 +69,24 @@ export async function signWithKeyFile(keyFileInput: File, password: string, mess
   } catch {
     throw new EimzoClientError('Kalit paroli noto‘g‘ri.');
   }
-
   try {
-    const privateKey = await subtle.importKey('pkcs8', pkcs8, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
-    const signature = await subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, enc.encode(message));
-    return bytesToB64(signature);
+    return await subtle.importKey('pkcs8', pkcs8, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
   } finally {
     new Uint8Array(pkcs8).fill(0);
   }
+}
+
+/** Ochilgan kalit bilan matnni imzolaydi (ECDSA P-256 / SHA-256, base64 r||s). */
+export async function signWithKey(privateKey: CryptoKey, message: string): Promise<string> {
+  const signature = await window.crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    privateKey,
+    new TextEncoder().encode(message)
+  );
+  return bytesToB64(signature);
+}
+
+/** Parol bilan kalitni ochadi va matnni imzolaydi. */
+export async function signWithKeyFile(keyFileInput: File, password: string, message: string): Promise<string> {
+  return signWithKey(await unlockKeyFile(keyFileInput, password), message);
 }

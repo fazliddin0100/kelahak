@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { EimzoClientError, isEimzoSupported, readCertificateFile, signWithKeyFile } from '@/lib/eimzo/client';
+import { EimzoClientError, isEimzoSupported, readCertificateFile, signWithKey, unlockKeyFile } from '@/lib/eimzo/client';
+import { clearSignSession, getSignSession, startSignSession } from '@/lib/eimzo/signSession';
 import {
   documentSignMessage,
   finishEimzoSignature,
@@ -19,7 +20,7 @@ import {
   subscribeEimzoSign,
   type DocumentSignChallenge,
 } from '@/lib/eimzo/signRequest';
-import { FileKey2, KeyRound, Loader2, PenLine } from 'lucide-react';
+import { FileKey2, KeyRound, Loader2, LockOpen, PenLine } from 'lucide-react';
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from 'react';
 
 /** Hujjat sahifasiga bir marta qo'yiladi: requestEimzoSignature() chaqirilganda imzolash oynasini ochadi. */
@@ -35,17 +36,50 @@ function SignDialog({ challenge }: { challenge: DocumentSignChallenge }) {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [secondsLeft, setSecondsLeft] = useState(() => remaining(challenge.expiresAt));
+  const [now, setNow] = useState(() => Date.now());
+  // Oyna ochilganda: 1 soat ichida parol kiritilgan bo'lsa — kalit xotirada ochiq
+  const [session, setSession] = useState(() => getSignSession());
 
   useEffect(() => {
-    const t = setInterval(() => setSecondsLeft(remaining(challenge.expiresAt)), 1000);
+    const t = setInterval(() => {
+      setNow(Date.now());
+      setSession(getSignSession()); // 1 soat tugasa — parol formasi qaytadi
+    }, 1000);
     return () => clearInterval(t);
-  }, [challenge.expiresAt]);
+  }, []);
 
+  const secondsLeft = Math.max(0, Math.round((new Date(challenge.expiresAt).getTime() - now) / 1000));
   const expired = secondsLeft === 0;
   const secure = isEimzoSupported();
 
-  const submit = async (e: FormEvent) => {
+  const sign = async (key: CryptoKey, certPem: string) => {
+    const origin = window.location.origin;
+    const signature = await signWithKey(key, documentSignMessage(challenge, origin));
+    finishEimzoSignature({ challengeId: challenge.challengeId, origin, certPem, signature });
+  };
+
+  const submitWithSession = async (e: FormEvent) => {
+    e.preventDefault();
+    const s = getSignSession();
+    if (!s) {
+      setSession(null);
+      setError('Kalit paroli muddati tugadi (1 soat). Parolni qayta kiriting.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await sign(s.key, s.certPem);
+    } catch {
+      setError('Imzolab bo‘lmadi. Kalitni qayta tanlang.');
+      clearSignSession();
+      setSession(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitWithPassword = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     if (!certFile || !keyFile || !password) {
@@ -55,10 +89,11 @@ function SignDialog({ challenge }: { challenge: DocumentSignChallenge }) {
     setBusy(true);
     try {
       const certPem = await readCertificateFile(certFile);
-      const origin = window.location.origin;
-      const signature = await signWithKeyFile(keyFile, password, documentSignMessage(challenge, origin));
+      const key = await unlockKeyFile(keyFile, password);
       setPassword('');
-      finishEimzoSignature({ challengeId: challenge.challengeId, origin, certPem, signature });
+      // Parol kiritilgan paytdan 1 soat davomida keyingi imzolar parolsiz
+      startSignSession(key, certPem, keyFile.name);
+      await sign(key, certPem);
     } catch (err) {
       setError(err instanceof EimzoClientError ? err.message : 'Kalitni ochib bo‘lmadi. Fayllarni tekshiring.');
     } finally {
@@ -66,10 +101,20 @@ function SignDialog({ challenge }: { challenge: DocumentSignChallenge }) {
     }
   };
 
+  const useOtherKey = () => {
+    clearSignSession();
+    setSession(null);
+    setError('');
+  };
+
+  const sessionMinutes = session ? Math.max(1, Math.ceil((session.expiresAt - now) / 60000)) : 0;
+  const sessionUntil =
+    session ? new Date(session.expiresAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : '';
+
   return (
     <Dialog open onOpenChange={(v) => !v && !busy && finishEimzoSignature(null)}>
       <DialogContent className="sm:max-w-md">
-        <form onSubmit={submit} className="space-y-4" autoComplete="off">
+        <form onSubmit={session ? submitWithSession : submitWithPassword} className="space-y-4" autoComplete="off">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PenLine className="size-5 text-primary" />
@@ -91,29 +136,50 @@ function SignDialog({ challenge }: { challenge: DocumentSignChallenge }) {
             </p>
           )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="sign-cert" className="flex items-center gap-2">
-              <FileKey2 className="size-4" /> Sertifikat (.crt)
-            </Label>
-            <Input id="sign-cert" type="file" accept=".crt,.cer,.pem" onChange={(e) => setCertFile(e.target.files?.[0] ?? null)} className="cursor-pointer" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="sign-key" className="flex items-center gap-2">
-              <KeyRound className="size-4" /> Kalit fayli (.mzk)
-            </Label>
-            <Input id="sign-key" type="file" accept=".mzk" onChange={(e) => setKeyFile(e.target.files?.[0] ?? null)} className="cursor-pointer" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="sign-pass">Kalit paroli</Label>
-            <Input
-              id="sign-pass"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="off"
-              placeholder="E-IMZO kalitining paroli"
-            />
-          </div>
+          {session ?
+            <div className="space-y-2 rounded-lg bg-emerald-50 px-3 py-3 text-sm text-emerald-900 ring-1 ring-emerald-200">
+              <p className="flex items-center gap-2 font-medium">
+                <LockOpen className="size-4" /> Kalit ochiq: {session.label}
+              </p>
+              <p className="text-xs text-emerald-800">
+                Parol {sessionUntil} gacha so‘ralmaydi (yana {sessionMinutes} daqiqa). Keyin, sahifa yangilansa yoki
+                tizimdan chiqsangiz parol qayta so‘raladi.
+              </p>
+              <button
+                type="button"
+                onClick={useOtherKey}
+                disabled={busy}
+                className="text-xs font-medium text-emerald-800 underline underline-offset-2 hover:text-emerald-950">
+                Boshqa kalit bilan imzolash
+              </button>
+            </div>
+          : <>
+              <div className="space-y-1.5">
+                <Label htmlFor="sign-cert" className="flex items-center gap-2">
+                  <FileKey2 className="size-4" /> Sertifikat (.crt)
+                </Label>
+                <Input id="sign-cert" type="file" accept=".crt,.cer,.pem" onChange={(e) => setCertFile(e.target.files?.[0] ?? null)} className="cursor-pointer" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sign-key" className="flex items-center gap-2">
+                  <KeyRound className="size-4" /> Kalit fayli (.mzk)
+                </Label>
+                <Input id="sign-key" type="file" accept=".mzk" onChange={(e) => setKeyFile(e.target.files?.[0] ?? null)} className="cursor-pointer" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sign-pass">Kalit paroli</Label>
+                <Input
+                  id="sign-pass"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="off"
+                  placeholder="E-IMZO kalitining paroli"
+                />
+                <p className="text-xs text-slate-500">Parol kiritilgach 1 soat davomida keyingi imzolarda so‘ralmaydi.</p>
+              </div>
+            </>
+          }
 
           {error && (
             <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200">
@@ -139,8 +205,4 @@ function SignDialog({ challenge }: { challenge: DocumentSignChallenge }) {
       </DialogContent>
     </Dialog>
   );
-}
-
-function remaining(expiresAt: string) {
-  return Math.max(0, Math.round((new Date(expiresAt).getTime() - Date.now()) / 1000));
 }

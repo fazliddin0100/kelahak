@@ -2,6 +2,7 @@ import { logAdminAction } from '@/lib/auditLog';
 import { createDbId } from '@/lib/db/document';
 import { encryptDocumentContent } from '@/lib/documentContentEncryption';
 import { issueUserCertificate } from '@/lib/eimzo/issuer';
+import { normalizeMac } from '@/lib/eimzo/mac';
 import { packageContext } from '@/lib/eimzo/packages';
 import { EimzoError, parseAndValidateCertificate } from '@/lib/eimzo/verify';
 import connectToDatabase, { prisma } from '@/lib/prisma';
@@ -42,7 +43,7 @@ function parseKeyFile(raw: unknown): Record<string, unknown> | null {
 /**
  * Brauzerda yaratilgan kalit (.mzk) va so'rov (.csr) serverga keladi:
  * oraliq CA sertifikatni imzolaydi, userga biriktiradi va bir martalik paketni saqlaydi.
- * Body: { userId, csrPem, keyFileJson, fullName? }
+ * Body: { userId, csrPem, keyFileJson, mac } — mac: userning ro'yxatdan o'tgan kompyuteri
  */
 export async function POST(request: NextRequest) {
   const check = await requireSuperAdmin(request);
@@ -52,12 +53,17 @@ export async function POST(request: NextRequest) {
       userId?: unknown;
       csrPem?: unknown;
       keyFileJson?: unknown;
+      mac?: unknown;
     } | null;
     const userId = typeof body?.userId === 'string' ? body.userId.trim() : '';
     const csrPem = typeof body?.csrPem === 'string' && body.csrPem.length <= MAX_CSR ? body.csrPem : '';
     const keyFile = parseKeyFile(body?.keyFileJson);
     if (!userId || !csrPem) return NextResponse.json({ message: 'User va so‘rov (.csr) kerak' }, { status: 400 });
     if (!keyFile) return NextResponse.json({ message: 'Kalit fayli (.mzk) noto‘g‘ri' }, { status: 400 });
+    const mac = normalizeMac(body?.mac);
+    if (!mac) {
+      return NextResponse.json({ message: 'Kompyuter MAC manzili noto‘g‘ri (masalan: 3C-52-82-1A-7F-09)' }, { status: 400 });
+    }
 
     await connectToDatabase();
     const user = await prisma.user.findUnique({
@@ -73,7 +79,7 @@ export async function POST(request: NextRequest) {
 
     let issued;
     try {
-      issued = await issueUserCertificate(csrPem, login);
+      issued = await issueUserCertificate(csrPem, login, mac);
     } catch (e) {
       if (e instanceof EimzoError) {
         return NextResponse.json({ message: e.message, code: e.code }, { status: e.code === 'CA_MISSING' ? 503 : 400 });
@@ -130,7 +136,7 @@ export async function POST(request: NextRequest) {
     await logAdminAction(
       request,
       check.userId,
-      `E-IMZO sertifikati serverda chiqarildi va biriktirildi: ${login}; SHA-256 ${parsed.fingerprint256.slice(0, 23)}…` +
+      `E-IMZO sertifikati serverda chiqarildi va biriktirildi: ${login}; MAC ${mac}; SHA-256 ${parsed.fingerprint256.slice(0, 23)}…` +
         (replaced ? ' (eski yuklanmagan paket almashtirildi)' : '')
     );
     return NextResponse.json(

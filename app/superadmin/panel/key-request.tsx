@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/sonner';
 import { createKeyAndCsr } from '@/lib/eimzo/keygen';
 import { isEimzoSupported } from '@/lib/eimzo/client';
+import { normalizeMac } from '@/lib/eimzo/mac';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, KeyRound, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
@@ -50,6 +51,7 @@ export default function KeyRequestCard() {
   const [shahobchaId, setShahobchaId] = useState('');
   const [login, setLogin] = useState('');
   const [fullName, setFullName] = useState('');
+  const [mac, setMac] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
   const [busy, setBusy] = useState(false);
@@ -91,6 +93,8 @@ export default function KeyRequestCard() {
     const l = login.trim().toLowerCase();
     if (!candidate) return setError('Shu shahobchadagi userni (login) tanlang.');
     if (!fullName.trim()) return setError('F.I.Sh bo‘sh bo‘lmasin.');
+    const cleanMac = normalizeMac(mac);
+    if (!cleanMac) return setError('Kompyuter MAC manzilini to‘g‘ri kiriting (masalan: 3C-52-82-1A-7F-09).');
     if (password.length < 10 || !/\p{L}/u.test(password) || !/\d/.test(password)) {
       return setError('Kalit paroli kamida 10 belgi, harf va raqam bilan bo‘lsin.');
     }
@@ -100,7 +104,13 @@ export default function KeyRequestCard() {
     try {
       let r;
       try {
-        r = await createKeyAndCsr({ login: l, fullName: fullName.trim(), organization: organization.trim(), password });
+        r = await createKeyAndCsr({
+          login: l,
+          fullName: fullName.trim(),
+          organization: organization.trim(),
+          mac: cleanMac,
+          password,
+        });
       } catch {
         setError('Kalit yaratib bo‘lmadi. Brauzer HTTPS orqali ochilganini tekshiring.');
         return;
@@ -111,7 +121,7 @@ export default function KeyRequestCard() {
         const res = await fetch('/api/superadmin/certificates/issue', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: candidate.userId, csrPem: r.csrPem, keyFileJson: r.keyFileJson }),
+          body: JSON.stringify({ userId: candidate.userId, csrPem: r.csrPem, keyFileJson: r.keyFileJson, mac: cleanMac }),
         });
         const d = (await res.json().catch(() => ({}))) as { message?: string };
         if (!res.ok) {
@@ -120,6 +130,7 @@ export default function KeyRequestCard() {
         }
         toast.success(d.message || 'E-IMZO tayyor');
         setReady({ login: l, csrName: '', keyName: '', fingerprint: r.publicKeySha256, issued: true });
+        setMac('');
         void queryClient.invalidateQueries({ queryKey: ['superadmin-eimzo-packages'] });
         void queryClient.invalidateQueries({ queryKey: ['superadmin-certificates'] });
         setShahobchalar((list) =>
@@ -178,6 +189,7 @@ export default function KeyRequestCard() {
               setShahobchaId(e.target.value);
               setLogin('');
               setFullName('');
+              setMac('');
             }}>
             <option value="">{listLoading ? 'Yuklanmoqda...' : 'Shahobchani tanlang'}</option>
             {shahobchalar.map((s) => (
@@ -222,6 +234,26 @@ export default function KeyRequestCard() {
             disabled={!candidate}
             placeholder="Login tanlanganda o‘zi to‘ladi"
           />
+        </div>
+        <div className="space-y-1.5 sm:col-span-3">
+          <Label htmlFor="kr-mac">Ro‘yxatdan o‘tgan kompyuter MAC manzili</Label>
+          <Input
+            id="kr-mac"
+            value={mac}
+            onChange={(e) => setMac(e.target.value)}
+            onBlur={() => {
+              const n = normalizeMac(mac);
+              if (n) setMac(n);
+            }}
+            disabled={!candidate}
+            placeholder="masalan: 3C-52-82-1A-7F-09"
+            className="font-mono sm:max-w-xs"
+            spellCheck={false}
+          />
+          <p className="text-xs text-slate-500">
+            User kompyuterida <code className="font-mono">ipconfig /all</code> buyrug‘idagi «Physical Address» (Fizicheskiy
+            adres). F.I.Sh bilan birga sertifikatga yoziladi. Brauzer MAC manzilni o‘zi o‘qiy olmaydi.
+          </p>
         </div>
         {candidate?.hasActiveCertificate && (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200 sm:col-span-3">

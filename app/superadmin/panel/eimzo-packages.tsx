@@ -25,6 +25,7 @@ export type EimzoPackage = {
   createdAt: string;
   notAfter: string | null;
   fingerprint256: string;
+  mac: string;
 };
 export type PackagesResponse = { autoIssue: boolean; packages: EimzoPackage[] };
 
@@ -142,7 +143,8 @@ export default function EimzoPackagesCard({ query }: { query: UseQueryResult<Pac
                   {p.fullName || p.login} <span className="font-mono text-xs text-slate-500">({p.login})</span>
                 </p>
                 <p className="text-xs text-slate-500">
-                  {p.shahobcha || 'Shahobcha ko‘rsatilmagan'} · tayyorlangan: {fmtDate(p.createdAt)} · amal qiladi:{' '}
+                  {p.shahobcha || 'Shahobcha ko‘rsatilmagan'}
+                  {p.mac ? <> · MAC <span className="font-mono">{p.mac}</span></> : null} · tayyorlangan: {fmtDate(p.createdAt)} · amal qiladi:{' '}
                   {fmtDate(p.notAfter)}
                 </p>
               </div>

@@ -1,4 +1,5 @@
 import { isAutoIssueConfigured } from '@/lib/eimzo/issuer';
+import { macFromSubject } from '@/lib/eimzo/mac';
 import connectToDatabase, { prisma } from '@/lib/prisma';
 import { requireSuperAdmin } from '@/lib/superadminAuth';
 import { NextRequest, NextResponse } from 'next/server';
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     });
     const certs = await prisma.userCertificate.findMany({
       where: { id: { in: rows.map((r) => r.certificateId) } },
-      select: { id: true, notAfter: true, fingerprint256: true },
+      select: { id: true, notAfter: true, fingerprint256: true, subject: true },
     });
     const byId = new Map(certs.map((c) => [c.id, c]));
     return NextResponse.json(
@@ -25,6 +26,7 @@ export async function GET(request: NextRequest) {
           ...r,
           notAfter: byId.get(certificateId)?.notAfter ?? null,
           fingerprint256: byId.get(certificateId)?.fingerprint256 ?? '',
+          mac: macFromSubject(byId.get(certificateId)?.subject ?? ''),
         })),
       },
       { headers: { 'Cache-Control': 'private, no-store' } }

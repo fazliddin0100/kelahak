@@ -3,6 +3,7 @@ import { randomBytes, webcrypto } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import * as x509 from '@peculiar/x509';
+import { MAC_OID } from './mac';
 import { EimzoError, issuingCaCertFile, loadIssuingCa, parseAndValidateCertificate } from './verify';
 
 /**
@@ -54,7 +55,11 @@ export type IssuedCertificate = { pem: string; uid: string };
  * PKCS#10 so'rovni tekshirib (imzo, P-256, UID = kutilgan login) userga sertifikat chiqaradi.
  * Natija tizimning o'z tekshiruvidan (parseAndValidateCertificate) o'tkaziladi.
  */
-export async function issueUserCertificate(csrPem: string, expectedLogin: string): Promise<IssuedCertificate> {
+export async function issueUserCertificate(
+  csrPem: string,
+  expectedLogin: string,
+  expectedMac?: string
+): Promise<IssuedCertificate> {
   const issuingPem = (() => {
     try {
       return readFileSync(issuingCaCertFile(), 'utf8');
@@ -78,6 +83,12 @@ export async function issueUserCertificate(csrPem: string, expectedLogin: string
   const uid = csr.subjectName.getField(UID_OID)[0] ?? csr.subjectName.getField('UID')[0] ?? '';
   if (uid.toLowerCase() !== expectedLogin.toLowerCase()) {
     throw new EimzoError(`So‘rovdagi login «${uid}», kutilgani «${expectedLogin}».`, 'BAD_CERT');
+  }
+  if (expectedMac !== undefined) {
+    const mac = (csr.subjectName.getField(MAC_OID)[0] ?? '').toUpperCase();
+    if (mac !== expectedMac) {
+      throw new EimzoError(`So‘rovdagi MAC «${mac || '—'}», kutilgani «${expectedMac}».`, 'BAD_CERT');
+    }
   }
 
   const issuer = new x509.X509Certificate(issuingPem);
