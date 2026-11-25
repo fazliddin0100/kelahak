@@ -18,7 +18,8 @@ export default function DocumentProtection() {
 
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
-      const key = e.key.toLowerCase();
+      // Avtoto'ldirish (parol menejeri) yuboradigan keydown hodisalarida key bo'lmaydi
+      const key = typeof e.key === 'string' ? e.key.toLowerCase() : '';
       if (mod && (key === 'p' || key === 's')) {
         e.preventDefault();
         e.stopPropagation();
