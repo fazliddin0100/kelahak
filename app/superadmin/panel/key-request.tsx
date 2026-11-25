@@ -6,9 +6,22 @@ import { Label } from '@/components/ui/label';
 import { createKeyAndCsr } from '@/lib/eimzo/keygen';
 import { isEimzoSupported } from '@/lib/eimzo/client';
 import { Download, KeyRound, Loader2 } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
 type Ready = { login: string; csrName: string; keyName: string; fingerprint: string };
+
+type Candidate = {
+  userId: string;
+  login: string;
+  fullName: string;
+  position: string;
+  approved: boolean;
+  hasActiveCertificate: boolean;
+};
+type ShahobchaOption = { id: string; name: string; province: string; users: Candidate[] };
+
+const selectClass =
+  'h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50';
 
 function download(name: string, content: string, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -27,9 +40,11 @@ function download(name: string, content: string, type: string) {
  * .csr oflayn CA kompyuteriga (scripts/pki/sign-csr.sh) olib boriladi.
  */
 export default function KeyRequestCard() {
+  const [shahobchalar, setShahobchalar] = useState<ShahobchaOption[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [shahobchaId, setShahobchaId] = useState('');
   const [login, setLogin] = useState('');
   const [fullName, setFullName] = useState('');
-  const [organization, setOrganization] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
   const [busy, setBusy] = useState(false);
@@ -37,12 +52,30 @@ export default function KeyRequestCard() {
   const [ready, setReady] = useState<Ready | null>(null);
   const secure = isEimzoSupported();
 
+  // Tizimda ro'yxatdan o'tgan shahobchalar va ularning xodimlari
+  useEffect(() => {
+    let active = true;
+    fetch('/api/superadmin/certificates/candidates', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : { shahobchalar: [] }))
+      .then((d) => active && setShahobchalar(Array.isArray(d.shahobchalar) ? d.shahobchalar : []))
+      .catch(() => {})
+      .finally(() => active && setListLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const shahobcha = useMemo(() => shahobchalar.find((s) => s.id === shahobchaId) ?? null, [shahobchalar, shahobchaId]);
+  const candidate = useMemo(() => shahobcha?.users.find((u) => u.login === login) ?? null, [shahobcha, login]);
+  const organization = shahobcha ? `${shahobcha.name} (${shahobcha.province})` : '';
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!shahobcha) return setError('Shahobchani tanlang.');
     const l = login.trim().toLowerCase();
-    if (!/^[a-z0-9_-]{3,50}$/.test(l)) return setError('Login: kichik lotin harflari, raqam, _ va - (3–50 belgi).');
-    if (!fullName.trim() || !organization.trim()) return setError('F.I.Sh va tashkilot nomini kiriting.');
+    if (!candidate) return setError('Shu shahobchadagi userni (login) tanlang.');
+    if (!fullName.trim()) return setError('F.I.Sh bo‘sh bo‘lmasin.');
     if (password.length < 10 || !/\p{L}/u.test(password) || !/\d/.test(password)) {
       return setError('Kalit paroli kamida 10 belgi, harf va raqam bilan bo‘lsin.');
     }
@@ -82,17 +115,67 @@ export default function KeyRequestCard() {
 
       <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-3" autoComplete="off">
         <div className="space-y-1.5">
+          <Label htmlFor="kr-shahobcha">Shahobcha</Label>
+          <select
+            id="kr-shahobcha"
+            className={selectClass}
+            value={shahobchaId}
+            disabled={listLoading}
+            onChange={(e) => {
+              setShahobchaId(e.target.value);
+              setLogin('');
+              setFullName('');
+            }}>
+            <option value="">{listLoading ? 'Yuklanmoqda...' : 'Shahobchani tanlang'}</option>
+            {shahobchalar.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.province} — {s.name} ({s.users.length})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
           <Label htmlFor="kr-login">User logini</Label>
-          <Input id="kr-login" value={login} onChange={(e) => setLogin(e.target.value)} placeholder="masalan: aliyev_a" />
+          <select
+            id="kr-login"
+            className={selectClass}
+            value={login}
+            disabled={!shahobcha}
+            onChange={(e) => {
+              const u = shahobcha?.users.find((x) => x.login === e.target.value);
+              setLogin(e.target.value);
+              setFullName(u?.fullName ?? '');
+            }}>
+            <option value="">
+              {!shahobcha ? 'Avval shahobchani tanlang'
+              : shahobcha.users.length === 0 ? 'Bu shahobchada user yo‘q'
+              : 'Loginni tanlang'}
+            </option>
+            {shahobcha?.users.map((u) => (
+              <option key={u.userId} value={u.login}>
+                {u.login} — {u.fullName}
+                {u.hasActiveCertificate ? ' (sertifikati bor)' : ''}
+                {!u.approved ? ' (tasdiqlanmagan)' : ''}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="kr-fio">F.I.Sh (sertifikatda)</Label>
-          <Input id="kr-fio" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Aliyev Anvar Akmalovich" />
+          <Input
+            id="kr-fio"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            disabled={!candidate}
+            placeholder="Login tanlanganda o‘zi to‘ladi"
+          />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="kr-org">Tashkilot / shahobcha</Label>
-          <Input id="kr-org" value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="Toshkent shahobchasi" />
-        </div>
+        {candidate?.hasActiveCertificate && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200 sm:col-span-3">
+            Bu userning faol sertifikati bor. Yangi kalit yaratsangiz, yangi sertifikatni biriktirgach eskisini bekor
+            qiling.
+          </p>
+        )}
         <div className="space-y-1.5">
           <Label htmlFor="kr-pass">Kalit paroli</Label>
           <Input id="kr-pass" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
