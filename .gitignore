@@ -45,3 +45,8 @@ next-env.d.ts
 
 # Litsenziyalangan standart matnlari (O'zMSt, O'z DSt) — repozitoriyga qo'shilmaydi
 /docs/standartlar/
+
+# Mezon agenti (.NET) yig'ish natijalari
+/agent/**/bin/
+/agent/**/obj/
+/agent/dist/
