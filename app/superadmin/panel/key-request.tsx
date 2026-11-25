@@ -3,12 +3,15 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from '@/components/ui/sonner';
 import { createKeyAndCsr } from '@/lib/eimzo/keygen';
 import { isEimzoSupported } from '@/lib/eimzo/client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, KeyRound, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import EimzoPackagesCard, { type PackagesResponse } from './eimzo-packages';
 
-type Ready = { login: string; csrName: string; keyName: string; fingerprint: string };
+type Ready = { login: string; csrName: string; keyName: string; fingerprint: string; issued: boolean };
 
 type Candidate = {
   userId: string;
@@ -36,8 +39,10 @@ function download(name: string, content: string, type: string) {
 
 /**
  * 1-qadam: userga E-IMZO kaliti va sertifikat so'rovi brauzerda yaratiladi.
- * Serverga hech narsa yuborilmaydi: .mzk (shifrlangan kalit) userning fleshkasiga,
- * .csr oflayn CA kompyuteriga (scripts/pki/sign-csr.sh) olib boriladi.
+ * Serverda oraliq CA sozlangan bo'lsa (autoIssue): .mzk (kalit paroli bilan shifrlangan) va .csr
+ * serverga yuboriladi, sertifikat avtomatik imzolanib userga biriktiriladi, tayyor paket
+ * «Tayyor E-IMZO paketlari» bo'limida superadmin paroli bilan bir marta yuklab olinadi.
+ * Aks holda — eski tartib: fayllar yuklab olinadi, .csr oflayn CA'da imzolanadi.
  */
 export default function KeyRequestCard() {
   const [shahobchalar, setShahobchalar] = useState<ShahobchaOption[]>([]);
@@ -51,6 +56,16 @@ export default function KeyRequestCard() {
   const [error, setError] = useState('');
   const [ready, setReady] = useState<Ready | null>(null);
   const secure = isEimzoSupported();
+  const queryClient = useQueryClient();
+  const packagesQuery = useQuery<PackagesResponse>({
+    queryKey: ['superadmin-eimzo-packages'],
+    queryFn: async () => {
+      const r = await fetch('/api/superadmin/certificates/packages', { cache: 'no-store' });
+      if (!r.ok) throw new Error('packages');
+      return r.json();
+    },
+  });
+  const autoIssue = packagesQuery.data?.autoIssue === true;
 
   // Tizimda ro'yxatdan o'tgan shahobchalar va ularning xodimlari
   useEffect(() => {
@@ -83,14 +98,43 @@ export default function KeyRequestCard() {
 
     setBusy(true);
     try {
-      const r = await createKeyAndCsr({ login: l, fullName: fullName.trim(), organization: organization.trim(), password });
-      download(`${l}.mzk`, r.keyFileJson, 'application/json');
-      download(`${l}.csr`, r.csrPem, 'application/pkcs10');
-      setReady({ login: l, csrName: `${l}.csr`, keyName: `${l}.mzk`, fingerprint: r.publicKeySha256 });
+      let r;
+      try {
+        r = await createKeyAndCsr({ login: l, fullName: fullName.trim(), organization: organization.trim(), password });
+      } catch {
+        setError('Kalit yaratib bo‘lmadi. Brauzer HTTPS orqali ochilganini tekshiring.');
+        return;
+      }
       setPassword('');
       setPassword2('');
+      if (autoIssue) {
+        const res = await fetch('/api/superadmin/certificates/issue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: candidate.userId, csrPem: r.csrPem, keyFileJson: r.keyFileJson }),
+        });
+        const d = (await res.json().catch(() => ({}))) as { message?: string };
+        if (!res.ok) {
+          setError(d.message || 'Sertifikatni serverda chiqarib bo‘lmadi.');
+          return;
+        }
+        toast.success(d.message || 'E-IMZO tayyor');
+        setReady({ login: l, csrName: '', keyName: '', fingerprint: r.publicKeySha256, issued: true });
+        void queryClient.invalidateQueries({ queryKey: ['superadmin-eimzo-packages'] });
+        void queryClient.invalidateQueries({ queryKey: ['superadmin-certificates'] });
+        setShahobchalar((list) =>
+          list.map((s) => ({
+            ...s,
+            users: s.users.map((u) => (u.userId === candidate.userId ? { ...u, hasActiveCertificate: true } : u)),
+          }))
+        );
+        return;
+      }
+      download(`${l}.mzk`, r.keyFileJson, 'application/json');
+      download(`${l}.csr`, r.csrPem, 'application/pkcs10');
+      setReady({ login: l, csrName: `${l}.csr`, keyName: `${l}.mzk`, fingerprint: r.publicKeySha256, issued: false });
     } catch {
-      setError('Kalit yaratib bo‘lmadi. Brauzer HTTPS orqali ochilganini tekshiring.');
+      setError('Server bilan aloqa uzildi. Qayta urinib ko‘ring.');
     } finally {
       setBusy(false);
     }
@@ -103,8 +147,17 @@ export default function KeyRequestCard() {
         1. Kalit va sertifikat so‘rovini yaratish
       </h3>
       <p className="mt-1 text-xs text-slate-500">
-        Kalit shu brauzerda yaratiladi va serverga yuborilmaydi. Sertifikat markazi oflayn: so‘rov (.csr) oflayn
-        kompyuterda imzolanadi.
+        {autoIssue ?
+          <>
+            Kalit shu brauzerda yaratiladi va kalit paroli bilan shifrlanib serverga yuboriladi. Sertifikatni serverdagi
+            oraliq CA avtomatik imzolaydi va userga biriktiradi. Tayyor paketni pastdan superadmin paroli bilan bir
+            marta yuklab olasiz.
+          </>
+        : <>
+            Serverda oraliq CA sozlanmagan: kalit shu brauzerda yaratilib yuklab olinadi, so‘rov (.csr) oflayn
+            kompyuterda imzolanadi.
+          </>
+        }
       </p>
 
       {!secure && (
@@ -172,8 +225,9 @@ export default function KeyRequestCard() {
         </div>
         {candidate?.hasActiveCertificate && (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200 sm:col-span-3">
-            Bu userning faol sertifikati bor. Yangi kalit yaratsangiz, yangi sertifikatni biriktirgach eskisini bekor
-            qiling.
+            {autoIssue ?
+              'Bu userning faol sertifikati bor. Yangi paket yuklab olinganda eski sertifikat avtomatik bekor qilinadi.'
+            : 'Bu userning faol sertifikati bor. Yangi kalit yaratsangiz, yangi sertifikatni biriktirgach eskisini bekor qiling.'}
           </p>
         )}
         <div className="space-y-1.5">
@@ -187,7 +241,7 @@ export default function KeyRequestCard() {
         <div className="flex items-end">
           <Button type="submit" disabled={busy || !secure} className="w-full gap-2">
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-            Kalit va so‘rov yaratish
+            {autoIssue ? 'E-IMZO yaratish' : 'Kalit va so‘rov yaratish'}
           </Button>
         </div>
         {error && (
@@ -197,7 +251,19 @@ export default function KeyRequestCard() {
         )}
       </form>
 
-      {ready && (
+      {ready?.issued && (
+        <div className="mt-4 space-y-1 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 ring-1 ring-emerald-200">
+          <p className="font-medium">
+            «{ready.login}» uchun E-IMZO tayyor: sertifikat imzolandi va userga biriktirildi.
+          </p>
+          <p>Paketni pastdagi «Tayyor E-IMZO paketlari» ro‘yxatidan yuklab oling. Kalit parolini userga og‘zaki bering.</p>
+          <p className="break-all text-xs text-emerald-800">
+            Ochiq kalit barmoq izi: <span className="font-mono">{ready.fingerprint}</span>
+          </p>
+        </div>
+      )}
+
+      {ready && !ready.issued && (
         <div className="mt-4 space-y-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 ring-1 ring-emerald-200">
           <p className="font-medium">«{ready.login}» uchun ikki fayl yuklab olindi:</p>
           <ol className="list-decimal space-y-1 pl-5">
@@ -218,6 +284,8 @@ export default function KeyRequestCard() {
           </p>
         </div>
       )}
+
+      <EimzoPackagesCard query={packagesQuery} />
     </section>
   );
 }

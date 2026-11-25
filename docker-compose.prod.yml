@@ -128,11 +128,16 @@ services:
       APP_ENCRYPTION_KEY_FILE: /run/secrets/app_encryption_key
       # E-IMZO: ishonchli CA (faqat ochiq sertifikat; CA kaliti oflayn)
       EIMZO_CA_CERT_FILE: /run/secrets/eimzo_ca_cert
+      # Oraliq CA (bosh CA imzolagan): userlar sertifikatlarini serverda avtomatik imzolaydi
+      EIMZO_ISSUING_CA_CERT_FILE: /run/secrets/eimzo_issuing_ca_cert
+      EIMZO_ISSUING_CA_KEY_FILE: /run/secrets/eimzo_issuing_ca_key
       # Nginx (pastdagi konteyner) X-Forwarded-For ga mijoz IP sini qo‘shadi.
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
     secrets:
       - app_encryption_key
       - eimzo_ca_cert
+      - eimzo_issuing_ca_cert
+      - eimzo_issuing_ca_key
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -230,6 +235,10 @@ secrets:
     file: ./secrets/backup-repository-password
   eimzo_ca_cert:
     file: ./secrets/pki/ca.crt
+  eimzo_issuing_ca_cert:
+    file: ./secrets/pki/issuing-ca.crt
+  eimzo_issuing_ca_key:
+    file: ./secrets/pki/issuing-ca.key
 
 networks:
   mysayt-prod:

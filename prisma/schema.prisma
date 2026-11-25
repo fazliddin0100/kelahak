@@ -51,6 +51,7 @@ model User {
   sessions           UserSession[]
   pendingUploads     PendingUpload[]
   certificates       UserCertificate[]
+  eimzoPackage       EimzoKeyPackage?
   documentSignatures DocumentSignature[]
   documentTemplates  DocumentTemplate[]
   printRequestsMade  PrintRequest[]       @relation("PrintRequester")
@@ -530,6 +531,25 @@ model UserCertificate {
 
   @@index([userId, status])
   @@map("user_certificates")
+}
+
+/// Serverda tayyorlangan, superadmin bir marta yuklab oladigan E-IMZO paketi (.mzk + .crt).
+/// .mzk kalit paroli bilan shifrlangan va ilova kaliti bilan qo'shimcha shifrlanadi.
+/// Yuklab olingach yozuv o'chiriladi.
+model EimzoKeyPackage {
+  id            String   @id
+  userId        String   @unique
+  certificateId String
+  login         String
+  fullName      String
+  shahobcha     String
+  keyFile       Json
+  createdById   String
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("eimzo_key_packages")
 }
 
 /// Kirishda E-IMZO bilan imzolanadigan bir martalik so'rov (2 daqiqa).

@@ -42,7 +42,7 @@ CN = $CN
 O = Mezon
 
 [v3_mezon_ca]
-basicConstraints = critical,CA:TRUE,pathlen:0
+basicConstraints = critical,CA:TRUE,pathlen:1  # 1: oflayn bosh CA -> serverdagi oraliq CA (issue-intermediate.sh) -> userlar
 keyUsage = critical,keyCertSign,cRLSign
 subjectKeyIdentifier = hash
 EOF

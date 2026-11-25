@@ -54,6 +54,47 @@ export function loadTrustedCa(): X509Certificate {
   return cert;
 }
 
+/** Oraliq (imzolovchi) CA sertifikati fayli — bosh CA oflayn, oraliq CA serverda */
+export function issuingCaCertFile(): string {
+  return (
+    process.env.EIMZO_ISSUING_CA_CERT_FILE ||
+    path.join(/*turbopackIgnore: true*/ process.cwd(), 'secrets', 'pki', 'issuing-ca.crt')
+  );
+}
+
+let issuingCache: { file: string; cert: X509Certificate | null } | undefined;
+
+/**
+ * Oraliq CA: bo'lsa, bosh CA bergan (imzosi haqiqiy) CA sertifikati bo'lishi shart.
+ * Sozlanmagan bo'lsa null — tizim faqat bosh CA bergan sertifikatlar bilan ishlaydi.
+ */
+export function loadIssuingCa(): X509Certificate | null {
+  const file = issuingCaCertFile();
+  if (issuingCache?.file === file) return issuingCache.cert;
+  let cert: X509Certificate | null = null;
+  try {
+    cert = new X509Certificate(readFileSync(file, 'utf8'));
+  } catch {
+    cert = null;
+  }
+  if (cert) {
+    const root = loadTrustedCa();
+    const now = new Date();
+    const valid =
+      cert.ca &&
+      cert.checkIssued(root) &&
+      cert.verify(root.publicKey) &&
+      now >= new Date(cert.validFrom) &&
+      now <= new Date(cert.validTo);
+    if (!valid) {
+      console.error('EIMZO: oraliq CA sertifikati bosh CA bilan tasdiqlanmadi yoki muddati o‘tgan — e’tiborsiz.');
+      cert = null;
+    }
+  }
+  issuingCache = { file, cert };
+  return cert;
+}
+
 export function isEimzoConfigured(): boolean {
   try {
     loadTrustedCa();
@@ -102,8 +143,12 @@ export function parseAndValidateCertificate(pemInput: unknown, now = new Date())
 
   const ca = loadTrustedCa();
   if (cert.ca) throw new EimzoError('Bu CA sertifikati, foydalanuvchi sertifikati emas.', 'BAD_USAGE');
-  // cert.checkIssued(ca): "cert ni ca bergan" (DN va kalit identifikatorlari mos), verify: imzo haqiqiy
-  if (!cert.checkIssued(ca) || !cert.verify(ca.publicKey)) {
+  // cert.checkIssued(ca): "cert ni ca bergan" (DN va kalit identifikatorlari mos), verify: imzo haqiqiy.
+  // Zanjir: bosh CA to'g'ridan-to'g'ri yoki bosh CA tasdiqlagan oraliq CA orqali.
+  const issuedByRoot = cert.checkIssued(ca) && cert.verify(ca.publicKey);
+  const issuing = issuedByRoot ? null : loadIssuingCa();
+  const issuedByIntermediate = !!issuing && cert.checkIssued(issuing) && cert.verify(issuing.publicKey);
+  if (!issuedByRoot && !issuedByIntermediate) {
     throw new EimzoError('Sertifikat tizimning sertifikat markazi tomonidan berilmagan.', 'UNTRUSTED');
   }
 
