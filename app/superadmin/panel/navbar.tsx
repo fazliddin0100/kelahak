@@ -3,7 +3,6 @@
 import InstitutionalNavigation from '@/components/InstitutionalNavigation';
 import { clearLegacyAuthStorage } from '@/lib/clientAuthStorage';
 import { BookOpen, Building2, FileKey2, LayoutDashboard, LogOut, ShieldAlert, Users } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -43,11 +42,6 @@ export default function SuperAdminNavbar({
       onSelect={setPage}
       profile={
         <>
-          <Link
-            href="/admin/navbar"
-            className="hidden rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:border-gold hover:text-primary sm:inline-flex">
-            Kotibiyat paneli
-          </Link>
           <button
             type="button"
             onClick={logout}
