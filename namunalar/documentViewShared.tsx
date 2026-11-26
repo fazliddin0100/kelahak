@@ -9,7 +9,25 @@ export type DocumentParty = {
   militaryRank: string;
   fullName: string;
   hasSigned: boolean;
+  /** Imzo paytida yoziladi (QR kod uchun) */
+  organization?: string;
+  signedAt?: DateLike;
+  userId?: string;
 };
+
+type RawParty = Partial<DocumentParty> & { userId?: unknown };
+
+const partyId = (p: RawParty | undefined) => (p?.userId == null ? '' : String(p.userId));
+
+/** Imzolagan qatorning QR ma'lumoti (tashkilot, vaqt) — qaysi qator imzolangan bo'lsa o'shandan */
+function signedMeta(...rows: (RawParty | undefined)[]) {
+  const row = rows.find((r) => r?.hasSigned) ?? rows.find(Boolean);
+  return {
+    organization: row?.organization?.trim() || '',
+    signedAt: row?.signedAt,
+    userId: partyId(row),
+  };
+}
 
 export function hasPartyData(
   p: Partial<DocumentParty> | null | undefined
@@ -20,9 +38,10 @@ export function hasPartyData(
 
 /** Muallif yoki jo‘natuvchi (bildirgi, xat va h.k.) */
 export function resolveSenderParty(doc: DocumentType): DocumentParty {
-  const s = doc.sender as Partial<DocumentParty> | undefined;
-  const a = doc.author as Partial<DocumentParty> | undefined;
+  const s = doc.sender as RawParty | undefined;
+  const a = doc.author as RawParty | undefined;
   return {
+    ...signedMeta(s ?? a, a),
     position:
       s?.position?.trim() || a?.position?.trim() || doc.position?.trim() || '',
     militaryRank:
@@ -38,9 +57,10 @@ export function resolveSenderParty(doc: DocumentType): DocumentParty {
 
 /** Muallif (ma’lumotnoma, dalolatnoma) */
 export function resolveAuthorParty(doc: DocumentType): DocumentParty {
-  const a = doc.author as Partial<DocumentParty> | undefined;
-  const s = doc.sender as Partial<DocumentParty> | undefined;
+  const a = doc.author as RawParty | undefined;
+  const s = doc.sender as RawParty | undefined;
   return {
+    ...signedMeta(a ?? s, s),
     position:
       a?.position?.trim() || s?.position?.trim() || doc.position?.trim() || '',
     militaryRank:
@@ -54,11 +74,32 @@ export function resolveAuthorParty(doc: DocumentType): DocumentParty {
   };
 }
 
+/**
+ * Muallif yuboruvchidan boshqa odam bo'lsa (masalan, o'rinbosar yozib, boshliq yuboruvchi) —
+ * muallifning o'z imzo qatori (QR bilan). Bir odam bo'lsa yoki muallif yo'q bo'lsa null.
+ */
+export function resolveDistinctAuthorParty(doc: DocumentType): DocumentParty | null {
+  const a = doc.author as RawParty | undefined;
+  const s = doc.sender as RawParty | undefined;
+  const aId = partyId(a);
+  const sId = partyId(s);
+  if (!a || !aId || !sId || aId === sId) return null;
+  const party: DocumentParty = {
+    ...signedMeta(a),
+    position: a.position?.trim() || '',
+    militaryRank: a.militaryRank?.trim() || '',
+    fullName: a.fullName?.trim() || '',
+    hasSigned: !!a.hasSigned,
+  };
+  return hasPartyData(party) ? party : null;
+}
+
 export function resolveBosSignedParty(doc: DocumentType): DocumentParty | null {
-  const b = doc.bosSigned as Partial<DocumentParty> | undefined;
+  const b = doc.bosSigned as RawParty | undefined;
   if (!b && !doc.forwardedSigner) return null;
   const fs = doc.forwardedSigner;
   const party: DocumentParty = {
+    ...signedMeta(b, fs as RawParty | undefined),
     position: b?.position?.trim() || fs?.position?.trim() || '',
     militaryRank: b?.militaryRank?.trim() || fs?.militaryRank?.trim() || '',
     fullName: b?.fullName?.trim() || fs?.fullName?.trim() || '',
@@ -69,6 +110,7 @@ export function resolveBosSignedParty(doc: DocumentType): DocumentParty | null {
 
 export function resolveApproverParty(a: Approver): DocumentParty {
   return {
+    ...signedMeta(a as unknown as RawParty),
     position: a.position?.trim() || '',
     militaryRank: a.militaryRank?.trim() || '',
     fullName: a.fullName?.trim() || '',
@@ -353,7 +395,7 @@ export function CommanderSignatureMark({
   return (
     <div className="inline-flex items-center gap-1.5 text-slate-900">
       <div className="relative size-9 shrink-0">
-        <QrCode fullNames={party.fullName} size={36} logoSize={14} />
+        <QrCode party={party} size={36} logoSize={14} />
       </div>
       <span className="text-sm font-semibold leading-tight">
         {formatShortName(party.fullName)}
@@ -407,7 +449,7 @@ export function DocumentTopHeader({
                 {commander.showQr ?
                   <div className="relative size-9 shrink-0">
                     <QrCode
-                      fullNames={commander.signerName}
+                      party={{ ...(resolveBosSignedParty(document) ?? {}), fullName: commander.signerName }}
                       size={36}
                       logoSize={14}
                     />
@@ -443,7 +485,7 @@ export function KorildiSignerBlock({ party }: { party: DocumentParty }) {
     <div className="mt-2 mb-2 w-full text-lg font-bold">
       <span className="inline-flex items-center gap-2">
         <span className="shrink-0">
-          <QrCode fullNames={party.fullName} size={30} logoSize={10} />
+          <QrCode party={party} size={30} logoSize={10} />
         </span>
         {displayName ? <span>{displayName}</span> : null}
       </span>
@@ -486,7 +528,7 @@ export function SignerBlock({
           : null}
           {showQr && party.hasSigned && party.fullName ?
             <span>
-              <QrCode fullNames={party.fullName} />
+              <QrCode party={party} />
             </span>
           : null}
           {displayName ?

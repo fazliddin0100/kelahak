@@ -14,8 +14,10 @@ import {
   hasPartyData,
   parseDocDate,
   resolveBosSignedParty,
+  resolveDistinctAuthorParty,
   resolveSenderParty,
   sanitizeDocumentHtml,
+  SignerBlock,
 } from './documentViewShared';
 
 import { DocumentPageShell } from './documentPageShell';
@@ -28,6 +30,7 @@ interface YollovXatiProps {
 
 export const YollovXati = ({ document, embedded }: YollovXatiProps) => {
   const sender = resolveSenderParty(document);
+  const author = resolveDistinctAuthorParty(document);
   const createdDate = parseDocDate(document.createdAt);
   const registrationLine = formatRegistrationLineSlash(
     document.ownerRegion,
@@ -119,6 +122,8 @@ export const YollovXati = ({ document, embedded }: YollovXatiProps) => {
         militaryRank: document.forwardedSigner.militaryRank ?? '',
         fullName: document.forwardedSigner.fullName ?? '',
         hasSigned: !!document.forwardedSigner.hasSigned,
+        signedAt: document.forwardedSigner.signedAt,
+        organization: (document.forwardedSigner as { organization?: string }).organization ?? '',
       }
     : resolveBosSignedParty(document);
 
@@ -130,7 +135,7 @@ export const YollovXati = ({ document, embedded }: YollovXatiProps) => {
           {commanderParty.hasSigned && commanderParty.fullName ?
             <span className="shrink-0">
               <QrCode
-                fullNames={commanderParty.fullName}
+                party={commanderParty}
                 size={30}
                 logoSize={10}
               />
@@ -228,7 +233,7 @@ export const YollovXati = ({ document, embedded }: YollovXatiProps) => {
                 : null}
                 {isSigned && sender.fullName ?
                   <span>
-                    <QrCode fullNames={sender.fullName} />
+                    <QrCode party={sender} />
                   </span>
                 : null}
                 {sender.fullName ?
@@ -238,6 +243,11 @@ export const YollovXati = ({ document, embedded }: YollovXatiProps) => {
             </span>
           </div>
         )}
+
+        {/* Muallif boshqa odam bo'lsa — uning imzosi (QR) ham */}
+        {author ?
+          <SignerBlock party={author} showQr={author.hasSigned} nameFormat="full" />
+        : null}
 
         <ApproversKelishildi document={document} />
         <ForwardedReviewersNote document={document} />

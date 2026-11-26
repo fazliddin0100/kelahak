@@ -1,3 +1,4 @@
+import { getSignerMeta } from '@/lib/documentSignerMeta';
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { applyCommanderCommentSignature } from '@/lib/documentForwardedSigner';
 import { buildPersonalFullName } from '@/lib/forwardQueue';
@@ -191,7 +192,8 @@ export async function POST(
       };
       const signed = await applyCommanderDocumentSign(
         signDoc as Parameters<typeof applyCommanderDocumentSign>[0],
-        currentUserId
+        currentUserId,
+        (await getSignerMeta(currentUserId)).organization
       );
       if (!signed.ok) {
         return NextResponse.json({ message: signed.message }, { status: signed.status });

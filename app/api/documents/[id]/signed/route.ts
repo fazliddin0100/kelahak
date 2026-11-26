@@ -37,6 +37,7 @@ import {
 import { resolveIdReference } from '@/lib/resolveIdReference';
 import { DocumentStatus } from '@/types/document-status.enum';
 import { logDocumentEvent } from '@/lib/documentEvents';
+import { getSignerMeta, type SignerMeta } from '@/lib/documentSignerMeta';
 import { NextRequest, NextResponse } from 'next/server';
 
 type SignerJson = {
@@ -61,19 +62,24 @@ function hasUnsignedEntry(field: unknown, userId: string): boolean {
   );
 }
 
-function signField(field: SignerJson | SignerJson[] | null | undefined, userId: string) {
+/** Userning imzolanmagan qatorlarini belgilaydi: imzo vaqti va tashkiloti QR kod uchun yoziladi */
+function signField(
+  field: SignerJson | SignerJson[] | null | undefined,
+  userId: string,
+  meta: SignerMeta
+) {
   if (!field) return field;
+  const mark = (item: SignerJson): SignerJson =>
+    item.hasSigned === true ?
+      item
+    : { ...item, hasSigned: true, signedAt: meta.signedAt, organization: meta.organization };
 
   if (Array.isArray(field)) {
-    return field.map((item) =>
-      resolveIdReference(item.userId) === userId ?
-        { ...item, hasSigned: true }
-      : item
-    );
+    return field.map((item) => (resolveIdReference(item.userId) === userId ? mark(item) : item));
   }
 
   if (resolveIdReference(field.userId) === userId) {
-    return { ...field, hasSigned: true };
+    return mark(field);
   }
 
   return field;
@@ -184,11 +190,12 @@ export async function POST(
       );
     }
 
+    const meta = await getSignerMeta(userId);
     const patch: Parameters<typeof updateDocument>[1] = {
-      author: signField(document.author as SignerJson, userId),
-      sender: signField(document.sender as SignerJson, userId),
-      approvers: signField(document.approvers as SignerJson[], userId),
-      receiver: signField(document.receiver as SignerJson[], userId),
+      author: signField(document.author as SignerJson, userId, meta),
+      sender: signField(document.sender as SignerJson, userId, meta),
+      approvers: signField(document.approvers as SignerJson[], userId, meta),
+      receiver: signField(document.receiver as SignerJson[], userId, meta),
     };
 
     const mutableDoc = {
@@ -204,10 +211,16 @@ export async function POST(
     if (isCommander) {
       const commanderResult = await applyCommanderDocumentSign(
         mutableDoc as Parameters<typeof applyCommanderDocumentSign>[0],
-        userId
+        userId,
+        meta.organization
       );
       if (commanderResult.ok) {
         await updateDocument(id, {
+          // Boshliq hujjatda yuboruvchi/kelishuvchi sifatida ham yozilgan bo'lsa — o'sha qatorda ham QR chiqadi
+          author: patch.author,
+          sender: patch.sender,
+          approvers: patch.approvers,
+          receiver: patch.receiver,
           bosSigned: mutableDoc.bosSigned,
           forwardedSigner: mutableDoc.forwardedSigner,
           forwardedById: mutableDoc.forwardedById ?? undefined,
@@ -256,7 +269,8 @@ export async function POST(
           return {
             ...item,
             hasSigned: true,
-            signedAt: new Date(),
+            signedAt: meta.signedAt,
+            organization: meta.organization,
             viewedAt: item.viewedAt ?? new Date(),
           };
         }
@@ -285,7 +299,7 @@ export async function POST(
         patch.bosSigned = queueDoc.bosSigned;
       }
     } else {
-      patch.forwardedTo = signField(forwardedTo, userId);
+      patch.forwardedTo = signField(forwardedTo, userId, meta);
     }
 
     const isDocOwner = document.ownerId === userId;

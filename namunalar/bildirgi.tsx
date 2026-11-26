@@ -11,6 +11,7 @@ import {
   getCommanderCommentMeta,
   hasPartyData,
   resolveBosSignedParty,
+  resolveDistinctAuthorParty,
   resolveSenderParty,
   sanitizeDocumentHtml,
   SignerBlock,
@@ -30,6 +31,7 @@ export const Bildirgi: React.FC<BildirgiProps> = ({
   embedded,
 }) => {
   const sender = resolveSenderParty(document);
+  const author = resolveDistinctAuthorParty(document);
 
   type PartyRecipient = {
     position?: string;
@@ -75,6 +77,8 @@ export const Bildirgi: React.FC<BildirgiProps> = ({
         militaryRank: document.forwardedSigner.militaryRank ?? '',
         fullName: document.forwardedSigner.fullName ?? '',
         hasSigned: !!document.forwardedSigner.hasSigned,
+        signedAt: document.forwardedSigner.signedAt,
+        organization: (document.forwardedSigner as { organization?: string }).organization ?? '',
       }
     : resolveBosSignedParty(document);
 
@@ -134,7 +138,7 @@ export const Bildirgi: React.FC<BildirgiProps> = ({
                     <span className="inline-flex items-center gap-2">
                       {item.hasSigned && item.fullName ?
                         <QrCode
-                          fullNames={item.fullName}
+                          party={item}
                           size={30}
                           logoSize={10}
                         />
@@ -148,7 +152,7 @@ export const Bildirgi: React.FC<BildirgiProps> = ({
           : null}
           {showQr ?
             <div className="mt-2 inline-flex items-center gap-2">
-              <QrCode fullNames={commanderSignerName} size={30} logoSize={10} />
+              <QrCode party={{ ...(commanderParty ?? {}), fullName: commanderSignerName }} size={30} logoSize={10} />
               <span>{formatShortName(commanderSignerName)}</span>
             </div>
           : null}
@@ -159,7 +163,7 @@ export const Bildirgi: React.FC<BildirgiProps> = ({
     return (
       <span className="inline-flex items-center gap-2">
         {commanderParty?.hasSigned && commanderParty.fullName ?
-          <QrCode fullNames={commanderParty.fullName} size={30} logoSize={10} />
+          <QrCode party={commanderParty} size={30} logoSize={10} />
         : null}
         {commanderParty?.fullName ?
           <span>{formatShortName(commanderParty.fullName)}</span>
@@ -207,6 +211,11 @@ export const Bildirgi: React.FC<BildirgiProps> = ({
           showQr={sender.hasSigned}
           date={document.createdAt}
         />
+
+        {/* Muallif boshqa odam bo'lsa — uning imzosi (QR) ham */}
+        {author ?
+          <SignerBlock party={author} showQr={author.hasSigned} />
+        : null}
 
         <DocumentRegistrationBlock document={document} province={province} />
 

@@ -17,6 +17,7 @@ export type DocumentDoc = {
     militaryRank?: string;
     position?: string;
     signedAt?: Date;
+    organization?: string;
   } | null;
   forwardedSigner?: unknown;
 };
@@ -24,7 +25,9 @@ export type DocumentDoc = {
 /** Komandir yakuniy imzosi — holat `imzolandi` (APPROVED) */
 export async function applyCommanderDocumentSign(
   document: DocumentDoc,
-  userId: string
+  userId: string,
+  /** Boshliq tashkiloti — QR kod uchun */
+  organization = ''
 ): Promise<{ ok: true } | { ok: false; message: string; status: number }> {
   const forwarderId = resolveIdReference(document.forwardedById);
   const isForwarder = forwarderId === userId;
@@ -76,8 +79,9 @@ export async function applyCommanderDocumentSign(
     position: signer.position,
     hasSigned: true,
     signedAt: signer.signedAt,
+    organization,
   };
-  document.forwardedSigner = signer;
+  document.forwardedSigner = { ...signer, organization };
   document.status = DocumentStatus.APPROVED;
   if (!document.forwardedById && signer.userId) {
     document.forwardedById = signer.userId;
