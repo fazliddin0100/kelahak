@@ -48,7 +48,8 @@ export const Dalolatnoma: React.FC<DalolatnomaProps> = ({
       embedded={embedded}
       outerClassName="flex flex-col justify-center items-center min-h-screen bg-gray-100 pt-[75px] pb-[30px] overflow-x-hidden font-serif">
       <div className="w-[210mm] max-w-[210mm] min-h-[297mm] bg-white shadow-lg pl-20 pt-[30px] pr-[30px] pb-[30px] text-lg box-border">
-        <DocumentTopHeader document={document} />
+        {/* Dalolatnomada boshliq faqat «TASDIQLAYMAN» orqali tasdiqlaydi — chap yuqorida izoh/QR yo'q */}
+        <DocumentTopHeader document={document} showCommanderLeft={false} />
 
         {showTasdiqlayman && bos ?
           <div className="flex flex-row justify-between items-center mt-2">
