@@ -18,6 +18,7 @@ import IlovaModal from './ilova';
 import XatYuboruvchiModal from './XatYuboruvchiModal';
 import { Approver, DocumentFormValues } from '@/types/user';
 import { updateForm } from '@/utils/updateForm';
+import { resolveTemplateKeyFromTitle, TEMPLATE_LABELS } from '@/lib/resolveDocumentTemplateKey';
 
 interface InputsProps {
   formValues: DocumentFormValues;
@@ -36,6 +37,7 @@ const Inputs = ({ formValues, setFormValues, typeEditable = false }: InputsProps
   const [isImzoModalOpen, setImzoModalOpen] = React.useState(false);
   const [isBuyruqModalOpen, setBuyruqModalOpen] = React.useState(false);
   const [isXatModalOpen, setXatModalOpen] = React.useState(false);
+  const templateKey = resolveTemplateKeyFromTitle(formValues.nomi);
 
   return (
     <>
@@ -135,10 +137,20 @@ const Inputs = ({ formValues, setFormValues, typeEditable = false }: InputsProps
         <div className="relative min-w-[160px] flex-1 sm:max-w-[240px]">
           <Type className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-500" />
           <Input
-            className={cn(fieldClass, 'pl-8', typeEditable && !formValues.nomi?.trim() && 'border-amber-400')}
-            placeholder={typeEditable ? 'Hujjat turi (masalan: Taqdimnoma)' : 'Hujjat turi'}
+            className={cn(
+              fieldClass,
+              'pl-8',
+              typeEditable && !formValues.nomi?.trim() && 'border-amber-400',
+              typeEditable && templateKey && 'border-emerald-500'
+            )}
+            placeholder={typeEditable ? 'Hujjat turi (masalan: Bildirgi)' : 'Hujjat turi'}
             aria-label="Hujjat turi"
-            title={typeEditable ? 'Yangi hujjat turini kiriting' : 'Shablon hujjati turi o‘zgarmaydi'}
+            aria-describedby={typeEditable && templateKey ? 'doc-type-template' : undefined}
+            title={
+              !typeEditable ? 'Shablon hujjati turi o‘zgarmaydi'
+              : templateKey ? `«${TEMPLATE_LABELS[templateKey]}» tayyor shabloni qo‘llanadi`
+              : 'Yangi hujjat turini kiriting'
+            }
             value={formValues.nomi ?? ''}
             disabled={!typeEditable}
             maxLength={120}
@@ -148,6 +160,13 @@ const Inputs = ({ formValues, setFormValues, typeEditable = false }: InputsProps
               )
             }
           />
+          {typeEditable && templateKey && (
+            <p
+              id="doc-type-template"
+              className="absolute left-0 top-full mt-0.5 whitespace-nowrap text-[11px] text-emerald-700">
+              Saqlanganda «{TEMPLATE_LABELS[templateKey]}» shabloni qo‘llanadi
+            </p>
+          )}
         </div>
 
         <RegionSelectModal

@@ -6,11 +6,11 @@ export type DocumentTemplateKey =
   | 'buyruq';
 
 const MATCHERS: { key: DocumentTemplateKey; patterns: RegExp[] }[] = [
-  { key: 'malumotnoma', patterns: [/ma['']?lumotnoma/i, /malumotnoma/i] },
+  { key: 'malumotnoma', patterns: [/ma['’‘ʼ`]?lumotnoma/i, /malumotnoma/i] },
   { key: 'dalolatnoma', patterns: [/dalolatnoma/i] },
   { key: 'bildirgi', patterns: [/bildirgi/i] },
   { key: 'buyruq', patterns: [/buyruq/i] },
-  { key: 'xat', patterns: [/^xat$/i, /\bxat\b/i, /yollov/i, /yo['']?llov/i] },
+  { key: 'xat', patterns: [/^xat$/i, /\bxat\b/i, /yollov/i, /yo['’‘ʼ`]?llov/i] },
 ];
 
 export function resolveTemplateKeyFromTitle(
@@ -52,11 +52,17 @@ export function isBlankDocumentType(title?: string | null): boolean {
 /** Yangi hujjat uchun kiritilgan tur to'g'rimi. Xato bo'lsa — xabar, aks holda null. */
 export function validateCustomDocumentType(value: string): string | null {
   const v = value.trim();
-  if (isBlankDocumentType(v)) return 'Hujjat turini kiriting (masalan: Taqdimnoma, Hisobot).';
+  if (isBlankDocumentType(v)) return 'Hujjat turini kiriting (masalan: Bildirgi, Taqdimnoma, Hisobot).';
   if (v.length > 120) return 'Hujjat turi 120 belgidan oshmasin.';
-  const key = resolveTemplateKeyFromTitle(v);
-  if (key) {
-    return `«${TEMPLATE_LABELS[key]}» uchun tayyor shablon bor — uni hujjatlar galereyasidan tanlang.`;
-  }
   return null;
+}
+
+/**
+ * "Yangi hujjat" da yozilgan tur tayyor shablonga (Bildirgi, Xat, ...) mos kelsa — shablon nomiga
+ * keltiriladi va hujjat shu shablon ko'rinishini oladi. Aks holda yozilgani o'zi (shaxsiy tur).
+ */
+export function normalizeDocumentType(value: string): string {
+  const v = value.trim();
+  const key = resolveTemplateKeyFromTitle(v);
+  return key ? TEMPLATE_LABELS[key] : v;
 }

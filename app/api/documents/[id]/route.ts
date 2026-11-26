@@ -37,6 +37,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   isBlankDocumentType,
   isCustomTypeDocument,
+  normalizeDocumentType,
   validateCustomDocumentType,
 } from '@/lib/resolveDocumentTemplateKey';
 
@@ -130,7 +131,8 @@ export async function PUT(
         if (typeError) {
           return NextResponse.json({ message: typeError }, { status: 400 });
         }
-        nextTitle = title;
+        // «Bildirgi» kabi tayyor shablon nomi — hujjat shu shablonga aylanadi (keyin tur o'zgarmaydi)
+        nextTitle = normalizeDocumentType(title);
       }
     }
 
