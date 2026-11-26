@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/components/ui/sonner';
+import { getAgentInfo, type AgentInfo } from '@/lib/eimzo/agentClient';
 
 import mexonLogo from '../../../public/mexon-mark.png';
 
@@ -140,6 +141,15 @@ const useCheckUser = (login: string) => {
 export default function RegistrationPage() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  // Ro'yxatdan o'tayotgan kompyuter (Mezon agenti): MAC, disk seriyasi — E-IMZO yaratishda kerak
+  const [agent, setAgent] = useState<AgentInfo | null | undefined>(undefined);
+  useEffect(() => {
+    let active = true;
+    void getAgentInfo().then((info) => active && setAgent(info));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -202,7 +212,7 @@ export default function RegistrationPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, device: (await getAgentInfo()) ?? agent ?? undefined }),
       });
 
       const data = await res.json();
@@ -481,6 +491,24 @@ export default function RegistrationPage() {
                 )}
               />
             </div>
+
+            {/* Kompyuter (Mezon agenti) holati */}
+            <p
+              className={
+                agent ?
+                  'mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800 ring-1 ring-emerald-200'
+                : 'mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200'
+              }
+              aria-live="polite">
+              {agent === undefined ?
+                'Kompyuter tekshirilmoqda...'
+              : agent ?
+                <>
+                  Kompyuter: <b>{agent.hostname}</b> · MAC <span className="font-mono">{agent.mac}</span> — hisobingizga
+                  biriktiriladi.
+                </>
+              : 'Kompyuterda «Mezon agenti» topilmadi: kompyuter ma’lumoti yozilmaydi. E-IMZO olish uchun administrator agentni o‘rnatadi.'}
+            </p>
 
             {/* Submit tugmasi */}
             <Button

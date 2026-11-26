@@ -6,6 +6,11 @@ import { requireSuperAdmin } from '@/lib/superadminAuth';
  * Kalit yaratish formasi uchun: barcha shahobchalar va har biridagi xodimlar
  * (login, to'liq F.I.Sh, lavozim, faol sertifikati bormi).
  */
+function registeredComputer(devices: { mac: string; hostname: string | null; createdAt: Date }[]) {
+  const latest = [...devices].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+  return { registeredMac: latest?.mac ?? '', registeredHostname: latest?.hostname ?? '' };
+}
+
 export async function GET(request: NextRequest) {
   const check = await requireSuperAdmin(request);
   if (check instanceof NextResponse) return check;
@@ -28,6 +33,11 @@ export async function GET(request: NextRequest) {
                 auth: { select: { login: true } },
                 personal: { select: { fName: true, name: true, sName: true } },
                 certificates: { where: { status: 'active' }, select: { id: true } },
+                // Ro'yxatdan o'tgan kompyuter (Mezon agentidan) — kalit yaratishda MAC o'zi to'ladi
+                devices: {
+                  where: { device: { source: 'agent' } },
+                  select: { device: { select: { mac: true, hostname: true, createdAt: true } } },
+                },
               },
             },
           },
@@ -50,6 +60,7 @@ export async function GET(request: NextRequest) {
           position: j.position ?? '',
           approved: j.isUserTrue,
           hasActiveCertificate: j.user.certificates.length > 0,
+          ...registeredComputer(j.user.devices.map((d) => d.device)),
         }))
         .sort((a, b) => a.fullName.localeCompare(b.fullName)),
     }));

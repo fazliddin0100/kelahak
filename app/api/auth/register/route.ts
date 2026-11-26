@@ -1,12 +1,12 @@
 // app/api/register/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import os from 'os';
 import validator from 'validator';
 import type { DbRole } from '@prisma/client';
 
 import { getClientIp } from '@/lib/clientIp';
 import { commanderExistsInUnit } from '@/lib/commanderSlot';
 import { createDbId } from '@/lib/db/document';
+import { normalizeMac } from '@/lib/eimzo/mac';
 import { authLoginExists } from '@/lib/db/user';
 import { hashPassword, validateNewPassword } from '@/lib/passwordPolicy';
 import connectToDatabase, { prisma } from '@/lib/prisma';
@@ -32,10 +32,35 @@ interface UserRequest {
   login: string;
   password: string;
 
-  // Device (ixtiyoriy)
-  mac?: string;
-  hostname?: string;
-  note?: string;
+  // Ro'yxatdan o'tayotgan kompyuter (Mezon agentining /v1/info javobidan)
+  device?: unknown;
+}
+
+/** Agent ma'lumoti: MAC lar tekshiriladi, qolgani uzunligi cheklanadi. Yaroqsiz bo'lsa null. */
+function parseRegistrationDevice(raw: unknown) {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const list = Array.isArray(r.macs) ? r.macs : [];
+  const macs = [
+    ...new Set(
+      list
+        .slice(0, 16)
+        .map((m) => normalizeMac(typeof m === 'string' ? m : (m as { mac?: unknown })?.mac))
+        .filter((m): m is string => !!m)
+    ),
+  ].sort();
+  if (macs.length === 0) return null;
+  const primary = normalizeMac(r.mac);
+  const text = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+  const keyHash = text(r.publicKeySha256, 64);
+  return {
+    mac: primary && macs.includes(primary) ? primary : macs[0],
+    macs: macs.join(','),
+    hostname: text(r.hostname, 64),
+    diskSerial: text(r.diskSerial, 128),
+    diskModel: text(r.diskModel, 120),
+    agentKeySha256: /^[0-9a-f]{64}$/.test(keyHash) ? keyHash : '',
+  };
 }
 
 function cleanText(value: unknown): string {
@@ -232,36 +257,28 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    // DEVICE yaratish (ixtiyoriy)
+    // DEVICE yaratish: ro'yxatdan o'tayotgan kompyuter (sahifa Mezon agentidan oladi).
+    // Agent bo'lmasa ham ro'yxatdan o'tish to'xtamaydi — faqat kompyuter ma'lumoti yozilmaydi.
     let deviceId: string | null = null;
     try {
+      const hw = parseRegistrationDevice(body.device);
       const deviceDbId = createDbId();
-
       await prisma.device.create({
         data: {
           id: deviceDbId,
-          mac: cleanText(body.mac).slice(0, 64) || '00:00:00:00:00:00',
+          mac: hw?.mac ?? '',
+          macs: hw?.macs ?? '',
           ip: clientIp,
-          hostname: cleanText(body.hostname).slice(0, 255) || os.hostname(),
-          note:
-            cleanText(body.note).slice(0, 500) ||
-            'Foydalanuvchi birinchi ro‘yxatdan o‘tgan qurilma',
+          hostname: hw?.hostname || null,
+          diskSerial: hw?.diskSerial ?? '',
+          diskModel: hw?.diskModel ?? '',
+          agentKeySha256: hw?.agentKeySha256 ?? '',
+          source: hw ? 'agent' : 'none',
+          note: hw ? 'Ro‘yxatdan o‘tgan kompyuter (Mezon agenti)' : 'Agentsiz ro‘yxatdan o‘tgan',
           lastSeen: new Date(),
+          users: { create: { userId } },
         },
       });
-
-      await prisma.userDevice.create({
-        data: {
-          userId,
-          deviceId: deviceDbId,
-        },
-      });
-
-      await prisma.device.update({
-        where: { id: deviceDbId },
-        data: { note: `Foydalanuvchi bilan bog‘landi: ${userId}` },
-      });
-
       deviceId = deviceDbId;
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);

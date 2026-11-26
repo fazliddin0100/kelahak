@@ -51,3 +51,35 @@ export async function getDeviceAttestation(nonce: string, timeoutMs = 5000): Pro
   }
   return data;
 }
+
+export type AgentInfo = {
+  hostname: string;
+  mac: string;
+  macs: { mac: string; description: string; up: boolean }[];
+  diskSerial: string;
+  diskModel: string;
+  diskSerialReliable: boolean;
+  publicKeySha256: string;
+  hardwareKey: boolean;
+};
+
+/** Kompyuter ma'lumoti (imzosiz) — ro'yxatdan o'tishda kompyuterni userga yozish uchun. Agent yo'q bo'lsa null. */
+export async function getAgentInfo(timeoutMs = 3000): Promise<AgentInfo | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${EIMZO_AGENT_ORIGIN}/v1/info`, {
+      cache: 'no-store',
+      credentials: 'omit',
+      signal: controller.signal,
+      ...({ targetAddressSpace: 'loopback' } as Record<string, unknown>),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as AgentInfo;
+    return Array.isArray(data?.macs) && data.macs.length > 0 ? data : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}

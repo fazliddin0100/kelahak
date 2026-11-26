@@ -21,6 +21,9 @@ type Candidate = {
   position: string;
   approved: boolean;
   hasActiveCertificate: boolean;
+  /** Ro'yxatdan o'tgan kompyuter MAC i (Mezon agentidan); bo'lmasa bo'sh */
+  registeredMac: string;
+  registeredHostname: string;
 };
 type ShahobchaOption = { id: string; name: string; province: string; users: Candidate[] };
 
@@ -93,8 +96,9 @@ export default function KeyRequestCard() {
     const l = login.trim().toLowerCase();
     if (!candidate) return setError('Shu shahobchadagi userni (login) tanlang.');
     if (!fullName.trim()) return setError('F.I.Sh bo‘sh bo‘lmasin.');
-    const cleanMac = normalizeMac(mac);
-    if (!cleanMac) return setError('Kompyuter MAC manzilini to‘g‘ri kiriting (masalan: 3C-52-82-1A-7F-09).');
+    // MAC ixtiyoriy: bo'sh bo'lsa kompyuter birinchi imzoda Mezon agenti orqali yoziladi
+    const cleanMac = mac.trim() ? normalizeMac(mac) : '';
+    if (cleanMac === null) return setError('MAC manzil noto‘g‘ri (masalan: 3C-52-82-1A-7F-09) yoki bo‘sh qoldiring.');
     if (password.length < 10 || !/\p{L}/u.test(password) || !/\d/.test(password)) {
       return setError('Kalit paroli kamida 10 belgi, harf va raqam bilan bo‘lsin.');
     }
@@ -108,7 +112,7 @@ export default function KeyRequestCard() {
           login: l,
           fullName: fullName.trim(),
           organization: organization.trim(),
-          mac: cleanMac,
+          mac: cleanMac || undefined,
           password,
         });
       } catch {
@@ -210,6 +214,7 @@ export default function KeyRequestCard() {
               const u = shahobcha?.users.find((x) => x.login === e.target.value);
               setLogin(e.target.value);
               setFullName(u?.fullName ?? '');
+              setMac(u?.registeredMac ?? '');
             }}>
             <option value="">
               {!shahobcha ? 'Avval shahobchani tanlang'
@@ -236,7 +241,9 @@ export default function KeyRequestCard() {
           />
         </div>
         <div className="space-y-1.5 sm:col-span-3">
-          <Label htmlFor="kr-mac">Ro‘yxatdan o‘tgan kompyuter MAC manzili</Label>
+          <Label htmlFor="kr-mac">
+            Kompyuter MAC manzili <span className="font-normal text-slate-400">(ixtiyoriy)</span>
+          </Label>
           <Input
             id="kr-mac"
             value={mac}
@@ -246,13 +253,22 @@ export default function KeyRequestCard() {
               if (n) setMac(n);
             }}
             disabled={!candidate}
-            placeholder="masalan: 3C-52-82-1A-7F-09"
+            placeholder="bo‘sh qoldirsangiz — birinchi imzoda yoziladi"
             className="font-mono sm:max-w-xs"
             spellCheck={false}
           />
+          {candidate?.registeredMac && (
+            <p className="text-xs text-emerald-700">
+              Ro‘yxatdan o‘tgan kompyuterdan olindi
+              {candidate.registeredHostname ? `: ${candidate.registeredHostname}` : ''}.
+              {mac && mac !== candidate.registeredMac ? ' (o‘zgartirildi)' : ''}
+            </p>
+          )}
           <p className="text-xs text-slate-500">
-            User kompyuterida <code className="font-mono">ipconfig /all</code> buyrug‘idagi «Physical Address» (Fizicheskiy
-            adres). F.I.Sh bilan birga sertifikatga yoziladi. Brauzer MAC manzilni o‘zi o‘qiy olmaydi.
+            {candidate && !candidate.registeredMac ? 'User agentsiz ro‘yxatdan o‘tgan. ' : ''}
+            Bo‘sh qoldirsangiz: user birinchi imzoni qo‘yganda kompyuterdagi «Mezon agenti» MAC, disk seriyasi va
+            qurilma kalitini yuboradi, server ularni o‘zi yozib qo‘yadi. MAC kiritilsa, F.I.Sh bilan birga sertifikatga
+            yoziladi va imzo faqat shu kartali kompyuterdan qabul qilinadi.
           </p>
         </div>
         {candidate?.hasActiveCertificate && (

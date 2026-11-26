@@ -11,8 +11,8 @@ import { logSecurityEvent } from '@/lib/securityLog';
  *
  * Birinchi imzoda: E-IMZO sertifikati haqiqiy va shu userniki (documentSign.ts tekshiradi),
  * sertifikatdagi MAC agent bergan MAC lar ichida — shunda kompyuter (qurilma kaliti, MAC lar,
- * disk seriyasi) userga yozib qo'yiladi. Keyingi imzolarda xuddi shu qurilma kaliti va disk
- * seriyasi talab qilinadi.
+ * disk seriyasi) userga yozib qo'yiladi. Keyingi imzolarda xuddi shu qurilma kaliti, disk
+ * seriyasi va birinchi imzodagi MAC talab qilinadi (yozilgan qiymatlar keyin o'zgartirilmaydi).
  *
  * Agent imzolaydigan matn: `mezon-device|v1|{origin}|{nonce}|{macs}|{diskSerial}|{publicKeySha256}`.
  */
@@ -235,23 +235,21 @@ export async function verifyDeviceAttestation(
       `kutilgan ${existing.diskSerial}, kelgan ${att.diskSerial}`
     );
   }
-  if (!certMac) {
-    // Sertifikatda MAC yo'q (eski sertifikat) — birinchi yozilgan kartalardan biri bo'lishi shart
-    const stored = existing.macs.split(',');
-    if (!att.macs.some((m) => stored.includes(m))) {
-      return reject(
-        request,
-        p.userId,
-        'Kompyuterning tarmoq kartasi o‘zgargan. Administratorga murojaat qiling.',
-        'DEVICE_MAC_MISMATCH',
-        `kutilgan ${existing.macs}, kelgan ${att.macsJoined}`
-      );
-    }
+  // Birinchi imzoda (E-IMZO birinchi ishlatilganda) yozilgan MAC shu kompyuterda bo'lishi shart
+  if (!att.macs.includes(existing.primaryMac)) {
+    return reject(
+      request,
+      p.userId,
+      `Kompyuterning tarmoq kartasi o‘zgargan (birinchi imzodagi MAC ${existing.primaryMac} topilmadi). Administratorga murojaat qiling.`,
+      'DEVICE_MAC_MISMATCH',
+      `kutilgan ${existing.primaryMac}, kelgan ${att.macsJoined}`
+    );
   }
 
+  // Birinchi yozilgan MAC lar va disk o'zgartirilmaydi — keyingi tekshiruvlar shular bilan solishtiriladi
   await prisma.userEimzoDevice.update({
     where: { id: existing.id },
-    data: { lastSeenAt: new Date(), macs: att.macsJoined, primaryMac: att.primaryMac, hostname: att.hostname },
+    data: { lastSeenAt: new Date(), hostname: att.hostname },
   });
   return { deviceId: existing.id, message, signature: att.signature, registered: false };
 }

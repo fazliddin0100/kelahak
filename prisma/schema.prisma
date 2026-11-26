@@ -148,18 +148,29 @@ model Shahobcha {
   @@map("shahobchalar")
 }
 
+/// Ro'yxatdan o'tgan kompyuter (Mezon agentidan olingan ma'lumot). Bitta kompyuterda bir nechta
+/// user bo'lishi mumkin, shuning uchun MAC noyob emas.
 model Device {
-  id        String    @id
-  mac       String    @unique
-  ip        String
-  hostname  String?
-  note      String?
-  lastSeen  DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id             String    @id
+  mac            String
+  /// Barcha jismoniy kartalar MAC lari (vergul bilan); agentsiz bo'lsa bo'sh
+  macs           String    @default("")
+  ip             String
+  hostname       String?
+  diskSerial     String    @default("")
+  diskModel      String    @default("")
+  /// Agent qurilma kaliti barmoq izi (SHA-256 hex)
+  agentKeySha256 String    @default("")
+  /// "agent" — Mezon agentidan olingan; "none" — agentsiz ro'yxatdan o'tgan
+  source         String    @default("none")
+  note           String?
+  lastSeen       DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   users UserDevice[]
 
+  @@index([mac])
   @@map("devices")
 }
 

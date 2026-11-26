@@ -43,7 +43,7 @@ function parseKeyFile(raw: unknown): Record<string, unknown> | null {
 /**
  * Brauzerda yaratilgan kalit (.mzk) va so'rov (.csr) serverga keladi:
  * oraliq CA sertifikatni imzolaydi, userga biriktiradi va bir martalik paketni saqlaydi.
- * Body: { userId, csrPem, keyFileJson, mac } — mac: userning ro'yxatdan o'tgan kompyuteri
+ * Body: { userId, csrPem, keyFileJson, mac? } — mac: userning kompyuteri (ixtiyoriy)
  */
 export async function POST(request: NextRequest) {
   const check = await requireSuperAdmin(request);
@@ -60,8 +60,10 @@ export async function POST(request: NextRequest) {
     const keyFile = parseKeyFile(body?.keyFileJson);
     if (!userId || !csrPem) return NextResponse.json({ message: 'User va so‘rov (.csr) kerak' }, { status: 400 });
     if (!keyFile) return NextResponse.json({ message: 'Kalit fayli (.mzk) noto‘g‘ri' }, { status: 400 });
-    const mac = normalizeMac(body?.mac);
-    if (!mac) {
+    // MAC ixtiyoriy: kiritilmasa kompyuter birinchi imzoda (Mezon agenti orqali) yoziladi
+    const macInput = typeof body?.mac === 'string' ? body.mac.trim() : '';
+    const mac = macInput ? normalizeMac(macInput) : '';
+    if (mac === null) {
       return NextResponse.json({ message: 'Kompyuter MAC manzili noto‘g‘ri (masalan: 3C-52-82-1A-7F-09)' }, { status: 400 });
     }
 
@@ -79,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     let issued;
     try {
-      issued = await issueUserCertificate(csrPem, login, mac);
+      issued = await issueUserCertificate(csrPem, login, mac); // '' — so'rovda MAC bo'lmasligi shart
     } catch (e) {
       if (e instanceof EimzoError) {
         return NextResponse.json({ message: e.message, code: e.code }, { status: e.code === 'CA_MISSING' ? 503 : 400 });
@@ -136,7 +138,7 @@ export async function POST(request: NextRequest) {
     await logAdminAction(
       request,
       check.userId,
-      `E-IMZO sertifikati serverda chiqarildi va biriktirildi: ${login}; MAC ${mac}; SHA-256 ${parsed.fingerprint256.slice(0, 23)}…` +
+      `E-IMZO sertifikati serverda chiqarildi va biriktirildi: ${login}; MAC ${mac || "birinchi imzoda"}; SHA-256 ${parsed.fingerprint256.slice(0, 23)}…` +
         (replaced ? ' (eski yuklanmagan paket almashtirildi)' : '')
     );
     return NextResponse.json(
