@@ -11,6 +11,8 @@ import { isSameUnitAsCommander } from '@/lib/unitPeerMatch';
 import { isValidDbId, serializeDocumentForApi, updateDocument } from '@/lib/db/document';
 import { findUserById, findUsersByIds } from '@/lib/db/user';
 import { logDocumentEvent } from '@/lib/documentEvents';
+import { hasSigningCertificate, SIGN_CERT_REQUIRED_MESSAGE } from '@/lib/eimzo/challenge';
+import { DocumentSignError, saveDocumentSignature, verifyDocumentSignRequest } from '@/lib/eimzo/documentSign';
 import type { DocumentType } from '@/types/document';
 
 const MAX_COMMENT_LENGTH = 2000;
@@ -52,6 +54,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         { message: 'Hujjatni faqat navbatdagi ijrochi yo‘naltira oladi' },
         { status: 403 }
       );
+    }
+
+    // Ijrochining «tanishdim» belgisi (QR) — faqat o'z E-IMZO kaliti bilan
+    if (!(await hasSigningCertificate(auth.userId))) {
+      return NextResponse.json({ message: SIGN_CERT_REQUIRED_MESSAGE, code: 'EIMZO_CERT_REQUIRED' }, { status: 403 });
+    }
+    let eimzoSignature;
+    try {
+      eimzoSignature = await verifyDocumentSignRequest(request, auth.userId, id, body?.eimzo);
+    } catch (e) {
+      if (e instanceof DocumentSignError) {
+        return NextResponse.json({ message: e.message, code: e.code }, { status: e.status });
+      }
+      throw e;
     }
 
     const actor = await findUserById(auth.userId);
@@ -109,6 +125,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       currentViewIndex: nextIdx === -1 ? forwardedTo.length : nextIdx,
       allowedUserIds: [...allowed],
     });
+    await saveDocumentSignature(id, auth.userId, eimzoSignature);
     await logDocumentEvent({
       documentId: id,
       actorId: auth.userId,

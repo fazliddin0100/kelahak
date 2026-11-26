@@ -22,7 +22,7 @@ import {
   regionsMatch,
 } from '@/lib/documentWorkflow';
 import connectToDatabase from '@/lib/prisma';
-import { isEimzoRequired } from '@/lib/eimzo/challenge';
+import { hasSigningCertificate, SIGN_CERT_REQUIRED_MESSAGE } from '@/lib/eimzo/challenge';
 import {
   DocumentSignError,
   saveDocumentSignature,
@@ -108,9 +108,12 @@ export async function POST(
       return documentNotFoundResponse();
     }
 
-    // Sertifikati bor user hujjatni faqat E-IMZO kaliti bilan imzolaydi
-    let eimzoSignature: VerifiedDocumentSignature | null = null;
-    if (await isEimzoRequired(userId)) {
+    // Har bir user hujjatni faqat o'zining E-IMZO kaliti bilan imzolaydi (sertifikatsiz — taqiq)
+    if (!(await hasSigningCertificate(userId))) {
+      return NextResponse.json({ message: SIGN_CERT_REQUIRED_MESSAGE, code: 'EIMZO_CERT_REQUIRED' }, { status: 403 });
+    }
+    let eimzoSignature: VerifiedDocumentSignature;
+    {
       const body = (await request.json().catch(() => null)) as { eimzo?: unknown } | null;
       try {
         eimzoSignature = await verifyDocumentSignRequest(request, userId, id, body?.eimzo);

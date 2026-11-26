@@ -2,7 +2,7 @@
 import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { documentNotFoundResponse, loadViewableDocument } from '@/lib/documentAccess';
 import { isValidDbId } from '@/lib/dbId';
-import { createChallenge, isEimzoRequired } from '@/lib/eimzo/challenge';
+import { createChallenge, hasSigningCertificate, SIGN_CERT_REQUIRED_MESSAGE } from '@/lib/eimzo/challenge';
 import { isDeviceRequired } from '@/lib/eimzo/device';
 import { computeDocumentHash } from '@/lib/eimzo/documentSign';
 import { NextRequest, NextResponse } from 'next/server';
@@ -18,8 +18,9 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const document = await loadViewableDocument(id, auth);
     if (!document) return documentNotFoundResponse();
 
-    if (!(await isEimzoRequired(auth.userId))) {
-      return NextResponse.json({ required: false });
+    // Imzo har doim E-IMZO bilan: sertifikatsiz user imzolay olmaydi
+    if (!(await hasSigningCertificate(auth.userId))) {
+      return NextResponse.json({ message: SIGN_CERT_REQUIRED_MESSAGE, code: 'EIMZO_CERT_REQUIRED' }, { status: 403 });
     }
 
     const contentHash = await computeDocumentHash(id);

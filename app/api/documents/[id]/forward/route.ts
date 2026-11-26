@@ -21,7 +21,7 @@ import { DocumentStatus } from '@/types/document-status.enum';
 import type { DocumentType } from '@/types/document';
 import { isAwaitingCommanderApproval } from '@/lib/documentWorkflow';
 import { applyCommanderDocumentSign } from '@/lib/commanderSignDocument';
-import { isEimzoRequired } from '@/lib/eimzo/challenge';
+import { hasSigningCertificate, SIGN_CERT_REQUIRED_MESSAGE } from '@/lib/eimzo/challenge';
 import {
   DocumentSignError,
   saveDocumentSignature,
@@ -170,18 +170,20 @@ export async function POST(
     // Hujjat darhol tasdiqlanadi, keyin ijrochilarga navbat bilan boradi.
     const docView = serializeDocumentForApi(document) as unknown as DocumentType;
     const signingNow = isAwaitingCommanderApproval(docView);
-    let eimzoSignature: VerifiedDocumentSignature | null = null;
-    if (signingNow) {
-      if (await isEimzoRequired(currentUserId)) {
-        try {
-          eimzoSignature = await verifyDocumentSignRequest(request, currentUserId, id, body?.eimzo);
-        } catch (e) {
-          if (e instanceof DocumentSignError) {
-            return NextResponse.json({ message: e.message, code: e.code }, { status: e.status });
-          }
-          throw e;
-        }
+    // Rezolyutsiya (izoh + QR) va boshliq imzosi — faqat o'z E-IMZO kaliti bilan
+    if (!(await hasSigningCertificate(currentUserId))) {
+      return NextResponse.json({ message: SIGN_CERT_REQUIRED_MESSAGE, code: 'EIMZO_CERT_REQUIRED' }, { status: 403 });
+    }
+    let eimzoSignature: VerifiedDocumentSignature;
+    try {
+      eimzoSignature = await verifyDocumentSignRequest(request, currentUserId, id, body?.eimzo);
+    } catch (e) {
+      if (e instanceof DocumentSignError) {
+        return NextResponse.json({ message: e.message, code: e.code }, { status: e.status });
       }
+      throw e;
+    }
+    if (signingNow) {
       const signDoc = {
         sentToCommander: document.sentToCommander,
         status: document.status,

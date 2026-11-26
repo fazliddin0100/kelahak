@@ -88,19 +88,17 @@ export function ForwardQueueSidebar({
     }
     setSubmitting(true);
     try {
-      // Boshliq ko'rib chiqayotgan hujjat: rezolyutsiya bilan birga E-IMZO imzosi qo'yiladi
+      if (isExecutorReforward && comment.trim().length < 3) {
+        return toast.error('Rezolyutsiya (topshiriq) matnini yozing');
+      }
+      // Rezolyutsiya va «tanishdim» ham imzo (QR) — har doim o'z E-IMZO kaliti bilan
       let eimzo: unknown;
-      if (signsOnForward) {
+      {
         const pre = await fetch(`/api/documents/${document._id}/sign-challenge`, { cache: 'no-store' });
         const preData = await pre.json().catch(() => ({}));
         if (!pre.ok) return toast.error(preData.message || 'Xatolik!');
-        if (preData.required) {
-          eimzo = await requestEimzoSignature(preData);
-          if (!eimzo) return; // bekor qilindi
-        }
-      }
-      if (isExecutorReforward && comment.trim().length < 3) {
-        return toast.error('Rezolyutsiya (topshiriq) matnini yozing');
+        eimzo = await requestEimzoSignature(preData);
+        if (!eimzo) return; // bekor qilindi
       }
       const res = await fetch(`/api/documents/${document._id}/${isExecutorReforward ? 'reforward' : 'forward'}`, {
         method: 'POST',

@@ -25,6 +25,21 @@ export async function isEimzoRequired(userId: string): Promise<boolean> {
   return bound > 0;
 }
 
+export const SIGN_CERT_REQUIRED_MESSAGE =
+  'Hujjatni faqat o‘zingizning E-IMZO kalitingiz bilan imzolay olasiz. Sizda faol E-IMZO sertifikati yo‘q — superadmindan E-IMZO oling.';
+
+/**
+ * Hujjatga imzo (QR) faqat userning o'z E-IMZO kaliti bilan qo'yiladi: faol, muddati o'tmagan
+ * sertifikati bo'lmasa — imzolash taqiqlanadi (boshqa odam login/parolini bilsa ham imzolay olmaydi).
+ */
+export async function hasSigningCertificate(userId: string): Promise<boolean> {
+  await connectToDatabase();
+  const n = await prisma.userCertificate.count({
+    where: { userId, status: 'active', notAfter: { gt: new Date() } },
+  });
+  return n > 0;
+}
+
 /** Imzolanadigan matn. Origin kiritilgani uchun boshqa saytda olingan imzo bu yerda o'tmaydi. */
 export function challengeMessage(challengeId: string, nonce: string, origin: string): string {
   return `mezon-login|${challengeId}|${nonce}|${origin}`;
