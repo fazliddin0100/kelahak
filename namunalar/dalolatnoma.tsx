@@ -29,8 +29,9 @@ export const Dalolatnoma: React.FC<DalolatnomaProps> = ({
 }) => {
   const bos = resolveBosSignedParty(document);
   const author = resolveAuthorParty(document);
-  const showTasdiqlayman =
-    !!bos && !!document.forwardedComment?.trim();
+  // Tasdiqlovchi tanlangan bo'lsa «TASDIQLAYMAN» doim chiqadi (lavozim, unvon, F.I.Sh.);
+  // QR va sana — u imzolagandan keyin
+  const showTasdiqlayman = !!bos;
   const copyLabel =
     document.copyNumber?.length ?
       `${document.copyNumber.length} -Nusxada`
@@ -57,7 +58,7 @@ export const Dalolatnoma: React.FC<DalolatnomaProps> = ({
               <SignerBlock
                 party={bos}
                 showQr={bos.hasSigned}
-                date={document.createdAt}
+                date={bos.hasSigned ? (bos.signedAt ?? document.createdAt) : undefined}
               />
             </span>
           </div>
