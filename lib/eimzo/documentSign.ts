@@ -1,7 +1,8 @@
-import { createHash, X509Certificate, verify as verifyRaw } from 'node:crypto';
+import { createHash, createPublicKey, X509Certificate, verify as verifyRaw } from 'node:crypto';
 import type { NextRequest } from 'next/server';
 import { createDbId, findDocumentById } from '@/lib/db/document';
 import { consumeChallenge, isAllowedOrigin } from '@/lib/eimzo/challenge';
+import { DeviceError, verifyDeviceAttestation } from '@/lib/eimzo/device';
 import { EimzoError, parseAndValidateCertificate, verifyEimzoSignature } from '@/lib/eimzo/verify';
 import connectToDatabase, { prisma } from '@/lib/prisma';
 
@@ -54,6 +55,8 @@ export type VerifiedDocumentSignature = {
   contentHash: string;
   signature: string;
   signedMessage: string;
+  /** Mezon agenti tasdig'i (kompyuter) — bo'lsa */
+  device: { deviceId: string; message: string; signature: string; registered: boolean } | null;
 };
 
 export class DocumentSignError extends Error {
@@ -125,12 +128,29 @@ export async function verifyDocumentSignRequest(
     throw new DocumentSignError('Sertifikat bekor qilingan.', 401, 'REVOKED');
   }
 
+  // Kompyuter (Mezon agenti): birinchi imzoda yoziladi, keyin shu kompyuter talab qilinadi
+  let device: VerifiedDocumentSignature['device'] = null;
+  try {
+    device = await verifyDeviceAttestation(request, {
+      userId,
+      origin: e.origin as string,
+      nonce: challenge.nonce,
+      certificateId: stored.id,
+      certificateSubject: stored.subject,
+      raw: e.device,
+    });
+  } catch (err) {
+    if (err instanceof DeviceError) throw new DocumentSignError(err.message, err.status, err.code);
+    throw err;
+  }
+
   return {
     certificateId: stored.id,
     fingerprint256: stored.fingerprint256,
     contentHash,
     signature: e.signature as string,
     signedMessage,
+    device,
   };
 }
 
@@ -149,6 +169,9 @@ export async function saveDocumentSignature(
       contentHash: sig.contentHash,
       signature: sig.signature,
       signedMessage: sig.signedMessage,
+      deviceId: sig.device?.deviceId ?? null,
+      deviceMessage: sig.device?.message ?? null,
+      deviceSignature: sig.device?.signature ?? null,
     },
   });
 }
@@ -169,6 +192,7 @@ export async function listDocumentSignatures(documentId: string) {
       orderBy: { signedAt: 'asc' },
       include: {
         certificate: true,
+        device: { select: { publicKey: true, hostname: true, primaryMac: true, diskSerial: true, status: true } },
         user: {
           select: {
             personal: { select: { fName: true, name: true, sName: true } },
@@ -196,6 +220,17 @@ export async function listDocumentSignatures(documentId: string) {
       : currentHash !== row.contentHash ? 'modified'
       : 'valid';
 
+    // Kompyuter tasdig'i: agent imzosi haqiqiy va aynan shu imzo so'rovi (nonce) uchun berilgan
+    let deviceVerified = false;
+    if (row.device && row.deviceMessage && row.deviceSignature) {
+      const d = row.deviceMessage.split('|');
+      const signParts = row.signedMessage.split('|');
+      deviceVerified =
+        d[0] === 'mezon-device' &&
+        d[3] === signParts[5] &&
+        verifyDeviceSignature(row.device.publicKey, row.deviceMessage, row.deviceSignature);
+    }
+
     const p = row.user.personal;
     return {
       id: row.id,
@@ -209,8 +244,26 @@ export async function listDocumentSignatures(documentId: string) {
       fullName: [p?.fName, p?.name, p?.sName].filter(Boolean).join(' '),
       position: row.user.job?.position ?? '',
       militaryRank: row.user.job?.militaryRank ?? '',
+      device:
+        row.device ?
+          {
+            hostname: row.device.hostname,
+            mac: row.device.primaryMac,
+            diskSerial: row.device.diskSerial,
+            verified: deviceVerified,
+          }
+        : null,
     };
   });
+}
+
+function verifyDeviceSignature(spkiB64: string, message: string, signatureB64: string): boolean {
+  try {
+    const key = createPublicKey({ key: Buffer.from(spkiB64, 'base64'), format: 'der', type: 'spki' });
+    return verifyRaw('sha256', Buffer.from(message, 'utf8'), { key, dsaEncoding: 'ieee-p1363' }, Buffer.from(signatureB64, 'base64'));
+  } catch {
+    return false;
+  }
 }
 
 /** Saqlangan imzoni sertifikatning ochiq kaliti bilan qayta tekshiradi. */

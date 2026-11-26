@@ -24,6 +24,7 @@ type Signature = {
   fullName: string;
   position: string;
   militaryRank: string;
+  device: { hostname: string; mac: string; diskSerial: string; verified: boolean } | null;
 };
 
 const STATUS = {
@@ -97,6 +98,16 @@ export default function DocumentSignaturesButton({ documentId, version }: { docu
                     <dd>{new Date(s.signedAt).toLocaleString('uz-UZ')}</dd>
                     <dt className="text-slate-400">Sertifikat</dt>
                     <dd className="break-words">{s.certificateSubject}</dd>
+                    <dt className="text-slate-400">Kompyuter</dt>
+                    <dd className={s.device && !s.device.verified ? 'text-red-700' : undefined}>
+                      {s.device ?
+                        <>
+                          {s.device.hostname || '—'} · MAC <span className="font-mono">{s.device.mac}</span> · disk{' '}
+                          <span className="font-mono">{s.device.diskSerial}</span>
+                          {s.device.verified ? '' : ' (tasdiq imzosi noto‘g‘ri)'}
+                        </>
+                      : <span className="text-slate-400">tasdiqlanmagan (agentsiz)</span>}
+                    </dd>
                     <dt className="text-slate-400">Imzolangan xesh</dt>
                     <dd className="break-all font-mono">{s.contentHash}</dd>
                     {s.status === 'modified' && (

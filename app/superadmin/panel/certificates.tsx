@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, FileKey2, Loader2, ShieldCheck, ShieldX, Upload } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import EimzoDevicesCard from './eimzo-devices';
 import KeyRequestCard from './key-request';
 import { SaSectionShell } from './shared';
 
@@ -141,6 +142,8 @@ export default function SuperAdminCertificates() {
         )}
 
         <KeyRequestCard />
+
+        <EimzoDevicesCard />
 
         <form onSubmit={upload} className="grid gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-[1fr_1.4fr_auto] sm:items-end">
           <h3 className="text-sm font-semibold text-slate-800 sm:col-span-3">

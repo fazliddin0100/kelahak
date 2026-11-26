@@ -91,7 +91,12 @@ mezon-device|v1|<origin>|<challenge>|<macs>|<diskSerial>|<publicKeySha256>
 ```
 Imzo: ECDSA P-256 / SHA-256, IEEE P1363 (`r||s`, 64 bayt), base64 — WebCrypto bilan bir xil.
 
-## Server tomoni (keyingi qadam — hali yozilmagan)
+## Server tomoni (`lib/eimzo/device.ts`)
+
+Sayt imzolash oynasida agentdan `/v1/attest` oladi (nonce — imzo so'rovining o'zi) va E-IMZO imzosi
+bilan birga yuboradi. Rejim: `EIMZO_DEVICE_REQUIRED=true` — agentsiz imzo hech kimga qabul qilinmaydi;
+`false` (standart) — kompyuteri yozilgan userlardan talab qilinadi. Superadmin «E-IMZO kompyuterlari»
+bo'limida yozilgan kompyuterlarni ko'radi va bekor qiladi.
 
 1. **Birinchi imzo so'rovi** (user birinchi marta kirib, birinchi hujjatni imzolaganda):
    - server bir martalik `challenge` beradi; sayt agentdan `/v1/attest` oladi va E-IMZO imzosi bilan birga yuboradi;

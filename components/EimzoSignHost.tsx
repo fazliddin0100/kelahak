@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AgentUnavailableError, getDeviceAttestation, type DeviceAttestation } from '@/lib/eimzo/agentClient';
 import { EimzoClientError, isEimzoSupported, readCertificateFile, signWithKey, unlockKeyFile } from '@/lib/eimzo/client';
 import { clearSignSession, getSignSession, startSignSession } from '@/lib/eimzo/signSession';
 import {
@@ -54,8 +55,15 @@ function SignDialog({ challenge }: { challenge: DocumentSignChallenge }) {
 
   const sign = async (key: CryptoKey, certPem: string) => {
     const origin = window.location.origin;
+    // Kompyuter tasdig'i (Mezon agenti). Talab qilinmasa va agent yo'q bo'lsa — usiz imzolanadi
+    let device: DeviceAttestation | undefined;
+    try {
+      device = await getDeviceAttestation(challenge.nonce);
+    } catch (err) {
+      if (challenge.deviceRequired) throw err;
+    }
     const signature = await signWithKey(key, documentSignMessage(challenge, origin));
-    finishEimzoSignature({ challengeId: challenge.challengeId, origin, certPem, signature });
+    finishEimzoSignature({ challengeId: challenge.challengeId, origin, certPem, signature, device });
   };
 
   const submitWithSession = async (e: FormEvent) => {
@@ -70,10 +78,14 @@ function SignDialog({ challenge }: { challenge: DocumentSignChallenge }) {
     setError('');
     try {
       await sign(s.key, s.certPem);
-    } catch {
-      setError('Imzolab bo‘lmadi. Kalitni qayta tanlang.');
-      clearSignSession();
-      setSession(null);
+    } catch (err) {
+      if (err instanceof AgentUnavailableError) {
+        setError(err.message);
+      } else {
+        setError('Imzolab bo‘lmadi. Kalitni qayta tanlang.');
+        clearSignSession();
+        setSession(null);
+      }
     } finally {
       setBusy(false);
     }
@@ -95,7 +107,11 @@ function SignDialog({ challenge }: { challenge: DocumentSignChallenge }) {
       startSignSession(key, certPem, keyFile.name);
       await sign(key, certPem);
     } catch (err) {
-      setError(err instanceof EimzoClientError ? err.message : 'Kalitni ochib bo‘lmadi. Fayllarni tekshiring.');
+      setError(
+        err instanceof EimzoClientError || err instanceof AgentUnavailableError ?
+          err.message
+        : 'Kalitni ochib bo‘lmadi. Fayllarni tekshiring.'
+      );
     } finally {
       setBusy(false);
     }
@@ -129,6 +145,12 @@ function SignDialog({ challenge }: { challenge: DocumentSignChallenge }) {
           <p className="break-all rounded-lg bg-slate-50 px-3 py-2 font-mono text-[11px] text-slate-500 ring-1 ring-slate-200">
             SHA-256: {challenge.contentHash}
           </p>
+
+          {challenge.deviceRequired && (
+            <p className="rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-800 ring-1 ring-sky-200">
+              Imzo faqat ro‘yxatga olingan kompyuterdan qabul qilinadi: «Mezon agenti» ishlab turishi kerak.
+            </p>
+          )}
 
           {!secure && (
             <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200">

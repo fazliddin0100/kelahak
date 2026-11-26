@@ -52,10 +52,11 @@ model User {
   pendingUploads     PendingUpload[]
   certificates       UserCertificate[]
   eimzoPackage       EimzoKeyPackage?
+  eimzoDevices       UserEimzoDevice[]
   documentSignatures DocumentSignature[]
   documentTemplates  DocumentTemplate[]
-  printRequestsMade  PrintRequest[]       @relation("PrintRequester")
-  printRequestsGot   PrintRequest[]       @relation("PrintAssignee")
+  printRequestsMade  PrintRequest[]      @relation("PrintRequester")
+  printRequestsGot   PrintRequest[]      @relation("PrintAssignee")
   loginChallenges    LoginChallenge[]
 
   ownedDocuments     Document[]            @relation("DocumentOwner")
@@ -252,24 +253,24 @@ model Document {
   replyTo          Document?  @relation("DocumentReply", fields: [replyToId], references: [id])
   replies          Document[] @relation("DocumentReply")
 
-  resolvedAt      DateTime?
+  resolvedAt          DateTime?
   /// Hujjatni ro'yxatga olgan kotibiyat xodimi (chop etish so'rovlari unga boradi)
-  registeredById  String?
-  registeredAt    DateTime?
+  registeredById      String?
+  registeredAt        DateTime?
   /// Hujjatni boshqa xodimga topshirish: qabul qilguncha kutadi (qabul qilsa egasi o'zgaradi)
   pendingTransferToId String?
   pendingTransferAt   DateTime?
   pendingTransferNote String?
   /// Nusxa aynan shu korxona (shahobcha) kotibiyatiga yuborilgan; null — eski viloyat nusxasi
   targetShahobchaId   String?
-  ownerAccepted   Boolean   @default(false)
-  ownerAcceptedAt DateTime?
+  ownerAccepted       Boolean   @default(false)
+  ownerAcceptedAt     DateTime?
 
-  content      DocumentContent?
-  allowedUsers DocumentAllowedUser[]
-  attachments  DocumentAttachment[]  @relation("DocAttachments")
-  attachedTo   DocumentAttachment[]  @relation("DocAttachmentTarget")
-  signatures   DocumentSignature[]
+  content       DocumentContent?
+  allowedUsers  DocumentAllowedUser[]
+  attachments   DocumentAttachment[]  @relation("DocAttachments")
+  attachedTo    DocumentAttachment[]  @relation("DocAttachmentTarget")
+  signatures    DocumentSignature[]
   printRequests PrintRequest[]
   events        DocumentEvent[]
 
@@ -571,21 +572,59 @@ model LoginChallenge {
 
 /// Hujjatga qo'yilgan E-IMZO imzosi: hujjat mazmunining SHA-256 xeshi ustida ECDSA P-256.
 /// Hujjat keyin o'zgarsa, joriy xesh imzolangan xeshga mos kelmaydi — bu ko'rinib turadi.
-model DocumentSignature {
-  id             String   @id
-  documentId     String
-  userId         String
-  certificateId  String
-  fingerprint256 String
-  contentHash    String
-  signature      String
-  /// Aynan imzolangan matn — imzoni istalgan vaqtda qayta tekshirish uchun
-  signedMessage  String
-  signedAt       DateTime @default(now())
+/// Userning E-IMZO ishlatadigan kompyuteri (Mezon agenti). Birinchi imzoda yoziladi,
+/// keyingi imzolarda shu qurilma kaliti, disk seriyasi va MAC talab qilinadi.
+model UserEimzoDevice {
+  id                 String    @id
+  userId             String
+  /// Agentning qurilma kaliti (SPKI DER, base64) va uning SHA-256 (hex)
+  publicKey          String
+  publicKeySha256    String
+  /// Birinchi aloqadagi jismoniy kartalar MAC lari (vergul bilan, alifbo tartibida)
+  macs               String
+  primaryMac         String
+  diskSerial         String
+  diskModel          String    @default("")
+  diskSerialReliable Boolean   @default(true)
+  hardwareKey        Boolean   @default(false)
+  hostname           String    @default("")
+  /// Birinchi aloqada ishlatilgan sertifikat
+  certificateId      String?
+  status             String    @default("active")
+  createdAt          DateTime  @default(now())
+  lastSeenAt         DateTime  @default(now())
+  revokedAt          DateTime?
+  revokedReason      String?
 
-  document    Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  certificate UserCertificate @relation(fields: [certificateId], references: [id])
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signatures DocumentSignature[]
+
+  @@index([userId, status])
+  @@index([publicKeySha256])
+  @@map("user_eimzo_devices")
+}
+
+model DocumentSignature {
+  id              String   @id
+  documentId      String
+  userId          String
+  certificateId   String
+  fingerprint256  String
+  contentHash     String
+  signature       String
+  /// Aynan imzolangan matn — imzoni istalgan vaqtda qayta tekshirish uchun
+  signedMessage   String
+  signedAt        DateTime @default(now())
+  /// Imzo qo'yilgan kompyuter (Mezon agenti tasdig'i bo'lsa)
+  deviceId        String?
+  /// Agent imzolagan matn va imzo — kompyuterni keyin ham tekshirish uchun
+  deviceMessage   String?
+  deviceSignature String?
+
+  document    Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  certificate UserCertificate  @relation(fields: [certificateId], references: [id])
+  device      UserEimzoDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
 
   @@index([documentId, signedAt])
   @@index([userId])

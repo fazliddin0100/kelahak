@@ -131,6 +131,9 @@ services:
       # Oraliq CA (bosh CA imzolagan): userlar sertifikatlarini serverda avtomatik imzolaydi
       EIMZO_ISSUING_CA_CERT_FILE: /run/secrets/eimzo_issuing_ca_cert
       EIMZO_ISSUING_CA_KEY_FILE: /run/secrets/eimzo_issuing_ca_key
+      # true — Mezon agentisiz (kompyuter tasdig'isiz) imzo hech kimga qabul qilinmaydi.
+      # false — kompyuteri yozilgan userlardan talab qilinadi, qolganlar hozircha agentsiz imzolaydi.
+      EIMZO_DEVICE_REQUIRED: ${EIMZO_DEVICE_REQUIRED:-false}
       # Nginx (pastdagi konteyner) X-Forwarded-For ga mijoz IP sini qo‘shadi.
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
     secrets:

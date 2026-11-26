@@ -1,3 +1,4 @@
+import { EIMZO_AGENT_ORIGIN } from '@/lib/eimzo/agentOrigin';
 import { NextResponse } from 'next/server';
 
 /**
@@ -57,16 +58,16 @@ export function buildContentSecurityPolicy(
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    // Mezon agenti (agent/MezonAgent) — faqat shu kompyuter ichida, 127.0.0.1
+    `connect-src 'self' ${EIMZO_AGENT_ORIGIN}`,
     "object-src 'none'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
   ];
 
-  if (process.env.NODE_ENV === 'production') {
-    directives.push('upgrade-insecure-requests');
-  }
+  // upgrade-insecure-requests ishlatilmaydi: u agentga (http://127.0.0.1) so'rovni https ga
+  // aylantirib buzadi. Sayt HTTPS ga HSTS orqali majburlangan, qolgan manbalar faqat 'self'.
 
   return directives.join('; ');
 }

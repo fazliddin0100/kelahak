@@ -2,8 +2,10 @@
 # Administrator sifatida ishga tushiring (dist papkasi ichida):
 #   powershell -ExecutionPolicy Bypass -File install.ps1
 #   powershell -ExecutionPolicy Bypass -File install.ps1 -Origin https://192.168.100.12
+#   ... -Details   (oxirida MAC, disk seriyasi va qurilma kalitini ham ko'rsatadi)
 param(
   [string]$Origin = '',
+  [switch]$Details,
   [string]$InstallDir = (Join-Path $env:ProgramFiles 'MezonAgent')
 )
 $ErrorActionPreference = 'Stop'
@@ -54,8 +56,8 @@ $port = $cfg.Agent.Port
 $allowed = $cfg.Agent.AllowedOrigins[0]
 try {
   $info = Invoke-RestMethod -Uri "http://127.0.0.1:$port/v1/info" -Headers @{ Origin = $allowed } -TimeoutSec 10
-  Write-Host ''
-  Write-Host 'Mezon agenti o''rnatildi va ishlayapti.'
+  Write-Host 'Mezon agenti o''rnatildi.'
+  if (-not $Details) { return }
   Write-Host ("  Kompyuter:      {0}" -f $info.hostname)
   Write-Host ("  MAC:            {0}" -f $info.mac)
   Write-Host ("  Disk seriyasi:  {0}" -f $info.diskSerial)

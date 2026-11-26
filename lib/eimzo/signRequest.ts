@@ -1,3 +1,5 @@
+import type { DeviceAttestation } from './agentClient';
+
 /**
  * Hujjatni E-IMZO bilan imzolash so'rovi: istalgan joydan `requestEimzoSignature()` chaqiriladi,
  * sahifadagi <EimzoSignHost /> oynani ochadi va foydalanuvchi imzolagach natijani qaytaradi.
@@ -10,6 +12,8 @@ export type DocumentSignChallenge = {
   challengeId: string;
   nonce: string;
   expiresAt: string;
+  /** true — Mezon agenti tasdig'isiz imzo qabul qilinmaydi */
+  deviceRequired?: boolean;
 };
 
 export type EimzoSignResult = {
@@ -17,6 +21,8 @@ export type EimzoSignResult = {
   origin: string;
   certPem: string;
   signature: string;
+  /** Mezon agenti tasdig'i (kompyuter) */
+  device?: DeviceAttestation;
 };
 
 type Pending = {

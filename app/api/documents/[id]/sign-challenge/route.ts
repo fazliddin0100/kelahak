@@ -3,6 +3,7 @@ import { requireApiAuth, isAuthError } from '@/lib/apiAuth';
 import { documentNotFoundResponse, loadViewableDocument } from '@/lib/documentAccess';
 import { isValidDbId } from '@/lib/dbId';
 import { createChallenge, isEimzoRequired } from '@/lib/eimzo/challenge';
+import { isDeviceRequired } from '@/lib/eimzo/device';
 import { computeDocumentHash } from '@/lib/eimzo/documentSign';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -32,6 +33,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       challengeId: challenge.id,
       nonce: challenge.nonce,
       expiresAt: challenge.expiresAt.toISOString(),
+      // true — Mezon agenti tasdig'isiz imzo qabul qilinmaydi
+      deviceRequired: await isDeviceRequired(auth.userId),
     });
   } catch (error) {
     console.error('Imzo challenge xatosi:', error);

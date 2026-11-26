@@ -9,12 +9,22 @@ using Microsoft.AspNetCore.RateLimiting;
 // Brauzer (Mezon sayti) shu agentdan kompyuter belgilarini (MAC, disk seriyasi) va
 // qurilma kaliti bilan imzolangan tasdiqni oladi, so'ng serverga yuboradi.
 
+// Xizmat sifatida — batafsil jurnal Windows Event Log ga. Terminalda qo'lda ishga tushirilganda —
+// faqat qisqa xabar; batafsil jurnal kerak bo'lsa: MezonAgent.exe --verbose
+var isService = Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService();
+var verbose = args.Any(a => string.Equals(a, "--verbose", StringComparison.OrdinalIgnoreCase));
+var quietConsole = !isService && !verbose;
+
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
-    Args = args,
+    Args = args.Where(a => !string.Equals(a, "--verbose", StringComparison.OrdinalIgnoreCase)).ToArray(),
     ContentRootPath = AppContext.BaseDirectory,
 });
 builder.Host.UseWindowsService(o => o.ServiceName = "MezonAgent");
+if (quietConsole)
+{
+    builder.Logging.ClearProviders();
+}
 
 var options = builder.Configuration.GetSection("Agent").Get<AgentOptions>() ?? new AgentOptions();
 var allowedOrigins = options.AllowedOrigins
@@ -54,7 +64,16 @@ if (allowedOrigins.Count == 0)
 }
 
 // Qurilma kaliti xizmat ishga tushganda tayyorlanadi (birinchi so'rovni kutmasdan)
-var deviceKey = app.Services.GetRequiredService<DeviceKey>();
+DeviceKey deviceKey;
+try
+{
+    deviceKey = app.Services.GetRequiredService<DeviceKey>();
+}
+catch (Exception e)
+{
+    Fail($"Qurilma kalitini tayyorlab bo'lmadi: {e.Message}");
+    return 1;
+}
 log.LogInformation("Mezon agenti 127.0.0.1:{Port} da ishlayapti. Kalit: {Kind}, SHA-256 {Hash}",
     options.Port, deviceKey.IsHardware ? "TPM" : "dasturiy", deviceKey.PublicKeySha256Hex);
 // Disk seriyasi (WMI sekin bo'lishi mumkin) fonda oldindan o'qib qo'yiladi
@@ -183,7 +202,32 @@ app.MapPost("/v1/attest", async (HttpContext ctx, DeviceKey key) =>
     });
 });
 
-app.Run();
+if (!isService)
+{
+    app.Lifetime.ApplicationStarted.Register(() =>
+        Console.WriteLine("Mezon agenti o'rnatildi va ishlayapti. Oynani yopmang."));
+}
+
+try
+{
+    app.Run();
+}
+catch (IOException e)
+{
+    // Odatda port band: agent allaqachon ishlab turibdi (xizmat yoki boshqa oyna)
+    Fail(e.InnerException is Microsoft.AspNetCore.Connections.AddressInUseException
+        ? "Mezon agenti allaqachon ishlab turibdi."
+        : $"Agentni ishga tushirib bo'lmadi: {e.Message}");
+    return 1;
+}
+return 0;
+
+void Fail(string message)
+{
+    if (isService) log.LogError("{Message}", message);
+    else Console.Error.WriteLine(message);
+    Environment.ExitCode = 1;
+}
 
 /// <summary>appsettings.json dagi "Agent" bo'limi</summary>
 public sealed class AgentOptions
