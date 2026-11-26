@@ -29,7 +29,7 @@ export function buildPersonalFullName(personal: {
   name?: string;
   sName?: string;
 }): string {
-  return [personal.name, personal.fName, personal.sName]
+  return [personal.fName, personal.name, personal.sName]
     .filter(Boolean)
     .join(' ')
     .trim();

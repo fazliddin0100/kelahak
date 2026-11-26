@@ -1,5 +1,8 @@
 import QrCode from '@/helpers/qr-code';
 import { Approver, DateLike, DocumentType } from '@/types/document';
+import { formatShortName } from '@/lib/formatShortName';
+
+export { formatShortName };
 import { DocumentStatus } from '@/types/document-status.enum';
 import { format } from 'date-fns';
 import { uz } from 'date-fns/locale';
@@ -284,52 +287,6 @@ export function resolveDocumentCopyLabel(doc: {
   return `${fallback}-Nusxa`;
 }
 
-function isPatronymicPart(part: string): boolean {
-  return /(?:ovich|evich|ovna|evna|ogli|ogly|qizi)$/i.test(part.trim());
-}
-
-export function formatShortName(fullName?: string): string {
-  if (!fullName?.trim()) return '';
-  const twoLetterPrefixes = ['Sh', 'Ch', 'Dj', 'Zh', 'Kh'];
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-
-  if (parts.length === 1) {
-    return parts[0];
-  }
-
-  const fmt = (part: string) =>
-    !part ? ''
-    : twoLetterPrefixes.includes(part.substring(0, 2)) ? part.substring(0, 2)
-    : part.charAt(0).toUpperCase();
-
-  // Qisqa ko'rinish: Ism + Ota ismi bosh harfi, Familiya to'liq.
-  // Masalan: "Abror Yoqubov Abrorovich" -> "A.A. Yoqubov"
-  if (parts.length >= 3) {
-    const ota = parts.slice(2).join(' ');
-    const a = parts[0] ?? '';
-    const b = parts[1] ?? '';
-    const otaLast = parts[parts.length - 1] ?? '';
-
-    if (isPatronymicPart(otaLast)) {
-      // Ism va otasining ismi odatda bir xil bosh harf bilan boshlanadi (Abror / Abrorovich).
-      const ismFirst =
-        a.charAt(0).toLowerCase() === otaLast.charAt(0).toLowerCase() ? a : b;
-      const familiya = ismFirst === a ? b : a;
-      const otaInitial = fmt(ota);
-      const ismInitial = fmt(ismFirst);
-      return otaInitial ?
-          `${ismInitial}.${otaInitial}. ${familiya}`.trim()
-        : `${ismInitial}. ${familiya}`.trim();
-    }
-  }
-
-  if (parts.length === 2) {
-    return `${fmt(parts[0])}. ${parts[1]}`.trim();
-  }
-
-  return fullName.trim();
-}
-
 export function getCommanderCommentMeta(doc: DocumentType) {
   const text = doc.forwardedComment?.trim() || '';
   const signerName = (() => {
@@ -345,7 +302,7 @@ export function getCommanderCommentMeta(doc: DocumentType) {
     if (fb && typeof fb === 'object') {
       if (fb.fullName?.trim()) return fb.fullName.trim();
       if (fb.personal) {
-        return [fb.personal.name, fb.personal.fName, fb.personal.sName]
+        return [fb.personal.fName, fb.personal.name, fb.personal.sName]
           .filter(Boolean)
           .join(' ');
       }

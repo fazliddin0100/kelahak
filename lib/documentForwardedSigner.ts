@@ -15,7 +15,7 @@ export async function buildForwardedSignerFromUserId(
   const user = await findUserById(userId);
   if (!user?.personal) return null;
 
-  const fullName = [user.personal.name, user.personal.fName, user.personal.sName]
+  const fullName = [user.personal.fName, user.personal.name, user.personal.sName]
     .filter(Boolean)
     .join(' ');
 
