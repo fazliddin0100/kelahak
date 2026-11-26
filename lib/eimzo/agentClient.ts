@@ -6,6 +6,11 @@ import { EIMZO_AGENT_ORIGIN } from './agentOrigin';
  */
 
 export type DeviceAttestation = {
+  format: 'v2';
+  usbSerial: string;
+  usbSerialReliable: boolean;
+  usbModel: string;
+  keySha256: string;
   mac: string;
   macs: string;
   diskSerial: string;
@@ -20,7 +25,16 @@ export type DeviceAttestation = {
 
 export class AgentUnavailableError extends Error {}
 
-export async function getDeviceAttestation(nonce: string, timeoutMs = 5000): Promise<DeviceAttestation> {
+/** Kalit yozilgan fleshka kompyuterdan olib qo'yilgan */
+export class KeyNotOnUsbError extends AgentUnavailableError {}
+
+const LOOPBACK = { targetAddressSpace: 'loopback' } as Record<string, unknown>;
+
+/**
+ * Imzo uchun kompyuter tasdig'i: agent MAC, disk seriyasi va `keySha256` kalit fayli shu paytda
+ * ulangan fleshkada turganini (fleshka seriyasi bilan) imzolaydi. Fleshka yo'q bo'lsa KeyNotOnUsbError.
+ */
+export async function getDeviceAttestation(nonce: string, keySha256: string, timeoutMs = 8000): Promise<DeviceAttestation> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   let res: Response;
@@ -28,7 +42,7 @@ export async function getDeviceAttestation(nonce: string, timeoutMs = 5000): Pro
     res = await fetch(`${EIMZO_AGENT_ORIGIN}/v1/attest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ challenge: nonce, origin: window.location.origin }),
+      body: JSON.stringify({ challenge: nonce, origin: window.location.origin, keySha256 }),
       cache: 'no-store',
       credentials: 'omit',
       signal: controller.signal,
@@ -45,11 +59,74 @@ export async function getDeviceAttestation(nonce: string, timeoutMs = 5000): Pro
   if (res.status === 403) {
     throw new AgentUnavailableError('Mezon agenti bu saytga ruxsat bermagan (AllowedOrigins sozlamasi).');
   }
-  const data = (await res.json().catch(() => null)) as (DeviceAttestation & { title?: string }) | null;
+  const data = (await res.json().catch(() => null)) as (DeviceAttestation & { title?: string; error?: string }) | null;
+  if (res.status === 409 && data?.error === 'key_not_on_usb') {
+    throw new KeyNotOnUsbError('E-IMZO kaliti yozilgan fleshka kompyuterga ulanmagan.');
+  }
   if (!res.ok || !data?.signature) {
     throw new AgentUnavailableError(data?.title || 'Mezon agenti kompyuter tasdig‘ini bermadi.');
   }
+  if (data.format !== 'v2') {
+    throw new AgentUnavailableError('Kompyuterdagi «Mezon agenti» eski — 1.1 versiyasini o‘rnating.');
+  }
   return data;
+}
+
+export type UsbKey = {
+  fileName: string;
+  drive: string;
+  /** .mzk matni (kalit paroli bilan shifrlangan) */
+  keyFile: string;
+  keySha256: string;
+  /** Kalit yonidagi .crt (bo'lmasa null) */
+  certPem: string | null;
+  usbSerial: string;
+  usbSerialReliable: boolean;
+  usbModel: string;
+};
+
+/** Ulangan fleshkalardagi E-IMZO kalitlari. Agent yo'q yoki eski bo'lsa null. */
+export async function listUsbKeys(timeoutMs = 8000): Promise<UsbKey[] | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${EIMZO_AGENT_ORIGIN}/v1/keys`, {
+      cache: 'no-store',
+      credentials: 'omit',
+      signal: controller.signal,
+      ...LOOPBACK,
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { keys?: UsbKey[] };
+    return Array.isArray(data?.keys) ? data.keys : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Kalit fleshkasi hali ulanganmi. Agent javob bermasa ham false (kalit yopiladi). */
+export async function isKeyOnUsb(keySha256: string, timeoutMs = 5000): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${EIMZO_AGENT_ORIGIN}/v1/key/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keySha256 }),
+      cache: 'no-store',
+      credentials: 'omit',
+      signal: controller.signal,
+      ...LOOPBACK,
+    });
+    if (!res.ok) return false;
+    return ((await res.json()) as { present?: boolean }).present === true;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export type AgentInfo = {

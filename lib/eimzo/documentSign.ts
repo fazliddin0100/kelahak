@@ -250,6 +250,8 @@ export async function listDocumentSignatures(documentId: string) {
             hostname: row.device.hostname,
             mac: row.device.primaryMac,
             diskSerial: row.device.diskSerial,
+            // v2 tasdiq: imzo paytida kalit shu fleshkada turgan
+            usbSerial: row.deviceMessage?.startsWith('mezon-device|v2|') ? row.deviceMessage.split('|')[7] : '',
             verified: deviceVerified,
           }
         : null,

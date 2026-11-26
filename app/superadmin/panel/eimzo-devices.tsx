@@ -19,6 +19,9 @@ type Device = {
   diskModel: string;
   diskSerialReliable: boolean;
   hardwareKey: boolean;
+  usbSerial: string;
+  usbSerialReliable: boolean;
+  usbModel: string;
   publicKeySha256: string;
   status: 'active' | 'revoked';
   createdAt: string;
@@ -72,7 +75,8 @@ export default function EimzoDevicesCard() {
       </h3>
       <p className="mt-1 text-xs text-slate-500">
         User birinchi imzoni «Mezon agenti» o‘rnatilgan kompyuterdan qo‘yganda kompyuter (qurilma kaliti, MAC, disk
-        seriyasi) yoziladi. Keyingi imzolar faqat shu kompyuterdan qabul qilinadi.{' '}
+        seriyasi) va kalit turgan fleshka yoziladi. Keyingi imzolar faqat shu kompyuterdan va shu fleshka ulangan
+        holda qabul qilinadi.{' '}
         {data?.deviceRequiredGlobally ?
           <b>Agentsiz imzo hamma uchun taqiqlangan.</b>
         : 'Kompyuteri hali yozilmagan userlar agentsiz ham imzolay oladi (EIMZO_DEVICE_REQUIRED=true bilan taqiqlanadi).'}
@@ -97,6 +101,15 @@ export default function EimzoDevicesCard() {
                   Disk: {d.diskModel || '—'} <span className="font-mono">{d.diskSerial}</span>
                   {!d.diskSerialReliable && <span className="text-amber-700"> (seriya noyob emas)</span>} · kalit{' '}
                   {d.hardwareKey ? 'TPM' : 'dasturiy'}
+                </p>
+                <p className="text-xs text-slate-600">
+                  Kalit fleshkasi:{' '}
+                  {d.usbSerial ?
+                    <>
+                      {d.usbModel || '—'} <span className="font-mono">{d.usbSerial}</span>
+                      {!d.usbSerialReliable && <span className="text-amber-700"> (seriya noyob emas)</span>}
+                    </>
+                  : <span className="text-slate-400">keyingi imzoda yoziladi</span>}
                 </p>
                 <p className="text-xs text-slate-400">
                   Yozilgan: {fmt(d.createdAt)} · oxirgi imzo: {fmt(d.lastSeenAt)}

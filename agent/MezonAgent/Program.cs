@@ -46,7 +46,7 @@ builder.Services.AddRateLimiter(r =>
     r.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
         RateLimitPartition.GetFixedWindowLimiter("all", partitionKey => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 60,
+            PermitLimit = 120,
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0,
         }));
@@ -180,15 +180,38 @@ app.MapPost("/v1/attest", async (HttpContext ctx, DeviceKey key) =>
     // almashsa ham server sertifikatdagi MAC ro'yxatda borligini tekshira oladi
     var macs = string.Join(',', cards.Select(c => c.Mac).Distinct().OrderBy(m => m, StringComparer.Ordinal));
 
+    // v2: imzo qo'yilayotgan kalit (.mzk) shu paytda fleshkada turgani ham tasdiqlanadi
+    var keySha = (body?.KeySha256 ?? "").ToLowerInvariant();
+    UsbKey.KeyOnUsb? usb = null;
+    if (keySha.Length > 0)
+    {
+        if (!Patterns.Sha256Re().IsMatch(keySha))
+        {
+            return Results.BadRequest(new { error = "bad_key_sha256" });
+        }
+        usb = UsbKey.FindBySha256(keySha);
+        if (usb is null)
+        {
+            return Results.Json(new { error = "key_not_on_usb", title = "E-IMZO kaliti yozilgan fleshka kompyuterga ulanmagan." },
+                statusCode: StatusCodes.Status409Conflict);
+        }
+    }
+
     // Server xuddi shu tartibda qayta yig'ib, ochiq kalit bilan tekshiradi
-    var message = string.Join('|',
-        "mezon-device", "v1", origin, challenge, macs, disk, key.PublicKeySha256Hex);
+    var message = usb is null
+        ? string.Join('|', "mezon-device", "v1", origin, challenge, macs, disk, key.PublicKeySha256Hex)
+        : string.Join('|', "mezon-device", "v2", origin, challenge, macs, disk, key.PublicKeySha256Hex, usb.Drive.Serial, usb.KeySha256);
     var signature = key.SignBase64(Encoding.UTF8.GetBytes(message));
 
-    log.LogInformation("Tasdiq berildi: {Origin}", origin);
+    log.LogInformation("Tasdiq berildi: {Origin}{Usb}", origin, usb is null ? "" : $", fleshka {usb.Drive.Serial}");
     return Results.Ok(new
     {
         version = AgentOptions.Version,
+        format = usb is null ? "v1" : "v2",
+        usbSerial = usb?.Drive.Serial,
+        usbSerialReliable = usb?.Drive.SerialReliable,
+        usbModel = usb?.Drive.Model,
+        keySha256 = usb?.KeySha256,
         hostname = Environment.MachineName,
         mac = cards[0].Mac,
         macs,
@@ -200,6 +223,43 @@ app.MapPost("/v1/attest", async (HttpContext ctx, DeviceKey key) =>
         hardwareKey = key.IsHardware,
         signature,
     });
+});
+
+// Fleshkalardagi E-IMZO kalitlari (parol bilan shifrlangan .mzk va yonidagi .crt)
+app.MapGet("/v1/keys", () =>
+{
+    var keys = UsbKey.FindKeys();
+    return Results.Ok(new
+    {
+        keys = keys.Select(k => new
+        {
+            fileName = k.FileName,
+            drive = k.Drive.Root,
+            keyFile = k.KeyFile,
+            keySha256 = k.KeySha256,
+            certPem = k.CertPem,
+            usbSerial = k.Drive.Serial,
+            usbSerialReliable = k.Drive.SerialReliable,
+            usbModel = k.Drive.Model,
+        }),
+    });
+});
+
+// Kalit fleshkasi hali ulanganmi (brauzer ochiq kalitni fleshka olinishi bilan yopadi)
+app.MapPost("/v1/key/check", async (HttpContext ctx) =>
+{
+    KeyCheckRequest? body;
+    try
+    {
+        body = await ctx.Request.ReadFromJsonAsync<KeyCheckRequest>();
+    }
+    catch (Exception)
+    {
+        return Results.BadRequest(new { error = "bad_json" });
+    }
+    var sha = (body?.KeySha256 ?? "").ToLowerInvariant();
+    if (!Patterns.Sha256Re().IsMatch(sha)) return Results.BadRequest(new { error = "bad_key_sha256" });
+    return Results.Ok(new { present = UsbKey.FindBySha256(sha) is not null });
 });
 
 if (!isService)
@@ -232,7 +292,7 @@ void Fail(string message)
 /// <summary>appsettings.json dagi "Agent" bo'limi</summary>
 public sealed class AgentOptions
 {
-    public const string Version = "1.0.0";
+    public const string Version = "1.1.0";
 
     /// <summary>127.0.0.1 dagi port</summary>
     public int Port { get; set; } = 64650;
@@ -250,10 +310,15 @@ public sealed class AgentOptions
     public bool MachineKey { get; set; } = true;
 }
 
-public sealed record AttestRequest(string? Challenge, string? Origin);
+public sealed record AttestRequest(string? Challenge, string? Origin, string? KeySha256);
+
+public sealed record KeyCheckRequest(string? KeySha256);
 
 internal static partial class Patterns
 {
     [GeneratedRegex("^[A-Za-z0-9_-]{16,128}$")]
     internal static partial Regex ChallengeRe();
+
+    [GeneratedRegex("^[0-9a-f]{64}$")]
+    internal static partial Regex Sha256Re();
 }

@@ -14,7 +14,12 @@ import { logSecurityEvent } from '@/lib/securityLog';
  * disk seriyasi) userga yozib qo'yiladi. Keyingi imzolarda xuddi shu qurilma kaliti, disk
  * seriyasi va birinchi imzodagi MAC talab qilinadi (yozilgan qiymatlar keyin o'zgartirilmaydi).
  *
- * Agent imzolaydigan matn: `mezon-device|v1|{origin}|{nonce}|{macs}|{diskSerial}|{publicKeySha256}`.
+ * E-IMZO kaliti (.mzk) fleshkada turadi: agent imzo paytida kalit fayli (SHA-256) ulangan USB
+ * qurilmada borligini va fleshka seriyasini tasdiqlaydi. Fleshka olib qo'yilsa agent tasdiq
+ * bermaydi — imzo qabul qilinmaydi. Fleshka seriyasi va kalit SHA-256 birinchi imzoda yoziladi.
+ *
+ * Agent imzolaydigan matn (v2):
+ * `mezon-device|v2|{origin}|{nonce}|{macs}|{diskSerial}|{publicKeySha256}|{usbSerial}|{keySha256}`.
  */
 
 export class DeviceError extends Error {
@@ -45,11 +50,27 @@ export function deviceMessage(p: {
   macs: string;
   diskSerial: string;
   publicKeySha256: string;
+  usbSerial: string;
+  keySha256: string;
 }): string {
-  return ['mezon-device', 'v1', p.origin, p.challenge, p.macs, p.diskSerial, p.publicKeySha256].join('|');
+  return [
+    'mezon-device',
+    'v2',
+    p.origin,
+    p.challenge,
+    p.macs,
+    p.diskSerial,
+    p.publicKeySha256,
+    p.usbSerial,
+    p.keySha256,
+  ].join('|');
 }
 
 type Attestation = {
+  usbSerial: string;
+  usbSerialReliable: boolean;
+  usbModel: string;
+  keySha256: string;
   macs: string[];
   macsJoined: string;
   primaryMac: string;
@@ -65,10 +86,19 @@ type Attestation = {
 
 const str = (v: unknown, max: number) => (typeof v === 'string' && v.length > 0 && v.length <= max ? v : null);
 
+/** Eski agent (1.0) — fleshka tasdig'isiz */
+function isLegacyAttestation(raw: unknown): boolean {
+  return !!raw && typeof raw === 'object' && (raw as Record<string, unknown>).format !== 'v2';
+}
+
 /** Agent javobini tekshiradi (tuzilishi, MAC formati, kalit barmoq izi). Noto'g'ri bo'lsa null. */
 export function parseAttestation(raw: unknown): Attestation | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
+  if (r.format !== 'v2') return null;
+  const usbSerial = str(r.usbSerial, 128);
+  const keySha256 = str(r.keySha256, 64);
+  if (!usbSerial || /[|,]/.test(usbSerial) || !keySha256 || !/^[0-9a-f]{64}$/.test(keySha256)) return null;
   const macsJoined = str(r.macs, 400);
   const diskSerial = str(r.diskSerial, 128);
   const publicKey = str(r.publicKey, 400);
@@ -92,6 +122,10 @@ export function parseAttestation(raw: unknown): Attestation | null {
   if (createHash('sha256').update(spki).digest('hex') !== publicKeySha256) return null;
 
   return {
+    usbSerial,
+    usbSerialReliable: r.usbSerialReliable !== false,
+    usbModel: typeof r.usbModel === 'string' ? r.usbModel.slice(0, 120) : '',
+    keySha256,
     macs,
     macsJoined,
     primaryMac,
@@ -152,6 +186,13 @@ export async function verifyDeviceAttestation(
     );
   }
 
+  if (isLegacyAttestation(p.raw)) {
+    throw new DeviceError(
+      'E-IMZO kaliti fleshkada bo‘lishi va kompyuterdagi «Mezon agenti» yangilangan (1.1) bo‘lishi kerak.',
+      400,
+      'DEVICE_USB_REQUIRED'
+    );
+  }
   const att = parseAttestation(p.raw);
   if (!att) return reject(request, p.userId, 'Kompyuter tasdig‘i noto‘g‘ri.', 'DEVICE_BAD', 'tuzilishi yaroqsiz');
 
@@ -161,6 +202,8 @@ export async function verifyDeviceAttestation(
     macs: att.macsJoined,
     diskSerial: att.diskSerial,
     publicKeySha256: att.publicKeySha256,
+    usbSerial: att.usbSerial,
+    keySha256: att.keySha256,
   });
   if (!verifyAttestationSignature(att, message)) {
     return reject(request, p.userId, 'Kompyuter tasdig‘i imzosi noto‘g‘ri.', 'DEVICE_BAD_SIGNATURE', att.publicKeySha256.slice(0, 16));
@@ -199,6 +242,10 @@ export async function verifyDeviceAttestation(
         diskSerialReliable: att.diskSerialReliable,
         hardwareKey: att.hardwareKey,
         hostname: att.hostname,
+        usbSerial: att.usbSerial,
+        usbSerialReliable: att.usbSerialReliable,
+        usbModel: att.usbModel,
+        keySha256: att.keySha256,
         certificateId: p.certificateId,
       },
     });
@@ -210,7 +257,8 @@ export async function verifyDeviceAttestation(
       loginHint: p.userId,
       message:
         `E-IMZO kompyuteri ro'yxatga olindi: ${att.hostname || '-'}; MAC ${att.macsJoined}; disk ${att.diskSerial}` +
-        `${att.diskSerialReliable ? '' : ' (noyob emas)'}; kalit ${att.hardwareKey ? 'TPM' : 'dasturiy'} ${att.publicKeySha256.slice(0, 16)}`,
+        `${att.diskSerialReliable ? '' : ' (noyob emas)'}; kalit ${att.hardwareKey ? 'TPM' : 'dasturiy'} ${att.publicKeySha256.slice(0, 16)}` +
+        `; fleshka ${att.usbSerial}${att.usbSerialReliable ? '' : ' (noyob emas)'}`,
       statusCode: 200,
     });
     return { deviceId: id, message, signature: att.signature, registered: true };
@@ -246,10 +294,57 @@ export async function verifyDeviceAttestation(
     );
   }
 
+  // ── Fleshka: kalit birinchi imzodagi fleshkada va aynan o'sha fayl ──
+  // Fleshka hali yozilmagan (eski yozuv) yoki superadmin yangi sertifikat bergan — yangi fleshka yoziladi
+  const usbFirst = !existing.usbSerial || existing.certificateId !== p.certificateId;
+  if (!usbFirst) {
+    if (existing.usbSerial !== att.usbSerial) {
+      return reject(
+        request,
+        p.userId,
+        'E-IMZO kaliti ro‘yxatga olingan fleshkada emas. Fleshka almashgan bo‘lsa, administratorga murojaat qiling.',
+        'DEVICE_USB_MISMATCH',
+        `kutilgan fleshka ${existing.usbSerial}, kelgan ${att.usbSerial}`
+      );
+    }
+    if (existing.keySha256 !== att.keySha256) {
+      return reject(
+        request,
+        p.userId,
+        'Fleshkadagi kalit fayli birinchi imzodagi kalit emas.',
+        'DEVICE_KEY_MISMATCH',
+        `kutilgan ${existing.keySha256.slice(0, 16)}, kelgan ${att.keySha256.slice(0, 16)}`
+      );
+    }
+  }
+
   // Birinchi yozilgan MAC lar va disk o'zgartirilmaydi — keyingi tekshiruvlar shular bilan solishtiriladi
   await prisma.userEimzoDevice.update({
     where: { id: existing.id },
-    data: { lastSeenAt: new Date(), hostname: att.hostname },
+    data: {
+      lastSeenAt: new Date(),
+      hostname: att.hostname,
+      ...(usbFirst ?
+        {
+          usbSerial: att.usbSerial,
+          usbSerialReliable: att.usbSerialReliable,
+          usbModel: att.usbModel,
+          keySha256: att.keySha256,
+          certificateId: p.certificateId,
+        }
+      : {}),
+    },
   });
+  if (usbFirst) {
+    await logSecurityEvent({
+      type: 'admin_action',
+      ip: getClientIp(request.headers),
+      path: new URL(request.url).pathname,
+      method: request.method,
+      loginHint: p.userId,
+      message: `E-IMZO fleshkasi ro'yxatga olindi: ${att.usbSerial} ${att.usbModel}; kalit ${att.keySha256.slice(0, 16)}`.slice(0, 500),
+      statusCode: 200,
+    });
+  }
   return { deviceId: existing.id, message, signature: att.signature, registered: false };
 }

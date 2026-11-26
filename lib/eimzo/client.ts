@@ -34,10 +34,10 @@ export async function readCertificateFile(file: File): Promise<string> {
   return `-----BEGIN CERTIFICATE-----\n${der.match(/.{1,64}/g)?.join('\n')}\n-----END CERTIFICATE-----\n`;
 }
 
-async function readKeyFile(file: File): Promise<KeyFile> {
+async function readKeyFile(file: File | string): Promise<KeyFile> {
   let parsed: KeyFile;
   try {
-    parsed = JSON.parse(await file.text());
+    parsed = JSON.parse(typeof file === 'string' ? file : await file.text());
   } catch {
     throw new EimzoClientError('Kalit fayli noto‘g‘ri (.mzk fayl kerak).');
   }
@@ -51,7 +51,7 @@ async function readKeyFile(file: File): Promise<KeyFile> {
  * Parol bilan kalitni ochadi. Natija — chiqarib olib bo'lmaydigan (extractable: false) CryptoKey:
  * uni faqat imzolash uchun ishlatish mumkin, baytlarini o'qib yoki saqlab bo'lmaydi.
  */
-export async function unlockKeyFile(keyFileInput: File, password: string): Promise<CryptoKey> {
+export async function unlockKeyFile(keyFileInput: File | string, password: string): Promise<CryptoKey> {
   const keyFile = await readKeyFile(keyFileInput);
   const subtle = window.crypto.subtle;
   const base = await subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);

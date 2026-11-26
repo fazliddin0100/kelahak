@@ -10,6 +10,7 @@ olmaydi, agent esa o'qiydi. U shu ma'lumotlarni **qurilma kaliti** bilan imzolab
 | MAC manzil | Jismoniy tarmoq kartasi (Hyper-V, Docker, VPN, Bluetooth kabi virtual adapterlar hisobga olinmaydi). Asosiysi — tarmoqqa ulangan (shlyuzi bor) karta. Format: `3C-52-82-1A-7F-09` |
 | Disk seriyasi | Windows o'rnatilgan diskning (C:) jismoniy seriya raqami: `MSFT_Partition` → `MSFT_PhysicalDisk` (zaxira: `Win32_DiskDrive`). 10 daqiqa keshlanadi |
 | Qurilma kaliti | ECDSA P-256. Avval **TPM** (Microsoft Platform Crypto Provider), TPM bo'lmasa Windows kalit ombori. Yopiq kalit **eksport qilinmaydi** — boshqa kompyuterga ko'chirib bo'lmaydi |
+| Kalit fleshkasi | E-IMZO kaliti (`.mzk`) va sertifikat (`.crt`) **fleshkada** turadi. Agent faqat USB/SD qurilmalaridagi (tizim diski emas) `.mzk` fayllarni topadi (ildiz va 2 darajagacha papkalar), fleshkaning jismoniy seriya raqamini o'qiydi (`MSFT_PhysicalDisk`, zaxira: `USBSTOR` PNP ID, seriyasiz bo'lsa tom seriyasi `VOL-…`). Agent kalitni ochmaydi — u kalit paroli bilan shifrlangan |
 | Tarmoq | Faqat `127.0.0.1:64650` — tarmoqdan kirib bo'lmaydi |
 | Ruxsat | Faqat `appsettings.json` dagi `AllowedOrigins` saytlari (masalan `https://192.168.100.12`) |
 
@@ -64,13 +65,13 @@ brauzer birinchi marta ruxsat so'rashi mumkin — «Ruxsat berish» bosiladi.
 
 ### `GET /v1/health`
 ```json
-{ "ok": true, "version": "1.0.0" }
+{ "ok": true, "version": "1.1.0" }
 ```
 
 ### `GET /v1/info` — imzosiz ma'lumot (ko'rish uchun)
 ```json
 {
-  "version": "1.0.0", "hostname": "PC-01",
+  "version": "1.1.0", "hostname": "PC-01",
   "mac": "3C-52-82-1A-7F-09",
   "macs": [{ "mac": "3C-52-82-1A-7F-09", "description": "Intel(R) Ethernet", "up": true }],
   "diskSerial": "S4EWNX0R123456", "diskModel": "Samsung SSD 980", "diskSerialReliable": true,
@@ -78,17 +79,30 @@ brauzer birinchi marta ruxsat so'rashi mumkin — «Ruxsat berish» bosiladi.
 }
 ```
 
-### `POST /v1/attest` — server so'rovini imzolash
-So'rov: `{ "challenge": "<server bergan base64url, 16-128 belgi>", "origin": "https://192.168.100.12" }`
-(`origin` brauzer yuborgan `Origin` bilan bir xil bo'lishi shart).
+### `GET /v1/keys` — fleshkalardagi E-IMZO kalitlari
+```json
+{ "keys": [{ "fileName": "ali.mzk", "drive": "I:\\", "keyFile": "<.mzk matni, parol bilan shifrlangan>",
+  "keySha256": "<fayl SHA-256>", "certPem": "<yonidagi .crt yoki null>",
+  "usbSerial": "0901412E83F709E5CDEC", "usbSerialReliable": true, "usbModel": "USB SanDisk 3.2Gen1" }] }
+```
 
-Javob: `/v1/info` maydonlari + `signature`; bu yerda `macs` — barcha jismoniy kartalar MAC lari,
-alifbo tartibida, vergul bilan (`30-68-93-F8-4E-6E,AC-72-89-00-D1-42`).
+### `POST /v1/key/check` — kalit fleshkasi hali ulanganmi
+So'rov `{ "keySha256": "<hex>" }`, javob `{ "present": true }`. Sayt ochiq kalitni har 5 soniyada shu bilan
+tekshiradi va fleshka olinishi bilan xotiradan o'chiradi.
+
+### `POST /v1/attest` — server so'rovini imzolash
+So'rov: `{ "challenge": "<server bergan base64url, 16-128 belgi>", "origin": "https://192.168.100.12", "keySha256": "<hex>" }`
+(`origin` brauzer yuborgan `Origin` bilan bir xil bo'lishi shart). `keySha256` li fayl ulangan fleshkada
+topilmasa — `409 { "error": "key_not_on_usb" }`.
+
+Javob: `/v1/info` maydonlari + `format: "v2"`, `usbSerial`, `usbSerialReliable`, `usbModel`, `keySha256`,
+`signature`; bu yerda `macs` — barcha jismoniy kartalar MAC lari, alifbo tartibida, vergul bilan.
 
 Imzolangan matn (UTF-8):
 ```
-mezon-device|v1|<origin>|<challenge>|<macs>|<diskSerial>|<publicKeySha256>
+mezon-device|v2|<origin>|<challenge>|<macs>|<diskSerial>|<publicKeySha256>|<usbSerial>|<keySha256>
 ```
+(`keySha256` yuborilmasa eski `v1` matni — fleshkasiz; server uni imzo uchun qabul qilmaydi.)
 Imzo: ECDSA P-256 / SHA-256, IEEE P1363 (`r||s`, 64 bayt), base64 — WebCrypto bilan bir xil.
 
 ## Server tomoni (`lib/eimzo/device.ts`)
@@ -102,7 +116,10 @@ bo'limida yozilgan kompyuterlarni ko'radi va bekor qiladi.
    - server bir martalik `challenge` beradi; sayt agentdan `/v1/attest` oladi va E-IMZO imzosi bilan birga yuboradi;
    - server tekshiradi: E-IMZO sertifikati haqiqiy va **shu userga** tegishli; sertifikatdagi MAC
      (superadmin kiritgan) agent yuborgan `macs` ro'yxatida bor; agent imzosi `publicKey` bilan to'g'ri;
-   - hammasi to'g'ri bo'lsa, userga **MAC + disk seriyasi + qurilma ochiq kaliti** yozib qo'yiladi.
-2. **Keyingi imzolar:** agent tasdig'i majburiy; qurilma kaliti, MAC va disk seriyasi birinchi yozilganiga
-   mos kelmasa — imzo rad etiladi va xavfsizlik jurnaliga yoziladi.
+   - hammasi to'g'ri bo'lsa, userga **MAC + disk seriyasi + qurilma ochiq kaliti + fleshka seriyasi +
+     kalit fayli SHA-256** yozib qo'yiladi.
+2. **Keyingi imzolar:** agent tasdig'i majburiy; qurilma kaliti, MAC, disk seriyasi, fleshka seriyasi va
+   kalit fayli birinchi yozilganiga mos kelmasa — imzo rad etiladi va xavfsizlik jurnaliga yoziladi.
+   Fleshka olib qo'yilgan bo'lsa agent tasdiq bermaydi — imzo qo'yib bo'lmaydi (1 soatlik parol oynasi ham yopiladi).
+   Superadmin userga yangi sertifikat bersa, keyingi imzoda yangi kalit fleshkasi yoziladi.
 3. Kompyuter almashtirilsa — superadmin userning yozilgan qurilmasini bekor qiladi, keyingi imzoda yangisi yoziladi.

@@ -24,7 +24,7 @@ type Signature = {
   fullName: string;
   position: string;
   militaryRank: string;
-  device: { hostname: string; mac: string; diskSerial: string; verified: boolean } | null;
+  device: { hostname: string; mac: string; diskSerial: string; usbSerial?: string; verified: boolean } | null;
 };
 
 const STATUS = {
@@ -104,6 +104,11 @@ export default function DocumentSignaturesButton({ documentId, version }: { docu
                         <>
                           {s.device.hostname || '—'} · MAC <span className="font-mono">{s.device.mac}</span> · disk{' '}
                           <span className="font-mono">{s.device.diskSerial}</span>
+                          {s.device.usbSerial && (
+                            <>
+                              {' '}· fleshka <span className="font-mono">{s.device.usbSerial}</span>
+                            </>
+                          )}
                           {s.device.verified ? '' : ' (tasdiq imzosi noto‘g‘ri)'}
                         </>
                       : <span className="text-slate-400">tasdiqlanmagan (agentsiz)</span>}

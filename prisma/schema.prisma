@@ -599,6 +599,11 @@ model UserEimzoDevice {
   diskSerialReliable Boolean   @default(true)
   hardwareKey        Boolean   @default(false)
   hostname           String    @default("")
+  /// E-IMZO kaliti turgan fleshka seriyasi va kalit fayli (.mzk) SHA-256 — birinchi imzoda yoziladi
+  usbSerial          String    @default("")
+  usbSerialReliable  Boolean   @default(true)
+  usbModel           String    @default("")
+  keySha256          String    @default("")
   /// Birinchi aloqada ishlatilgan sertifikat
   certificateId      String?
   status             String    @default("active")
