@@ -11,7 +11,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>MezonAgent</AssemblyName>
     <RootNamespace>MezonAgent</RootNamespace>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <InvariantGlobalization>true</InvariantGlobalization>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
